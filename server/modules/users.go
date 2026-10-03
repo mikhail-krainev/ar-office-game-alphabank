@@ -11,16 +11,60 @@ import (
 )
 
 // Admin RPCs for player accounts. An account exists only after the admin creates it; creating it
-// is the activation. A banned account cannot sign in until it is unbanned.
+// is the activation. A banned account cannot sign in until it is unbanned. Every player has a home
+// office and a department of that office; a business trip moves them to another office and
+// department until its end date.
 
 type userView struct {
-	ID           string `json:"id"`
-	Username     string `json:"username"`
-	DisplayName  string `json:"display_name"`
-	Role         string `json:"role"`
+	ID           string    `json:"id"`
+	Username     string    `json:"username"`
+	DisplayName  string    `json:"display_name"`
+	Role         string    `json:"role"`
+	OfficeID     string    `json:"office_id"`
+	DepartmentID string    `json:"department_id"`
+	Trip         *tripView `json:"trip"`
+	Banned       bool      `json:"banned"`
+	CreatedAt    int64     `json:"created_at"`
+}
+
+// tripView: a business trip that has not ended yet (an ended one is not shown).
+type tripView struct {
+	OfficeID     string `json:"office_id"`
 	DepartmentID string `json:"department_id"`
-	Banned       bool   `json:"banned"`
-	CreatedAt    int64  `json:"created_at"`
+	// Last day of the trip, "YYYY-MM-DD".
+	Until  string `json:"until"`
+	Active bool   `json:"active"`
+}
+
+const tripDateLayout = "2006-01-02"
+
+// tripOf: the trip of the account, nil when there is none or it has ended by `today`.
+func tripOf(metadata accountMetadata, today int) *tripView {
+	if !metadata.onTrip(today) {
+		return nil
+	}
+	return &tripView{
+		OfficeID: metadata.Trip.OfficeID, DepartmentID: metadata.Trip.DepartmentID,
+		Until: dateOf(metadata.Trip.Until).Format(tripDateLayout), Active: true,
+	}
+}
+
+// parseTripDate: "YYYY-MM-DD" -> office day number.
+func parseTripDate(text string) (int, bool) {
+	date, err := time.Parse(tripDateLayout, text)
+	if err != nil {
+		return 0, false
+	}
+	return dayFromDate(date.Year(), date.Month(), date.Day()), true
+}
+
+// validTripEnd: a trip ends today or later, within a year.
+func validTripEnd(until, today int) bool {
+	return until >= today && until-today <= maxTripDays
+}
+
+func officeToday() int {
+	return dayOf(time.Now().Unix(), gameContent.officeOffset())
 }
 
 // rpcAdminListUsers: -> {"users": [userView]}, newest first.
@@ -53,6 +97,10 @@ func rpcAdminListUsers(ctx context.Context, logger runtime.Logger, db *sql.DB, n
 		user.DisplayName = displayName.String
 		user.Role = parsed.Role
 		user.DepartmentID = parsed.DepartmentID
+		if parsed.Role == rolePlayer {
+			user.OfficeID = parsed.homeOffice()
+			user.Trip = tripOf(parsed, officeToday())
+		}
 		user.Banned = disabled.Unix() > 0
 		user.CreatedAt = created.Unix()
 		users = append(users, user)
@@ -64,7 +112,7 @@ func rpcAdminListUsers(ctx context.Context, logger runtime.Logger, db *sql.DB, n
 	return encodeResponse(map[string]any{"users": users})
 }
 
-// rpcAdminCreateUser: {"username", "password", "display_name", "department_id"} -> userView.
+// rpcAdminCreateUser: {"username", "password", "display_name", "office_id", "department_id"} -> userView.
 func rpcAdminCreateUser(ctx context.Context, logger runtime.Logger, _ *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	if err := requireAdmin(ctx, nk); err != nil {
 		return "", err
@@ -73,6 +121,7 @@ func rpcAdminCreateUser(ctx context.Context, logger runtime.Logger, _ *sql.DB, n
 		Username     string `json:"username"`
 		Password     string `json:"password"`
 		DisplayName  string `json:"display_name"`
+		OfficeID     string `json:"office_id"`
 		DepartmentID string `json:"department_id"`
 	}
 	if err := decodePayload(payload, &request); err != nil {
@@ -89,7 +138,10 @@ func rpcAdminCreateUser(ctx context.Context, logger runtime.Logger, _ *sql.DB, n
 	if err != nil {
 		return "", err
 	}
-	department, err := findDepartment(ctx, nk, request.DepartmentID)
+	if _, err := findOffice(ctx, nk, request.OfficeID); err != nil {
+		return "", err
+	}
+	department, err := findOfficeDepartment(ctx, nk, request.OfficeID, request.DepartmentID)
 	if err != nil {
 		return "", err
 	}
@@ -109,7 +161,7 @@ func rpcAdminCreateUser(ctx context.Context, logger runtime.Logger, _ *sql.DB, n
 	if !created {
 		return "", errUsernameTaken
 	}
-	metadata := accountMetadata{Role: rolePlayer, DepartmentID: department.ID}
+	metadata := accountMetadata{Role: rolePlayer, OfficeID: request.OfficeID, DepartmentID: department.ID}
 	if err := nk.AccountUpdateId(ctx, userID, "", metadata.toMap(), displayName, "", "", "", ""); err != nil {
 		logger.Error("set up user %s: %v", userID, err)
 		// A half-made account without a department must not stay.
@@ -118,14 +170,15 @@ func rpcAdminCreateUser(ctx context.Context, logger runtime.Logger, _ *sql.DB, n
 		}
 		return "", errInternal
 	}
-	logger.Info("user %s (%s) created in department %s", userID, username, department.ID)
+	logger.Info("user %s (%s) created in office %s, department %s", userID, username, request.OfficeID, department.ID)
 	return encodeResponse(userView{
 		ID: userID, Username: username, DisplayName: displayName, Role: rolePlayer,
-		DepartmentID: department.ID, CreatedAt: time.Now().Unix(),
+		OfficeID: request.OfficeID, DepartmentID: department.ID, CreatedAt: time.Now().Unix(),
 	})
 }
 
-// rpcAdminUpdateUser: {"user_id", "display_name"?, "department_id"?} -> {}.
+// rpcAdminUpdateUser: {"user_id", "display_name"?, "office_id"?, "department_id"?} -> {}. A new
+// home office needs a department of that office.
 func rpcAdminUpdateUser(ctx context.Context, logger runtime.Logger, _ *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	if err := requireAdmin(ctx, nk); err != nil {
 		return "", err
@@ -133,6 +186,7 @@ func rpcAdminUpdateUser(ctx context.Context, logger runtime.Logger, _ *sql.DB, n
 	var request struct {
 		UserID       string `json:"user_id"`
 		DisplayName  string `json:"display_name"`
+		OfficeID     string `json:"office_id"`
 		DepartmentID string `json:"department_id"`
 	}
 	if err := decodePayload(payload, &request); err != nil {
@@ -148,18 +202,75 @@ func rpcAdminUpdateUser(ctx context.Context, logger runtime.Logger, _ *sql.DB, n
 			return "", err
 		}
 	}
-	if request.DepartmentID != "" {
-		department, err := findDepartment(ctx, nk, request.DepartmentID)
-		if err != nil {
+	if request.OfficeID != "" || request.DepartmentID != "" {
+		office, department := metadata.homeOffice(), metadata.DepartmentID
+		if request.OfficeID != "" {
+			office = request.OfficeID
+		}
+		if request.DepartmentID != "" {
+			department = request.DepartmentID
+		}
+		if _, err := findOffice(ctx, nk, office); err != nil {
 			return "", err
 		}
-		metadata.DepartmentID = department.ID
+		if _, err := findOfficeDepartment(ctx, nk, office, department); err != nil {
+			return "", err
+		}
+		metadata.OfficeID, metadata.DepartmentID = office, department
 	}
 	if err := nk.AccountUpdateId(ctx, request.UserID, "", metadata.toMap(), displayName, "", "", "", ""); err != nil {
 		logger.Error("update user %s: %v", request.UserID, err)
 		return "", errInternal
 	}
 	return "{}", nil
+}
+
+// rpcAdminSetTrip: {"user_id", "office_id", "department_id", "until"} -> {"trip"}. Sends the player
+// on a business trip until "until" ("YYYY-MM-DD", inclusive): in that office and department they
+// check in, meet colleagues and follow its limits. Empty "office_id" ends the trip now.
+func rpcAdminSetTrip(ctx context.Context, logger runtime.Logger, _ *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
+	if err := requireAdmin(ctx, nk); err != nil {
+		return "", err
+	}
+	var request struct {
+		UserID       string `json:"user_id"`
+		OfficeID     string `json:"office_id"`
+		DepartmentID string `json:"department_id"`
+		Until        string `json:"until"`
+	}
+	if err := decodePayload(payload, &request); err != nil {
+		return "", err
+	}
+	metadata, err := playerMetadata(ctx, nk, request.UserID)
+	if err != nil {
+		return "", err
+	}
+	today := officeToday()
+	if request.OfficeID == "" {
+		metadata.Trip = nil
+	} else {
+		until, ok := parseTripDate(request.Until)
+		if !ok || !validTripEnd(until, today) || request.OfficeID == metadata.homeOffice() {
+			return "", errInvalidTrip
+		}
+		if _, err := findOffice(ctx, nk, request.OfficeID); err != nil {
+			return "", err
+		}
+		if _, err := findOfficeDepartment(ctx, nk, request.OfficeID, request.DepartmentID); err != nil {
+			return "", err
+		}
+		metadata.Trip = &Trip{OfficeID: request.OfficeID, DepartmentID: request.DepartmentID, Until: until}
+	}
+	if err := nk.AccountUpdateId(ctx, request.UserID, "", metadata.toMap(), "", "", "", "", ""); err != nil {
+		logger.Error("set trip of %s: %v", request.UserID, err)
+		return "", errInternal
+	}
+	if metadata.Trip == nil {
+		logger.Info("trip of %s ended", request.UserID)
+	} else {
+		logger.Info("user %s on a trip to office %s, department %s, until %s", request.UserID, request.OfficeID, request.DepartmentID, request.Until)
+	}
+	return encodeResponse(map[string]any{"trip": tripOf(metadata, today)})
 }
 
 // rpcAdminSetPassword: {"user_id", "password"} -> {}. Signs the user out everywhere.

@@ -2,10 +2,13 @@ extends Control
 ## Office screen at the reception: two rotating QR codes, entry and exit. The server signs them with
 ## a secret only it knows and hands them out for the server's HTTP key, so a player's phone cannot
 ## make them. Run it on a PC or TV: `run.sh --office-screen` (the key is taken from server/.env) or
-## pass --kiosk-key=<NAKAMA_HTTP_KEY> / set OFFICE_GAME_KIOSK_KEY.
+## pass --kiosk-key=<NAKAMA_HTTP_KEY> / set OFFICE_GAME_KIOSK_KEY. Every office has its own screen:
+## --kiosk-office=<office id> / OFFICE_GAME_KIOSK_OFFICE (the default office when empty).
 
 const KEY_ARGUMENT: String = "--kiosk-key="
 const KEY_ENV: String = "OFFICE_GAME_KIOSK_KEY"
+const OFFICE_ARGUMENT: String = "--kiosk-office="
+const OFFICE_ENV: String = "OFFICE_GAME_KIOSK_OFFICE"
 const RETRY_SECONDS: float = 3.0
 const BACKGROUND: Color = Color("#1d1d1f")
 const MARGIN: int = 24
@@ -13,6 +16,7 @@ const LOGO_HEIGHT: float = 48.0
 const MARK: Texture2D = preload("res://assets/brand/alfa_mark_large.png")
 
 var _key: String = ""
+var _office: String = ""
 var _margin: MarginContainer
 var _entry: TextureRect
 var _exit: TextureRect
@@ -26,7 +30,8 @@ var _fetching: bool = false
 
 
 func _ready() -> void:
-	_key = _read_key()
+	_key = _read_setting(KEY_ARGUMENT, KEY_ENV)
+	_office = _read_setting(OFFICE_ARGUMENT, OFFICE_ENV)
 	var background: ColorRect = ColorRect.new()
 	background.color = BACKGROUND
 	background.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -93,7 +98,8 @@ func _process(delta: float) -> void:
 
 func _fetch() -> void:
 	_fetching = true
-	var result: ServerSession.RpcResult = await Backend.server.call_rpc_with_key("kiosk_codes", _key)
+	var payload: Dictionary = {} if _office.is_empty() else {"office": _office}
+	var result: ServerSession.RpcResult = await Backend.server.call_rpc_with_key("kiosk_codes", _key, payload)
 	_fetching = false
 	if not result.ok:
 		_status.text = tr("OFFICE_SCREEN_OFFLINE")
@@ -111,8 +117,8 @@ func _code_texture(text: String) -> Texture2D:
 	return ImageTexture.create_from_image(QrEncoder.encode(text).to_image(8, 4))
 
 
-func _read_key() -> String:
+func _read_setting(argument_prefix: String, env_name: String) -> String:
 	for argument: String in OS.get_cmdline_user_args():
-		if argument.begins_with(KEY_ARGUMENT):
-			return argument.trim_prefix(KEY_ARGUMENT)
-	return OS.get_environment(KEY_ENV)
+		if argument.begins_with(argument_prefix):
+			return argument.trim_prefix(argument_prefix)
+	return OS.get_environment(env_name)

@@ -109,9 +109,26 @@ label {
 }
 
 input,
+textarea,
 button {
   font: inherit;
   border-radius: 10px;
+}
+
+textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus);
 }
 
 input,
@@ -368,7 +385,12 @@ td .dropdown-trigger {
 }
 
 td.actions {
+  text-align: right;
+}
+
+.row-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   justify-content: flex-end;
 }
@@ -502,7 +524,7 @@ button.tab:hover:not(:disabled):not(.active) {
 
 .filters {
   display: grid;
-  grid-template-columns: minmax(200px, 2fr) minmax(180px, 1fr) minmax(200px, 1fr);
+  grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(160px, 1fr));
   gap: 10px;
   margin-bottom: 14px;
 }
@@ -767,5 +789,52 @@ tr.clickable:hover td {
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+  margin-bottom: 16px;
+}
+
+/* Offices and business trips */
+
+code.network {
+  display: block;
+  white-space: nowrap;
+}
+
+.placement {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.trip {
+  display: grid;
+  gap: 2px;
+  min-width: 150px;
+  max-width: 220px;
+}
+
+.trip-label {
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.trip .link {
+  justify-self: start;
+}
+
+.trip-form {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--accent);
+  background: var(--bg);
+  border-radius: 0 8px 8px 0;
+}
+
+.trip-form h3 {
+  margin-top: 0;
+}
+
+.office-picker {
+  max-width: 360px;
   margin-bottom: 16px;
 }

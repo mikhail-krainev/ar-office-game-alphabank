@@ -4,13 +4,18 @@ import { Dropdown } from "./Dropdown";
 
 const NEW_DEPARTMENT = "__new__";
 
-/** Department picker with an inline "new department" option. The empty value means none chosen. */
+/**
+ * Department picker for one office, with an inline "new department" option (created in that office).
+ * The empty value means none chosen.
+ */
 export function DepartmentSelect({
   actions,
+  officeId,
   value,
   onChange,
 }: {
   actions: DashboardActions;
+  officeId: string;
   value: string;
   onChange: (id: string) => void;
 }) {
@@ -18,7 +23,7 @@ export function DepartmentSelect({
   const [name, setName] = useState("");
 
   async function create() {
-    const department = await actions.createDepartment(name);
+    const department = await actions.createDepartment(name, officeId);
     if (department) {
       onChange(department.id);
       setCreating(false);
@@ -40,12 +45,18 @@ export function DepartmentSelect({
     );
   }
 
+  if (!officeId) {
+    return <Dropdown value="" placeholder="Сначала выберите офис" options={[]} onChange={() => undefined} />;
+  }
+
   return (
     <Dropdown
       value={value}
       placeholder="Выберите департамент"
       options={[
-        ...actions.departments.map((department) => ({ value: department.id, label: department.name })),
+        ...actions.departments
+          .filter((department) => department.office_id === officeId)
+          .map((department) => ({ value: department.id, label: department.name })),
         { value: NEW_DEPARTMENT, label: "+ Новый департамент…", action: true },
       ]}
       onChange={(id) => (id === NEW_DEPARTMENT ? setCreating(true) : onChange(id))}

@@ -34,6 +34,7 @@ export const SUSPICIOUS_LABELS: Record<string, string> = {
   colleague_invalid: "Неизвестный коллега",
   colleague_not_assigned: "Коллега не назначен",
   colleague_not_present: "Коллеги нет в офисе",
+  colleague_other_office: "Коллега из другого офиса",
   colleague_already_used: "Коллега уже засчитан сегодня",
   not_enough_colleagues: "Мало коллег",
   not_enough_faces: "Мало лиц на фото",

@@ -110,7 +110,7 @@ func rpcListTasks(ctx context.Context, logger runtime.Logger, db *sql.DB, nk run
 				Pending:   contains(dayList(state.Pending, tx.today), task.ID),
 			})
 		}
-		return map[string]any{"tasks": tasks, "in_office": inOffice(state, tx.today), "schedule": schedule}, nil
+		return map[string]any{"tasks": tasks, "in_office": tx.inMyOffice(), "schedule": schedule}, nil
 	})
 }
 
@@ -261,13 +261,13 @@ func (tx *gameTx) taskError(task *Task, success bool, proof taskProof) (string, 
 	case !tx.isTodaysTask(task):
 		return "task_not_today", nil
 	case task.Minigame == presenceMinigame:
-		if problem := tx.networkError(); problem != "" {
-			return problem, nil
+		if problem, err := tx.networkError(); problem != "" || err != nil {
+			return problem, err
 		}
 		return tx.useToken(purposeEntry, proof.PresenceToken), nil
 	}
-	if problem := tx.presenceError(); problem != "" {
-		return problem, nil
+	if problem, err := tx.presenceError(); problem != "" || err != nil {
+		return problem, err
 	}
 	if problem, err := tx.taskTimeError(task); problem != "" || err != nil {
 		return problem, err

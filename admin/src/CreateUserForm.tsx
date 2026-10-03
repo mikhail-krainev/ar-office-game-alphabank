@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { api } from "./api";
 import type { DashboardActions } from "./Dashboard";
 import { DepartmentSelect } from "./DepartmentSelect";
+import { OfficeSelect } from "./OfficeSelect";
 import { generatePassword } from "./password";
 
 interface Issued {
@@ -15,12 +16,13 @@ export function CreateUserForm({ actions }: { actions: DashboardActions }) {
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState(() => generatePassword());
+  const [officeId, setOfficeId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [issued, setIssued] = useState<Issued | null>(null);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const user = { username, password, display_name: displayName, department_id: departmentId };
+    const user = { username, password, display_name: displayName, office_id: officeId, department_id: departmentId };
     const ok = await actions.run(() => api.createUser(actions.session, user));
     if (ok) {
       setIssued({ name: displayName.trim(), username: username.trim().toLowerCase(), password });
@@ -59,10 +61,21 @@ export function CreateUserForm({ actions }: { actions: DashboardActions }) {
           </span>
         </label>
         <label>
-          Департамент
-          <DepartmentSelect actions={actions} value={departmentId} onChange={setDepartmentId} />
+          Офис
+          <OfficeSelect
+            actions={actions}
+            value={officeId}
+            onChange={(id) => {
+              setOfficeId(id);
+              setDepartmentId("");
+            }}
+          />
         </label>
-        <button type="submit" disabled={!departmentId}>
+        <label>
+          Департамент
+          <DepartmentSelect actions={actions} officeId={officeId} value={departmentId} onChange={setDepartmentId} />
+        </label>
+        <button type="submit" disabled={!officeId || !departmentId}>
           Создать аккаунт
         </button>
       </form>

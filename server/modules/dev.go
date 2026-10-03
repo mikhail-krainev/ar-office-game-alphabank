@@ -44,7 +44,7 @@ func rpcDevSkipDay(ctx context.Context, logger runtime.Logger, db *sql.DB, nk ru
 	})
 }
 
-// rpcDevScheduleRaffle: {"seconds"}. A dev draw for everyone that starts `seconds` from now.
+// rpcDevScheduleRaffle: {"seconds"}. A dev draw for the caller's home office that starts `seconds` from now.
 func rpcDevScheduleRaffle(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	var request struct {
 		Seconds int64 `json:"seconds"`
@@ -58,8 +58,9 @@ func rpcDevScheduleRaffle(ctx context.Context, logger runtime.Logger, db *sql.DB
 		if err != nil {
 			return nil, errInternal
 		}
-		draw := raffleDraw{ID: fmt.Sprintf("parking-dev-%d", at), DrawAt: at, Seed: seed, Commitment: raffleCommitment(seed), Tickets: []string{}}
-		if err := tx.writeSystem(rafflesCollection, raffleDevKey, draw, ""); err != nil {
+		office := tx.me.metadata.homeOffice()
+		draw := raffleDraw{ID: fmt.Sprintf("parking-dev-%s-%d", office, at), DrawAt: at, Seed: seed, Commitment: raffleCommitment(seed), Tickets: []string{}}
+		if err := tx.writeSystem(rafflesCollection, raffleDevKeyOf(office), draw, ""); err != nil {
 			return nil, err
 		}
 		return okResult, tx.writeSystem(rafflesCollection, draw.ID, draw, "*")
@@ -81,11 +82,13 @@ func rpcDevGrantCoins(ctx context.Context, logger runtime.Logger, db *sql.DB, nk
 }
 
 // rpcDevPresenceCodes: the office screen codes for the desktop QR emulator.
-func rpcDevPresenceCodes(ctx context.Context, _ runtime.Logger, _ *sql.DB, _ runtime.NakamaModule, _ string) (string, error) {
-	if _, err := callerID(ctx); err != nil {
+func rpcDevPresenceCodes(ctx context.Context, _ runtime.Logger, _ *sql.DB, nk runtime.NakamaModule, _ string) (string, error) {
+	_, metadata, err := callerAccount(ctx, nk)
+	if err != nil {
 		return "", err
 	}
-	return encodeResponse(currentKioskCodes(gameContent.Rules.Office.ID, time.Now().Unix()))
+	office, _ := metadata.placement(dayOf(time.Now().Unix(), gameContent.officeOffset()))
+	return encodeResponse(currentKioskCodes(office, time.Now().Unix()))
 }
 
 // rpcDevListPlayers: every other player with their office status, for the emulator's profile codes.
@@ -103,11 +106,11 @@ func rpcDevListPlayers(ctx context.Context, logger runtime.Logger, db *sql.DB, n
 				ids = append(ids, id)
 			}
 		}
-		players, err := readPlayers(ctx, nk, ids)
+		players, err := readPlayers(ctx, nk, ids, tx.today)
 		if err != nil {
 			return nil, err
 		}
-		presence, err := officePresence(ctx, nk, tx.today)
+		presence, err := officePresence(ctx, nk, tx.today, tx.office())
 		if err != nil {
 			return nil, err
 		}
@@ -161,19 +164,22 @@ func rpcDevDrawNow(ctx context.Context, logger runtime.Logger, db *sql.DB, nk ru
 		}
 		loaded.draw.DrawAt = tx.now - 1
 		loaded.dirty = true
-		if dev, err := readDraw(tx.ctx, tx.nk, raffleDevKey); err == nil && dev != nil && dev.draw.ID == loaded.draw.ID {
-			return okResult, tx.writeSystem(rafflesCollection, raffleDevKey, loaded.draw, "")
+		devKey := raffleDevKeyOf(tx.me.metadata.homeOffice())
+		if dev, err := readDraw(tx.ctx, tx.nk, devKey); err == nil && dev != nil && dev.draw.ID == loaded.draw.ID {
+			return okResult, tx.writeSystem(rafflesCollection, devKey, loaded.draw, "")
 		}
 		return okResult, nil
 	})
 }
 
-// rpcDevClearRaffle returns to the monthly draw.
+// rpcDevClearRaffle returns the caller's home office to the monthly draw.
 func rpcDevClearRaffle(ctx context.Context, _ runtime.Logger, _ *sql.DB, nk runtime.NakamaModule, _ string) (string, error) {
-	if _, err := callerID(ctx); err != nil {
+	_, metadata, err := callerAccount(ctx, nk)
+	if err != nil {
 		return "", err
 	}
-	if err := nk.StorageDelete(ctx, []*runtime.StorageDelete{{Collection: rafflesCollection, Key: raffleDevKey, UserID: systemUserID}}); err != nil {
+	devKey := raffleDevKeyOf(metadata.homeOffice())
+	if err := nk.StorageDelete(ctx, []*runtime.StorageDelete{{Collection: rafflesCollection, Key: devKey, UserID: systemUserID}}); err != nil {
 		return "", errInternal
 	}
 	return encodeResponse(okResult)

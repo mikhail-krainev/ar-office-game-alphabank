@@ -201,12 +201,15 @@ func TestRaffleDraw(t *testing.T) {
 			t.Errorf("%s won %d of 400 draws; the draw looks biased", entry, counts[entry])
 		}
 	}
-	id, at := raffleSchedule(monday, &Rules{}, testOffset)
-	if id != "parking-2026-09" || dayOf(at, testOffset) != dayFromDate(2026, 9, 25) {
+	id, at := raffleSchedule("hq", monday, &Rules{}, testOffset)
+	if id != "parking-hq-2026-09" || dayOf(at, testOffset) != dayFromDate(2026, 9, 25) {
 		t.Errorf("schedule on Monday = %s, day %d", id, dayOf(at, testOffset))
 	}
-	if id, _ := raffleSchedule(dayFromDate(2026, 9, 26), &Rules{}, testOffset); id != "parking-2026-10" {
+	if id, _ := raffleSchedule("hq", dayFromDate(2026, 9, 26), &Rules{}, testOffset); id != "parking-hq-2026-10" {
 		t.Errorf("after the September draw day the October draw is current, got %s", id)
+	}
+	if other, _ := raffleSchedule("office_msk", monday, &Rules{}, testOffset); other == id {
+		t.Error("every office must have its own draw")
 	}
 }
 

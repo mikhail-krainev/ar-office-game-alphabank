@@ -6,18 +6,17 @@ import (
 	"fmt"
 	"net/netip"
 	"strings"
+	"time"
 
 	"github.com/heroiclabs/nakama-common/runtime"
 )
 
 // Office network: the second presence factor next to the entry code. The entry code, tasks, room
-// codes and colleague picks count only when the request comes from an office address (OFFICE_NETWORKS),
-// so a player who checked in and went home cannot keep playing. The address comes from Nakama: the
+// codes and colleague picks count only when the request comes from an address of the player's
+// office today (offices.go), so a player who checked in and went home cannot keep playing, and a
+// player of one city cannot play from the network of another. The address comes from Nakama: the
 // connection or the first X-Forwarded-For entry. Nakama trusts that header, so its port must be
 // reachable only through a proxy that overwrites it (Caddy does by default).
-
-// officeNetworks: allowed prefixes; empty turns the check off (a warning at startup).
-var officeNetworks []netip.Prefix
 
 // parseOfficeNetworks: comma-separated CIDR prefixes or single addresses.
 func parseOfficeNetworks(value string) ([]netip.Prefix, error) {
@@ -68,12 +67,17 @@ func (tx *gameTx) clientIP() string {
 	return ip
 }
 
-// networkError: "" or "office_network_required" when the request comes from outside the office.
-func (tx *gameTx) networkError() string {
-	if inOfficeNetwork(officeNetworks, tx.clientIP()) {
-		return ""
+// networkError: "" or "office_network_required" when the request comes from outside the office
+// the player counts in today (an office without a network does not check).
+func (tx *gameTx) networkError() (string, error) {
+	office, err := tx.currentOffice()
+	if err != nil {
+		return "", err
 	}
-	return "office_network_required"
+	if office != nil && inOfficeNetwork(office.prefixes(), tx.clientIP()) {
+		return "", nil
+	}
+	return "office_network_required", nil
 }
 
 // The whole game opens only in the office network: at home or on mobile internet every game RPC
@@ -98,21 +102,42 @@ func gameRpc(id string) bool {
 	return true
 }
 
-// officeOnly refuses the RPC outside the office network (the check is off while OFFICE_NETWORKS is empty).
+// officeOnly refuses the RPC outside the network of the caller's office today.
 func officeOnly(fn rpcFunc) rpcFunc {
 	return func(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
-		ip, _ := ctx.Value(runtime.RUNTIME_CTX_CLIENT_IP).(string)
-		if !inOfficeNetwork(officeNetworks, ip) {
+		allowed, err := callerInOfficeNetwork(ctx, nk)
+		if err != nil {
+			return "", err
+		}
+		if !allowed {
 			return "", errOfficeNetwork
 		}
 		return fn(ctx, logger, db, nk, payload)
 	}
 }
 
-// presenceError: why presence does not count now, or "" when the player is in the office.
-func (tx *gameTx) presenceError() string {
-	if !inOffice(tx.me.state, tx.today) {
-		return "presence_required"
+func callerInOfficeNetwork(ctx context.Context, nk runtime.NakamaModule) (bool, error) {
+	_, metadata, err := callerAccount(ctx, nk)
+	if err != nil {
+		return false, err
+	}
+	if metadata.Role != rolePlayer {
+		// Game RPCs refuse other accounts themselves (not_player).
+		return true, nil
+	}
+	officeID, _ := metadata.placement(dayOf(time.Now().Unix(), gameContent.officeOffset()))
+	office, err := readOffice(ctx, nk, officeID)
+	if err != nil || office == nil {
+		return false, err
+	}
+	ip, _ := ctx.Value(runtime.RUNTIME_CTX_CLIENT_IP).(string)
+	return inOfficeNetwork(office.prefixes(), ip), nil
+}
+
+// presenceError: why presence does not count now, or "" when the player is in today's office.
+func (tx *gameTx) presenceError() (string, error) {
+	if !tx.inMyOffice() {
+		return "presence_required", nil
 	}
 	return tx.networkError()
 }

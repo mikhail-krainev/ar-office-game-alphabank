@@ -21,7 +21,8 @@ import (
 // the server knows: the entry code opens the "in the office" interval, the exit code closes it.
 // Tasks, colleague meetings and room codes count only inside the interval; an interval left open
 // ends with the day. Static room codes at the doors work only after the entry code. Each of these
-// requests must also come from the office network (network.go).
+// requests must also come from the office network (network.go). Every office has its own screen:
+// the codes carry the office id, and a player counts only the codes of the office they are in today.
 
 const (
 	presencePeriodSeconds = 30
@@ -78,6 +79,15 @@ type presenceEntry struct {
 	In    bool   `json:"in"`
 	Since int64  `json:"since"`
 	Room  string `json:"room"`
+	// "" in entries written before offices existed: the default office.
+	Office string `json:"office,omitempty"`
+}
+
+func (e presenceEntry) office() string {
+	if e.Office == "" {
+		return defaultOfficeID()
+	}
+	return e.Office
 }
 
 // inOffice: checked in today and not checked out since.
@@ -87,9 +97,24 @@ func inOffice(state *PlayerState, today int) bool {
 	return ok && state.CheckoutAt[key] < entered
 }
 
-// useToken checks a scanned code and remembers it so the same player cannot use it twice.
+// presenceOffice: the office of the player's last entry code.
+func presenceOffice(state *PlayerState) string {
+	if state.PresenceOffice == "" {
+		return defaultOfficeID()
+	}
+	return state.PresenceOffice
+}
+
+// inMyOffice: in the office interval, entered in the office the player counts in today. A business
+// trip that starts or ends during the day needs a new entry code in the new office.
+func (tx *gameTx) inMyOffice() bool {
+	return inOffice(tx.me.state, tx.today) && presenceOffice(tx.me.state) == tx.office()
+}
+
+// useToken checks a scanned code and remembers it so the same player cannot use it twice. Only the
+// codes of the player's office today count.
 func (tx *gameTx) useToken(purpose, token string) string {
-	if problem := verifyPresenceToken(presenceSecret, purpose, tx.content.Rules.Office.ID, token, time.Now().Unix()); problem != "" {
+	if problem := verifyPresenceToken(presenceSecret, purpose, tx.office(), token, time.Now().Unix()); problem != "" {
 		return problem
 	}
 	state := tx.me.state
@@ -110,13 +135,15 @@ func (tx *gameTx) enterOffice() error {
 	state.PresenceDays[key] = true
 	state.CheckinAt[key] = tx.now
 	delete(state.CheckoutAt, key)
+	state.PresenceOffice = tx.office()
 	state.BestStreak = max(state.BestStreak, streak(state.PresenceDays, state.ExcusedDays, tx.today, state.FirstDay))
-	tx.logActivity(tx.me, activityCheckIn, nil)
+	tx.logActivity(tx.me, activityCheckIn, map[string]any{"office": state.PresenceOffice})
 	return tx.writePresence(true, "")
 }
 
 func (tx *gameTx) writePresence(in bool, room string) error {
-	return tx.writeSystem(presenceCollection, tx.me.userID, presenceEntry{Day: tx.today, In: in, Since: tx.now, Room: room}, "")
+	entry := presenceEntry{Day: tx.today, In: in, Since: tx.now, Room: room, Office: presenceOffice(tx.me.state)}
+	return tx.writeSystem(presenceCollection, tx.me.userID, entry, "")
 }
 
 type actionResult struct {
@@ -140,15 +167,15 @@ func rpcOfficeCheckIn(ctx context.Context, logger runtime.Logger, db *sql.DB, nk
 		return "", err
 	}
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
-		if problem := tx.networkError(); problem != "" {
+		if problem, err := tx.networkError(); problem != "" || err != nil {
 			tx.logSuspicious("office_check_in", problem)
-			return fail(problem), nil
+			return fail(problem), err
 		}
 		if problem := tx.useToken(purposeEntry, request.Token); problem != "" {
 			tx.logSuspicious("office_check_in", problem)
 			return fail(problem), nil
 		}
-		if inOffice(tx.me.state, tx.today) {
+		if tx.inMyOffice() {
 			return fail("already_in_office"), nil
 		}
 		return okResult, tx.enterOffice()
@@ -190,8 +217,8 @@ func rpcEnterRoom(ctx context.Context, logger runtime.Logger, db *sql.DB, nk run
 		return "", errInvalidPayload
 	}
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
-		if problem := tx.presenceError(); problem != "" {
-			return fail(problem), nil
+		if problem, err := tx.presenceError(); problem != "" || err != nil {
+			return fail(problem), err
 		}
 		tx.logActivity(tx.me, activityRoom, map[string]any{"room": request.RoomID})
 		return okResult, tx.writePresence(true, request.RoomID)
@@ -217,17 +244,32 @@ func currentKioskCodes(office string, now int64) kioskCodes {
 	}
 }
 
-// rpcKioskCodes: the office screen asks for the current codes with the server's HTTP key. Player
-// sessions are refused, so the codes cannot be fetched from home.
-func rpcKioskCodes(ctx context.Context, _ runtime.Logger, _ *sql.DB, _ runtime.NakamaModule, _ string) (string, error) {
+// rpcKioskCodes: {"office"?}. The office screen asks for the current codes of its office with the
+// server's HTTP key; without "office" it gets the default office. Player sessions are refused, so
+// the codes cannot be fetched from home.
+func rpcKioskCodes(ctx context.Context, _ runtime.Logger, _ *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	if userID, _ := ctx.Value(runtime.RUNTIME_CTX_USER_ID).(string); userID != "" {
 		return "", errNotAdmin
 	}
-	return encodeResponse(currentKioskCodes(gameContent.Rules.Office.ID, time.Now().Unix()))
+	var request struct {
+		Office string `json:"office"`
+	}
+	if strings.TrimSpace(payload) != "" {
+		if err := decodePayload(payload, &request); err != nil {
+			return "", err
+		}
+	}
+	if request.Office == "" {
+		request.Office = defaultOfficeID()
+	}
+	if _, err := findOffice(ctx, nk, request.Office); err != nil {
+		return "", err
+	}
+	return encodeResponse(currentKioskCodes(request.Office, time.Now().Unix()))
 }
 
 // officePresence lists players in the office now (the index), keyed by user id.
-func officePresence(ctx context.Context, nk runtime.NakamaModule, today int) (map[string]presenceEntry, error) {
+func officePresence(ctx context.Context, nk runtime.NakamaModule, today int, office string) (map[string]presenceEntry, error) {
 	result := map[string]presenceEntry{}
 	cursor := ""
 	for {
@@ -237,7 +279,7 @@ func officePresence(ctx context.Context, nk runtime.NakamaModule, today int) (ma
 		}
 		for _, object := range objects {
 			var entry presenceEntry
-			if json.Unmarshal([]byte(object.GetValue()), &entry) == nil && entry.Day == today && entry.In {
+			if json.Unmarshal([]byte(object.GetValue()), &entry) == nil && entry.Day == today && entry.In && entry.office() == office {
 				result[object.GetKey()] = entry
 			}
 		}

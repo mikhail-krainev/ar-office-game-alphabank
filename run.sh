@@ -5,6 +5,7 @@
 #   ./run.sh --device iphone_15
 #   ./run.sh --device iphone_17_pro --screen-dpi 127
 #   ./run.sh --office-screen          reception screen with the rotating entry and exit QR codes
+#   ./run.sh --office-screen --office office_1a2b3c4d   the screen of another office (id from the admin panel)
 #   ./run.sh --server http://192.168.1.5:7350
 #
 # The game always needs the Nakama server (server/, `docker compose up`), 127.0.0.1:7350 by default.
@@ -18,10 +19,11 @@ devices="pixel_8 iphone_15 iphone_17_pro iphone_17_pro_max galaxy_s24 android_hd
 device="pixel_8"
 screen_dpi=""
 office_screen=false
+office=""
 game_args=()
 
 usage() {
-	echo "Usage: $0 [--device <id>] [--screen-dpi <value>] [--office-screen] [--server <url>]"
+	echo "Usage: $0 [--device <id>] [--screen-dpi <value>] [--office-screen [--office <id>]] [--server <url>]"
 	echo "Devices: $devices"
 }
 
@@ -30,6 +32,7 @@ while [[ $# -gt 0 ]]; do
 		--device) device="${2:?}"; shift 2 ;;
 		--screen-dpi) screen_dpi="${2:?}"; shift 2 ;;
 		--office-screen) office_screen=true; shift ;;
+		--office) office="${2:?}"; shift 2 ;;
 		--server) game_args+=("--server=${2:?}"); shift 2 ;;
 		-h | --help) usage; exit 0 ;;
 		*) usage >&2; exit 1 ;;
@@ -69,6 +72,9 @@ if $office_screen; then
 		game_args+=("--kiosk-key=$key")
 	else
 		echo "NAKAMA_HTTP_KEY not found in server/.env: the office screen cannot get its codes." >&2
+	fi
+	if [[ -n "$office" ]]; then
+		game_args+=("--kiosk-office=$office")
 	fi
 	if [[ ${#game_args[@]} -gt 0 ]]; then
 		args+=(-- "${game_args[@]}")

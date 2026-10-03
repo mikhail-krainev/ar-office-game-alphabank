@@ -17,9 +17,36 @@ const client = new Client(
 
 const SESSION_KEY = "office-admin-session";
 
+/** Game zone: colleagues for joint tasks come only from the office a player is in today. */
+export interface Office {
+  id: string;
+  name: string;
+  city: string;
+  /** CIDR prefixes of the office Wi-Fi; empty = the network is not checked. */
+  networks: string[];
+  /** Own working-time limits; absent = the defaults. */
+  limits?: Limits;
+}
+
+export interface OfficeFields {
+  name: string;
+  city: string;
+  networks: string[];
+}
+
 export interface Department {
   id: string;
   name: string;
+  office_id: string;
+}
+
+/** A business trip that has not ended yet. */
+export interface Trip {
+  office_id: string;
+  department_id: string;
+  /** Last day of the trip, "YYYY-MM-DD". */
+  until: string;
+  active: boolean;
 }
 
 export interface User {
@@ -27,7 +54,10 @@ export interface User {
   username: string;
   display_name: string;
   role: "admin" | "player" | "";
+  /** Home office and its department. */
+  office_id: string;
   department_id: string;
+  trip: Trip | null;
   banned: boolean;
   created_at: number;
 }
@@ -36,6 +66,7 @@ export interface NewUser {
   username: string;
   password: string;
   display_name: string;
+  office_id: string;
   department_id: string;
 }
 
@@ -43,7 +74,12 @@ export interface PlayerSummary {
   id: string;
   username: string;
   display_name: string;
+  /** Home office and department: the statistics follow them. */
+  office_id: string;
   department_id: string;
+  /** Office the player counts in today (the trip office on a business trip). */
+  current_office_id: string;
+  trip: Trip | null;
   banned: boolean;
   created_at: number;
   balance: number;
@@ -231,17 +267,24 @@ export async function signOut(session: Session): Promise<void> {
 }
 
 export const api = {
+  listOffices: (s: Session) => call<{ offices: Office[] }>(s, "admin_list_offices").then((r) => r.offices),
+  createOffice: (s: Session, office: OfficeFields) => call<Office>(s, "admin_create_office", office),
+  updateOffice: (s: Session, id: string, office: OfficeFields) => call<Office>(s, "admin_update_office", { id, ...office }),
   listDepartments: (s: Session) => call<{ departments: Department[] }>(s, "list_departments").then((r) => r.departments),
-  createDepartment: (s: Session, name: string) => call<Department>(s, "admin_create_department", { name }),
+  createDepartment: (s: Session, name: string, office_id: string) =>
+    call<Department>(s, "admin_create_department", { name, office_id }),
   renameDepartment: (s: Session, id: string, name: string) => call<Department>(s, "admin_rename_department", { id, name }),
   listUsers: (s: Session) => call<{ users: User[] }>(s, "admin_list_users").then((r) => r.users),
   createUser: (s: Session, user: NewUser) => call<User>(s, "admin_create_user", user),
-  updateUser: (s: Session, user_id: string, changes: { display_name?: string; department_id?: string }) =>
+  updateUser: (s: Session, user_id: string, changes: { display_name?: string; office_id?: string; department_id?: string }) =>
     call(s, "admin_update_user", { user_id, ...changes }),
+  /** Sends a player on a business trip; an empty office ends the trip now. */
+  setTrip: (s: Session, user_id: string, trip: { office_id: string; department_id: string; until: string }) =>
+    call<{ trip: Trip | null }>(s, "admin_set_trip", { user_id, ...trip }),
   setPassword: (s: Session, user_id: string, password: string) => call(s, "admin_set_password", { user_id, password }),
   setBanned: (s: Session, user_id: string, banned: boolean) => call(s, "admin_set_banned", { user_id, banned }),
   statsOverview: (s: Session) => call<{ players: PlayerSummary[] }>(s, "admin_stats_overview").then((r) => r.players),
   playerStats: (s: Session, user_id: string) => call<PlayerStats>(s, "admin_player_stats", { user_id }),
-  getLimits: (s: Session) => call<{ limits: Limits; defaults: Limits }>(s, "admin_get_limits"),
-  setLimits: (s: Session, limits: Limits) => call<Limits>(s, "admin_set_limits", limits),
+  getLimits: (s: Session, office_id: string) => call<{ limits: Limits; defaults: Limits }>(s, "admin_get_limits", { office_id }),
+  setLimits: (s: Session, office_id: string, limits: Limits) => call<Limits>(s, "admin_set_limits", { office_id, limits }),
 };

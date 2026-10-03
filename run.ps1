@@ -7,6 +7,8 @@
     .\run.ps1 -Device iphone_17_pro -ScreenDpi 109
 .EXAMPLE
     .\run.ps1 -Server http://192.168.1.5:7350
+.EXAMPLE
+    .\run.ps1 -OfficeScreen -Office office_1a2b3c4d
 .NOTES
     The game always needs the Nakama server (server/, docker compose up), 127.0.0.1:7350 by default.
     The office screen gets its codes with the server's HTTP key, read from server\.env.
@@ -18,6 +20,8 @@ param(
     [double]$ScreenDpi = 0,
     # Show the reception screen with the rotating entry and exit QR codes instead of the game.
     [switch]$OfficeScreen,
+    # Office of the screen (id from the admin panel); the default office when omitted.
+    [string]$Office = '',
     # Another Nakama server, e.g. http://192.168.1.5:7350.
     [string]$Server = ''
 )
@@ -44,6 +48,9 @@ if ($OfficeScreen) {
     $keyLine = if (Test-Path $envFile) { Get-Content $envFile | Where-Object { $_ -match '^NAKAMA_HTTP_KEY=' } | Select-Object -First 1 }
     if ($keyLine) {
         $arguments += @('--', "--kiosk-key=$($keyLine.Split('=', 2)[1])")
+        if ($Office) {
+            $arguments += "--kiosk-office=$Office"
+        }
     }
     else {
         Write-Warning 'NAKAMA_HTTP_KEY not found in server\.env: the office screen cannot get its codes.'

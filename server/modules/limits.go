@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -13,10 +12,12 @@ import (
 
 // Working time comes first: the game must not eat the workday. Each workday a player gets only a
 // pack of tasks, a task counts only inside the task hours and not sooner than the cooldown after the
-// previous one, and continuous play is capped (play.go). The admin edits the numbers in the panel;
-// until then the defaults come from game_rules.json ("limits").
+// previous one, and continuous play is capped (play.go). The admin edits the numbers of each office
+// in the panel; until then the defaults come from game_rules.json ("limits"). A player follows the
+// limits of the office they are in today.
 
 const (
+	// Limits saved before offices existed; seedOffices copies them into the default office.
 	settingsCollection = "settings"
 	limitsKey          = "limits"
 
@@ -71,71 +72,64 @@ func validateLimits(limits Limits) error {
 	return nil
 }
 
-// loadLimits: the admin's limits, or the defaults while the admin has not saved any.
-func loadLimits(ctx context.Context, nk runtime.NakamaModule) (Limits, error) {
-	defaults := gameContent.Rules.Limits
-	objects, err := nk.StorageRead(ctx, []*runtime.StorageRead{{Collection: settingsCollection, Key: limitsKey, UserID: systemUserID}})
-	if err != nil {
-		return Limits{}, errInternal
-	}
-	if len(objects) == 0 {
-		return defaults, nil
-	}
-	var limits Limits
-	if json.Unmarshal([]byte(objects[0].GetValue()), &limits) != nil || validateLimits(limits) != nil {
-		return defaults, nil
-	}
-	return limits, nil
-}
-
+// limits: the limits of the player's office today (the defaults when it is gone).
 func (tx *gameTx) limits() (Limits, error) {
 	if tx.loadedLimits == nil {
-		limits, err := loadLimits(tx.ctx, tx.nk)
+		office, err := tx.currentOffice()
 		if err != nil {
 			return Limits{}, err
 		}
+		limits := office.limits()
 		tx.loadedLimits = &limits
 	}
 	return *tx.loadedLimits, nil
 }
 
-// rpcAdminGetLimits: -> {"limits", "defaults"}.
-func rpcAdminGetLimits(ctx context.Context, _ runtime.Logger, _ *sql.DB, nk runtime.NakamaModule, _ string) (string, error) {
+// rpcAdminGetLimits: {"office_id"} -> {"limits", "defaults"}.
+func rpcAdminGetLimits(ctx context.Context, _ runtime.Logger, _ *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	if err := requireAdmin(ctx, nk); err != nil {
 		return "", err
 	}
-	limits, err := loadLimits(ctx, nk)
+	var request struct {
+		OfficeID string `json:"office_id"`
+	}
+	if err := decodePayload(payload, &request); err != nil {
+		return "", err
+	}
+	office, err := findOffice(ctx, nk, request.OfficeID)
 	if err != nil {
 		return "", err
 	}
-	return encodeResponse(map[string]any{"limits": limits, "defaults": gameContent.Rules.Limits})
+	return encodeResponse(map[string]any{"limits": office.limits(), "defaults": gameContent.Rules.Limits})
 }
 
-// rpcAdminSetLimits: every Limits field -> the saved limits. They apply from the next player action.
+// rpcAdminSetLimits: {"office_id", "limits": every Limits field} -> the saved limits. They apply
+// from the next action of a player in that office.
 func rpcAdminSetLimits(ctx context.Context, logger runtime.Logger, _ *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	if err := requireAdmin(ctx, nk); err != nil {
 		return "", err
 	}
-	var limits Limits
-	if err := decodePayload(payload, &limits); err != nil {
+	var request struct {
+		OfficeID string `json:"office_id"`
+		Limits   Limits `json:"limits"`
+	}
+	if err := decodePayload(payload, &request); err != nil {
 		return "", err
 	}
-	if err := validateLimits(limits); err != nil {
+	if err := validateLimits(request.Limits); err != nil {
 		return "", err
 	}
-	value, err := json.Marshal(limits)
+	office, err := findOffice(ctx, nk, request.OfficeID)
 	if err != nil {
+		return "", err
+	}
+	office.Limits = &request.Limits
+	if err := writeOffice(ctx, nk, *office, ""); err != nil {
+		logger.Error("save limits of office %s: %v", office.ID, err)
 		return "", errInternal
 	}
-	if _, err := nk.StorageWrite(ctx, []*runtime.StorageWrite{{
-		Collection: settingsCollection, Key: limitsKey, UserID: systemUserID, Value: string(value),
-		PermissionRead: permissionNone, PermissionWrite: permissionNone,
-	}}); err != nil {
-		logger.Error("save limits: %v", err)
-		return "", errInternal
-	}
-	logger.Info("limits changed: %s", value)
-	return encodeResponse(limits)
+	logger.Info("limits of office %s changed: %+v", office.ID, request.Limits)
+	return encodeResponse(request.Limits)
 }
 
 // --- Task packs ------------------------------------------------------------------

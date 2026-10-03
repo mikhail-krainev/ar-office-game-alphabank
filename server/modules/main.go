@@ -1,4 +1,4 @@
-// Package main is the Office Game module for Nakama: accounts created by the admin, departments
+// Package main is the Office Game module for Nakama: accounts created by the admin, offices, departments
 // and every game rule (presence, tasks, coins, shop, colleagues, the parking draw). The client only
 // sends actions; this module checks them and changes the state.
 package main
@@ -41,11 +41,9 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		return errors.New("set PRESENCE_SECRET (16+ characters)")
 	}
 	devMode = env["DEV_MODE"] == "true"
-	if officeNetworks, err = parseOfficeNetworks(env["OFFICE_NETWORKS"]); err != nil {
+	// OFFICE_NETWORKS only seeds the network of the default office; the admin edits offices in the panel.
+	if _, err := parseOfficeNetworks(env["OFFICE_NETWORKS"]); err != nil {
 		return err
-	}
-	if len(officeNetworks) == 0 {
-		logger.Warn("OFFICE_NETWORKS is empty: presence is not checked against the office network")
 	}
 	if err := registerAuthHooks(initializer); err != nil {
 		return err
@@ -54,6 +52,9 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		// Account and admin: from anywhere.
 		"get_profile":             rpcGetProfile,
 		"list_departments":        rpcListDepartments,
+		"admin_list_offices":      rpcAdminListOffices,
+		"admin_create_office":     rpcAdminCreateOffice,
+		"admin_update_office":     rpcAdminUpdateOffice,
 		"admin_create_department": rpcAdminCreateDepartment,
 		"admin_rename_department": rpcAdminRenameDepartment,
 		"admin_list_users":        rpcAdminListUsers,
@@ -61,6 +62,7 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"admin_update_user":       rpcAdminUpdateUser,
 		"admin_set_password":      rpcAdminSetPassword,
 		"admin_set_banned":        rpcAdminSetBanned,
+		"admin_set_trip":          rpcAdminSetTrip,
 		"admin_stats_overview":    rpcAdminStatsOverview,
 		"admin_player_stats":      rpcAdminPlayerStats,
 		"admin_get_limits":        rpcAdminGetLimits,
@@ -113,6 +115,9 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		}
 	}
 	if err := seedDepartments(ctx, nk); err != nil {
+		return err
+	}
+	if err := seedOffices(ctx, logger, nk, env["OFFICE_NETWORKS"]); err != nil {
 		return err
 	}
 	if err := ensureAdmin(ctx, logger, db, nk); err != nil {

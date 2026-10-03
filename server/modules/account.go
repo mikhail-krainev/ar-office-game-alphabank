@@ -100,10 +100,10 @@ type profileData struct {
 func (tx *gameTx) profile() profileData {
 	state := tx.me.state
 	data := profileData{
-		UserID: tx.me.userID, DisplayName: tx.me.displayName(), Department: tx.me.metadata.DepartmentID,
+		UserID: tx.me.userID, DisplayName: tx.me.displayName(), Department: tx.department(),
 		Status: state.Status, Avatar: state.Avatar, Balance: tx.me.balance,
 		StreakDays:   streak(state.PresenceDays, state.ExcusedDays, tx.today, state.FirstDay),
-		PresentToday: state.PresenceDays[dayKey(tx.today)], InOffice: inOffice(state, tx.today),
+		PresentToday: state.PresenceDays[dayKey(tx.today)], InOffice: tx.inMyOffice(),
 		Multiplier: tx.multiplier(), CarID: state.Car, CarName: state.Car, CarSpeedKmh: 110, Outfit: state.Outfit,
 	}
 	if car := tx.content.car(state.Car); car != nil {

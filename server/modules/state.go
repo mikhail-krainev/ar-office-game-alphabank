@@ -81,10 +81,12 @@ type PlayerState struct {
 	Avatar             string                       `json:"avatar"`
 	HasCustomAvatar    bool                         `json:"has_custom_avatar"`
 	UsedPresenceTokens []string                     `json:"used_presence_tokens"`
-	PhotoRequests      []PhotoRequest               `json:"photo_requests"`
-	MorningReport      MorningReport                `json:"morning_report"`
-	CoinsEarned        int                          `json:"coins_earned"`
-	WelcomeGiven       bool                         `json:"welcome_given"`
+	// Office of the last entry code; "" in states written before offices existed (the default office).
+	PresenceOffice string         `json:"presence_office,omitempty"`
+	PhotoRequests  []PhotoRequest `json:"photo_requests"`
+	MorningReport  MorningReport  `json:"morning_report"`
+	CoinsEarned    int            `json:"coins_earned"`
+	WelcomeGiven   bool           `json:"welcome_given"`
 	// Unix time the admin banned the player; 0 when not banned (users.go: rpcAdminSetBanned).
 	BannedAt int64 `json:"banned_at,omitempty"`
 	// Unix time of the last task that started the cooldown (limits.go).
@@ -225,6 +227,9 @@ type gameTx struct {
 	// Admin limits and today's task pack, read once per transaction (limits.go).
 	loadedLimits *Limits
 	pack         map[string]bool
+	// Today's office of the player, read once per transaction (offices.go).
+	loadedOffice *Office
+	officeLoaded bool
 }
 
 // runPlayerTx runs `fn` for the calling player and commits its changes, retrying on version conflicts.

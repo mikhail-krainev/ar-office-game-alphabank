@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, type Limits } from "./api";
 import type { DashboardActions } from "./Dashboard";
 import { formatMinutes } from "./format";
+import { OfficeSelect } from "./OfficeSelect";
 
 // Server ranges (server/modules/limits.go).
 const RANGES = {
@@ -13,33 +14,64 @@ const RANGES = {
 
 type NumberField = keyof typeof RANGES;
 
-/** Working-time limits: how often tasks count and how long one may play without a break. */
+/**
+ * Working-time limits of one office: how often tasks count and how long one may play without a break.
+ * A player follows the limits of the office they are in today (the trip office on a business trip).
+ */
 export function LimitsPanel({ actions }: { actions: DashboardActions }) {
   const { session, run, report } = actions;
+  const [officeId, setOfficeId] = useState(actions.offices[0]?.id ?? "");
   const [saved, setSaved] = useState<Limits | null>(null);
   const [defaults, setDefaults] = useState<Limits | null>(null);
   const [form, setForm] = useState<Limits | null>(null);
   const [notice, setNotice] = useState("");
 
+  useEffect(() => {
+    if (!officeId && actions.offices.length) {
+      setOfficeId(actions.offices[0].id);
+    }
+  }, [officeId, actions.offices]);
+
   const load = useCallback(async () => {
+    if (!officeId) {
+      return;
+    }
     try {
-      const result = await api.getLimits(session);
+      const result = await api.getLimits(session, officeId);
       setSaved(result.limits);
       setDefaults(result.defaults);
       setForm(result.limits);
     } catch (e) {
       report(e);
     }
-  }, [session, report]);
+  }, [session, report, officeId]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  const picker = (
+    <div className="office-picker">
+      <label>
+        Офис
+        <OfficeSelect
+          actions={actions}
+          value={officeId}
+          onChange={(id) => {
+            setNotice("");
+            setForm(null);
+            setOfficeId(id);
+          }}
+        />
+      </label>
+    </div>
+  );
+
   if (!form || !saved || !defaults) {
     return (
       <section className="card">
         <h2>Ограничения</h2>
+        {picker}
         <p className="muted">Загрузка…</p>
       </section>
     );
@@ -65,12 +97,12 @@ export function LimitsPanel({ actions }: { actions: DashboardActions }) {
     }
     let next: Limits | null = null;
     const ok = await run(async () => {
-      next = await api.setLimits(session, form);
+      next = await api.setLimits(session, officeId, form);
     });
     if (ok && next) {
       setSaved(next);
       setForm(next);
-      setNotice("Сохранено. Новые значения действуют со следующего действия игроков.");
+      setNotice(`Сохранено для офиса «${actions.officeName(officeId)}». Новые значения действуют со следующего действия игроков.`);
     }
   }
 
@@ -89,6 +121,7 @@ export function LimitsPanel({ actions }: { actions: DashboardActions }) {
 
   return (
     <form onSubmit={submit}>
+      {picker}
       <section className="card">
         <h2>Задания</h2>
         <p className="muted">

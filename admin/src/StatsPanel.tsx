@@ -19,13 +19,15 @@ const SORTS: { value: SortKey; label: string; key: (p: PlayerSummary) => number 
 ];
 
 const ALL_DEPARTMENTS = "__all__";
+const ALL_OFFICES = "__all__";
 
 /** Statistics: all players at a glance; a row opens the player's full activity audit. */
 export function StatsPanel({ actions }: { actions: DashboardActions }) {
-  const { session, departments, report } = actions;
+  const { session, departments, offices, report, officeName } = actions;
   const [players, setPlayers] = useState<PlayerSummary[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [office, setOffice] = useState(ALL_OFFICES);
   const [department, setDepartment] = useState(ALL_DEPARTMENTS);
   const [sort, setSort] = useState<SortKey>("created");
 
@@ -50,10 +52,11 @@ export function StatsPanel({ actions }: { actions: DashboardActions }) {
     const text = query.trim().toLowerCase();
     const sortKey = SORTS.find((s) => s.value === sort)!.key;
     return (players ?? [])
+      .filter((p) => office === ALL_OFFICES || p.office_id === office)
       .filter((p) => department === ALL_DEPARTMENTS || p.department_id === department)
       .filter((p) => !text || p.display_name.toLowerCase().includes(text) || p.username.includes(text))
       .sort((a, b) => sortKey(b) - sortKey(a));
-  }, [players, query, department, sort]);
+  }, [players, query, office, department, sort]);
 
   if (selected) {
     return (
@@ -69,9 +72,11 @@ export function StatsPanel({ actions }: { actions: DashboardActions }) {
     );
   }
 
-  const inOffice = (players ?? []).filter((p) => p.in_office).length;
-  const presentToday = (players ?? []).filter((p) => p.present_today).length;
-  const limited = (players ?? []).filter((p) => p.play_state === "resting" || p.play_state === "blocked").length;
+  const ofOffice = (players ?? []).filter((p) => office === ALL_OFFICES || p.office_id === office);
+  const inOffice = ofOffice.filter((p) => p.in_office).length;
+  const presentToday = ofOffice.filter((p) => p.present_today).length;
+  const limited = ofOffice.filter((p) => p.play_state === "resting" || p.play_state === "blocked").length;
+  const onTrip = ofOffice.filter((p) => p.trip).length;
 
   return (
     <section className="card">
@@ -83,18 +88,29 @@ export function StatsPanel({ actions }: { actions: DashboardActions }) {
       </div>
       {players && (
         <p className="muted summary-line">
-          Игроков: <b>{players.length}</b> · сейчас в офисе: <b>{inOffice}</b> · были сегодня: <b>{presentToday}</b> · на
-          отдыхе или закрыто: <b>{limited}</b>
+          Игроков: <b>{ofOffice.length}</b> · сейчас в офисе: <b>{inOffice}</b> · были сегодня: <b>{presentToday}</b> · на
+          отдыхе или закрыто: <b>{limited}</b> · в командировке: <b>{onTrip}</b>
         </p>
       )}
       <div className="filters">
         <input placeholder="Поиск по имени или логину" value={query} onChange={(e) => setQuery(e.target.value)} />
         <Dropdown
+          value={office}
+          placeholder="Офис"
+          options={[{ value: ALL_OFFICES, label: "Все офисы" }, ...offices.map((o) => ({ value: o.id, label: o.name }))]}
+          onChange={(value) => {
+            setOffice(value);
+            setDepartment(ALL_DEPARTMENTS);
+          }}
+        />
+        <Dropdown
           value={department}
           placeholder="Департамент"
           options={[
             { value: ALL_DEPARTMENTS, label: "Все департаменты" },
-            ...departments.map((d) => ({ value: d.id, label: d.name })),
+            ...departments
+              .filter((d) => office === ALL_OFFICES || d.office_id === office)
+              .map((d) => ({ value: d.id, label: office === ALL_OFFICES ? `${d.name} · ${officeName(d.office_id)}` : d.name })),
           ]}
           onChange={setDepartment}
         />
@@ -110,7 +126,7 @@ export function StatsPanel({ actions }: { actions: DashboardActions }) {
             <thead>
               <tr>
                 <th>Игрок</th>
-                <th>Департамент</th>
+                <th>Офис и департамент</th>
                 <th>Сейчас</th>
                 <th className="num">Серия</th>
                 <th className="num">Лучшая</th>
@@ -129,7 +145,11 @@ export function StatsPanel({ actions }: { actions: DashboardActions }) {
                     <div className="player-name">{p.display_name}</div>
                     <code className="muted">{p.username}</code>
                   </td>
-                  <td className="nowrap">{departmentName(p.department_id)}</td>
+                  <td className="nowrap">
+                    {officeName(p.office_id)}
+                    <div className="muted">{departmentName(p.department_id)}</div>
+                    {p.trip && <span className="badge soft">в командировке: {officeName(p.trip.office_id)}</span>}
+                  </td>
                   <td>
                     <PresenceBadge player={p} /> <PlayBadge player={p} />
                   </td>

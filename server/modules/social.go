@@ -12,7 +12,8 @@ import (
 )
 
 // Other players: colleagues picked for tasks, profile-code checks, joint photo confirmations and
-// the inbox. A colleague counts only while they are in the office (the presence index).
+// the inbox. A colleague counts only while they are in the office (the presence index), and only in
+// the office the player is in today: joint tasks never pair people from different offices.
 
 const minPhotoFaces = 2
 
@@ -20,6 +21,7 @@ type colleagueView struct {
 	UserID     string `json:"user_id"`
 	Name       string `json:"name"`
 	Department string `json:"department"`
+	Office     string `json:"office"`
 	Avatar     string `json:"avatar"`
 	Status     string `json:"status"`
 	Room       string `json:"room"`
@@ -31,12 +33,14 @@ type publicPlayer struct {
 	userID     string
 	name       string
 	department string
+	office     string
 	avatar     string
 	status     string
 }
 
-// readPlayers loads the public cards of players (admins and unknown ids are left out).
-func readPlayers(ctx context.Context, nk runtime.NakamaModule, userIDs []string) (map[string]publicPlayer, error) {
+// readPlayers loads the public cards of players (admins and unknown ids are left out), with the
+// office and department they count in on `today`.
+func readPlayers(ctx context.Context, nk runtime.NakamaModule, userIDs []string, today int) (map[string]publicPlayer, error) {
 	result := map[string]publicPlayer{}
 	if len(userIDs) == 0 {
 		return result, nil
@@ -52,7 +56,8 @@ func readPlayers(ctx context.Context, nk runtime.NakamaModule, userIDs []string)
 			continue
 		}
 		id := account.GetUser().GetId()
-		result[id] = publicPlayer{userID: id, name: account.GetUser().GetDisplayName(), department: metadata.DepartmentID, avatar: defaultAvatar}
+		office, department := metadata.placement(today)
+		result[id] = publicPlayer{userID: id, name: account.GetUser().GetDisplayName(), department: department, office: office, avatar: defaultAvatar}
 		reads = append(reads, &runtime.StorageRead{Collection: gameCollection, Key: stateKey, UserID: id})
 	}
 	if len(reads) == 0 {
@@ -91,15 +96,15 @@ func publicAvatar(userID, avatar string, templates []string) string {
 func (tx *gameTx) colleagueView(player publicPlayer, presence map[string]presenceEntry) colleagueView {
 	entry, present := presence[player.userID]
 	return colleagueView{
-		UserID: player.userID, Name: player.name, Department: player.department,
+		UserID: player.userID, Name: player.name, Department: player.department, Office: player.office,
 		Avatar: publicAvatar(player.userID, player.avatar, tx.content.Rules.AvatarTemplates),
 		Status: player.status, Room: entry.Room, Present: present,
 	}
 }
 
-// rpcAssignColleague: {"task_id"}. Picks someone in the office now (from another department when
-// the task says so) whom the player has not met in a task today. The choice stays for the day
-// while that colleague is in the office.
+// rpcAssignColleague: {"task_id"}. Picks someone in the player's office now (from another
+// department when the task says so) whom the player has not met in a task today. The choice stays
+// for the day while that colleague is in the office.
 func rpcAssignColleague(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	var request struct {
 		TaskID string `json:"task_id"`
@@ -119,13 +124,13 @@ func rpcAssignColleague(ctx context.Context, logger runtime.Logger, db *sql.DB, 
 		if problem, err := tx.playError(); problem != "" || err != nil {
 			return fail(problem), err
 		}
-		if problem := tx.presenceError(); problem != "" {
-			return fail(problem), nil
+		if problem, err := tx.presenceError(); problem != "" || err != nil {
+			return fail(problem), err
 		}
 		if problem, err := tx.taskTimeError(task); problem != "" || err != nil {
 			return fail(problem), err
 		}
-		presence, err := officePresence(tx.ctx, tx.nk, tx.today)
+		presence, err := officePresence(tx.ctx, tx.nk, tx.today, tx.office())
 		if err != nil {
 			return nil, err
 		}
@@ -135,9 +140,15 @@ func rpcAssignColleague(ctx context.Context, logger runtime.Logger, db *sql.DB, 
 				ids = append(ids, id)
 			}
 		}
-		players, err := readPlayers(tx.ctx, tx.nk, ids)
+		players, err := readPlayers(tx.ctx, tx.nk, ids, tx.today)
 		if err != nil {
 			return nil, err
+		}
+		for id, player := range players {
+			// The index says where the colleague entered; a trip may have moved them since.
+			if player.office != tx.office() {
+				delete(players, id)
+			}
 		}
 		assignments := state.Assignments[dayKey(tx.today)]
 		if assignments == nil {
@@ -151,7 +162,7 @@ func rpcAssignColleague(ctx context.Context, logger runtime.Logger, db *sql.DB, 
 				if contains(dayList(state.Met, tx.today), player.userID) {
 					continue
 				}
-				if task.Assignment == "other_department" && player.department == tx.me.metadata.DepartmentID {
+				if task.Assignment == "other_department" && player.department == tx.department() {
 					continue
 				}
 				candidates = append(candidates, player)
@@ -166,7 +177,8 @@ func rpcAssignColleague(ctx context.Context, logger runtime.Logger, db *sql.DB, 
 	})
 }
 
-// rpcLookupColleague: {"user_id"}. Public card of the player behind a scanned profile code.
+// rpcLookupColleague: {"user_id"}. Public card of the player behind a scanned profile code. A
+// player of another office is not found: they cannot take part in this player's tasks.
 func rpcLookupColleague(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	var request struct {
 		UserID string `json:"user_id"`
@@ -176,7 +188,7 @@ func rpcLookupColleague(ctx context.Context, logger runtime.Logger, db *sql.DB, 
 	}
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
 		card, err := tx.lookup(request.UserID)
-		if err != nil || card == nil {
+		if err != nil || card == nil || card.Office != tx.office() {
 			return map[string]any{"found": false}, err
 		}
 		return map[string]any{"found": true, "colleague": card}, nil
@@ -187,7 +199,7 @@ func (tx *gameTx) lookup(userID string) (*colleagueView, error) {
 	if !isUUID(userID) {
 		return nil, nil
 	}
-	players, err := readPlayers(tx.ctx, tx.nk, []string{userID})
+	players, err := readPlayers(tx.ctx, tx.nk, []string{userID}, tx.today)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +207,7 @@ func (tx *gameTx) lookup(userID string) (*colleagueView, error) {
 	if !ok {
 		return nil, nil
 	}
-	presence, err := officePresence(tx.ctx, tx.nk, tx.today)
+	presence, err := officePresence(tx.ctx, tx.nk, tx.today, player.office)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +233,7 @@ func (tx *gameTx) verifySocial(task *Task, proof taskProof) (string, error) {
 	return "", nil
 }
 
-// verifyPhoto: the colleague the server assigned, in the office, and two faces in the frame.
+// verifyPhoto: the colleague the server assigned, in the player's office, and two faces in the frame.
 func (tx *gameTx) verifyPhoto(task *Task, proof taskProof) (string, error) {
 	if proof.PartnerID == "" || proof.PartnerID != tx.me.state.Assignments[dayKey(tx.today)][task.ID] {
 		return "colleague_not_assigned", nil
@@ -230,7 +242,13 @@ func (tx *gameTx) verifyPhoto(task *Task, proof taskProof) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if card == nil || !card.Present {
+	if card == nil {
+		return "colleague_invalid", nil
+	}
+	if card.Office != tx.office() {
+		return "colleague_other_office", nil
+	}
+	if !card.Present {
 		return "colleague_not_present", nil
 	}
 	if proof.Faces < minPhotoFaces {
@@ -277,7 +295,9 @@ func (tx *gameTx) verifyColleague(userID string, otherDepartment bool) (*colleag
 		return nil, "", err
 	case card == nil:
 		return nil, "colleague_invalid", nil
-	case otherDepartment && card.Department == tx.me.metadata.DepartmentID:
+	case card.Office != tx.office():
+		return nil, "colleague_other_office", nil
+	case otherDepartment && card.Department == tx.department():
 		return nil, "same_department", nil
 	case !card.Present:
 		return nil, "colleague_not_present", nil

@@ -14,6 +14,7 @@ import {
   suspiciousLabel,
 } from "./labels";
 import { PlayBadge, PresenceBadge } from "./StatsPanel";
+import { tripLabel } from "./TripForm";
 
 type Tab = "days" | "journal" | "coins" | "fraud";
 
@@ -77,8 +78,14 @@ export function PlayerStats({
               {player.display_name} <PresenceBadge player={player} /> <PlayBadge player={player} />
             </h2>
             <p className="muted">
-              <code>{player.username}</code> · {departmentName(player.department_id)} · аккаунт создан {formatDateTime(player.created_at)}
+              <code>{player.username}</code> · {actions.officeName(player.office_id)} · {departmentName(player.department_id)} · аккаунт
+              создан {formatDateTime(player.created_at)}
             </p>
+            {player.trip && (
+              <p>
+                <span className="badge soft">в командировке: {tripLabel(actions, player.trip)}</span>
+              </p>
+            )}
             <p className="muted">
               {player.first_day ? <>Играет с {formatDay(player.first_day)}</> : "Ещё не входил в игру"}
               {player.last_activity ? <> · последняя активность {formatDateTime(player.last_activity)}</> : null}
@@ -322,6 +329,9 @@ function activityRow(event: ActivityEvent, name: (id: string) => string): Journa
   const text = (key: string) => (typeof params[key] === "string" ? (params[key] as string) : "");
   let detail = "";
   switch (event.kind) {
+    case "check_in":
+      detail = text("office") ? `офис «${name(text("office"))}»` : "";
+      break;
     case "room":
       detail = label(ROOM_LABELS, text("room"));
       break;

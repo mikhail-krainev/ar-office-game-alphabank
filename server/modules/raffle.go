@@ -15,7 +15,8 @@ import (
 	"github.com/heroiclabs/nakama-common/runtime"
 )
 
-// Monthly parking draw, one for all players (last Friday of the month, see game_rules.json).
+// Monthly parking draw, one per office (last Friday of the month, see game_rules.json): every office
+// has its own parking. A player takes part in the draw of their home office, also on a business trip.
 // Verifiable (commit-reveal): when a draw is created the server takes a secret seed and publishes
 // only its SHA-256 commitment; at draw time the winner is HMAC-SHA256(seed, "<draw id>|<sorted
 // ticket holders>") modulo the number of tickets. Anyone can recheck it once the seed is revealed.
@@ -75,15 +76,20 @@ func raffleWinner(seedHex, drawID string, entries []string) string {
 	return sorted[value%uint64(len(sorted))]
 }
 
-// raffleDrawID and its time for the draw that is current on `today`: this month's last Friday, or
-// next month's once that day is over.
-func raffleSchedule(today int, rules *Rules, offset int64) (string, int64) {
+// raffleSchedule: the office draw id and its time for the draw that is current on `today`: this
+// month's last Friday, or next month's once that day is over.
+func raffleSchedule(office string, today int, rules *Rules, offset int64) (string, int64) {
 	drawDay := lastFridayOfMonth(today)
 	if today > drawDay {
 		drawDay = lastFridayOfMonth(lastDayOfMonth(today) + 1)
 	}
 	date := dateOf(drawDay)
-	return fmt.Sprintf("parking-%04d-%02d", date.Year(), int(date.Month())), unixAt(drawDay, rules.Raffle.DrawHour, rules.Raffle.DrawMinute, offset)
+	return fmt.Sprintf("parking-%s-%04d-%02d", office, date.Year(), int(date.Month())), unixAt(drawDay, rules.Raffle.DrawHour, rules.Raffle.DrawMinute, offset)
+}
+
+// raffleDevKey of the office: the dev draw that replaces its monthly draw for a day.
+func raffleDevKeyOf(office string) string {
+	return raffleDevKey + "-" + office
 }
 
 type loadedDraw struct {
@@ -109,15 +115,16 @@ func readDraw(ctx context.Context, nk runtime.NakamaModule, key string) (*loaded
 	return loaded, nil
 }
 
-// currentDraw returns the draw players see now, creating it (seed + commitment) on first use.
-// A dev draw scheduled with dev_schedule_raffle replaces it for a day.
+// currentDraw returns the draw of the player's home office now, creating it (seed + commitment) on
+// first use. A dev draw scheduled with dev_schedule_raffle replaces it for a day.
 func (tx *gameTx) currentDraw() (*loadedDraw, error) {
 	if tx.draw != nil {
 		return tx.draw, nil
 	}
-	id, drawAt := raffleSchedule(tx.today, &tx.content.Rules, tx.offset)
+	office := tx.me.metadata.homeOffice()
+	id, drawAt := raffleSchedule(office, tx.today, &tx.content.Rules, tx.offset)
 	if devMode {
-		dev, err := readDraw(tx.ctx, tx.nk, raffleDevKey)
+		dev, err := readDraw(tx.ctx, tx.nk, raffleDevKeyOf(office))
 		if err != nil {
 			return nil, err
 		}
@@ -154,7 +161,7 @@ func (tx *gameTx) runDueDraw() error {
 	draw.Winner = raffleWinner(draw.Seed, draw.ID, draw.Tickets)
 	loaded.dirty = true
 	winnerName := ""
-	if players, err := readPlayers(tx.ctx, tx.nk, []string{draw.Winner}); err == nil {
+	if players, err := readPlayers(tx.ctx, tx.nk, []string{draw.Winner}, tx.today); err == nil {
 		winnerName = players[draw.Winner].name
 	}
 	prize := tx.content.Rules.Raffle.PrizeName
@@ -221,7 +228,7 @@ func (tx *gameTx) raffleView(draw *raffleDraw) (raffleView, error) {
 		HasTicket: contains(draw.Tickets, tx.me.userID), MinOfficeDays: rules.MinOfficeDays, WindowDays: rules.WindowDays,
 		OfficeDays: tx.officeDaysInWindow(rules.WindowDays), Commitment: draw.Commitment,
 	}
-	players, err := readPlayers(tx.ctx, tx.nk, draw.Tickets)
+	players, err := readPlayers(tx.ctx, tx.nk, draw.Tickets, tx.today)
 	if err != nil {
 		return view, err
 	}

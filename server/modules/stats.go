@@ -24,29 +24,34 @@ const (
 )
 
 type playerSummary struct {
-	ID           string `json:"id"`
-	Username     string `json:"username"`
-	DisplayName  string `json:"display_name"`
+	ID          string `json:"id"`
+	Username    string `json:"username"`
+	DisplayName string `json:"display_name"`
+	// Home office and department: the statistics and the parking draw follow them.
+	OfficeID     string `json:"office_id"`
 	DepartmentID string `json:"department_id"`
-	Banned       bool   `json:"banned"`
-	CreatedAt    int64  `json:"created_at"`
-	Balance      int64  `json:"balance"`
-	Streak       int    `json:"streak"`
-	BestStreak   int    `json:"best_streak"`
-	OfficeDays   int    `json:"office_days"`
-	ExcusedDays  int    `json:"excused_days"`
-	TasksTotal   int    `json:"tasks_total"`
-	SkippedTotal int    `json:"skipped_total"`
-	CoinsEarned  int    `json:"coins_earned"`
-	Colleagues   int    `json:"colleagues"`
-	FirstDay     int    `json:"first_day"`
-	LastLoginDay int    `json:"last_login_day"`
-	PresentToday bool   `json:"present_today"`
-	InOffice     bool   `json:"in_office"`
-	Today        int    `json:"today"`
-	LastActivity int64  `json:"last_activity"`
-	Car          string `json:"car"`
-	Status       string `json:"status"`
+	// Office the player counts in today (another one on a business trip) and the trip.
+	CurrentOfficeID string    `json:"current_office_id"`
+	Trip            *tripView `json:"trip"`
+	Banned          bool      `json:"banned"`
+	CreatedAt       int64     `json:"created_at"`
+	Balance         int64     `json:"balance"`
+	Streak          int       `json:"streak"`
+	BestStreak      int       `json:"best_streak"`
+	OfficeDays      int       `json:"office_days"`
+	ExcusedDays     int       `json:"excused_days"`
+	TasksTotal      int       `json:"tasks_total"`
+	SkippedTotal    int       `json:"skipped_total"`
+	CoinsEarned     int       `json:"coins_earned"`
+	Colleagues      int       `json:"colleagues"`
+	FirstDay        int       `json:"first_day"`
+	LastLoginDay    int       `json:"last_login_day"`
+	PresentToday    bool      `json:"present_today"`
+	InOffice        bool      `json:"in_office"`
+	Today           int       `json:"today"`
+	LastActivity    int64     `json:"last_activity"`
+	Car             string    `json:"car"`
+	Status          string    `json:"status"`
 	// Play today and the play-limit state (play.go): ok, warning, resting or blocked.
 	PlaySecondsToday int    `json:"play_seconds_today"`
 	PlayState        string `json:"play_state"`
@@ -109,9 +114,13 @@ const playerRowsQuery = `
 
 // loadPlayerRows reads players (not admins) with their state. An empty `userID` means all players.
 func loadPlayerRows(ctx context.Context, db *sql.DB, nk runtime.NakamaModule, userID string) ([]playerSummary, map[string]*PlayerState, error) {
-	limits, err := loadLimits(ctx, nk)
+	offices, err := listOffices(ctx, nk)
 	if err != nil {
 		return nil, nil, err
+	}
+	officeLimits := map[string]Limits{}
+	for i := range offices {
+		officeLimits[offices[i].ID] = offices[i].limits()
 	}
 	query, args := playerRowsQuery+` ORDER BY u.create_time DESC`, []any{systemUserID}
 	if userID != "" {
@@ -144,6 +153,7 @@ func loadPlayerRows(ctx context.Context, db *sql.DB, nk runtime.NakamaModule, us
 		}
 		state := parseState(stateValue)
 		summary.DisplayName = displayName.String
+		summary.OfficeID = parsed.homeOffice()
 		summary.DepartmentID = parsed.DepartmentID
 		summary.Banned = disabled.Unix() > 0
 		summary.CreatedAt = created.Unix()
@@ -153,7 +163,14 @@ func loadPlayerRows(ctx context.Context, db *sql.DB, nk runtime.NakamaModule, us
 		}
 		now := playerNow(state)
 		offset := gameContent.officeOffset()
-		summarize(&summary, state, dayOf(now, offset))
+		today := dayOf(now, offset)
+		summarize(&summary, state, today)
+		summary.CurrentOfficeID, _ = parsed.placement(today)
+		summary.Trip = tripOf(parsed, today)
+		limits, ok := officeLimits[summary.CurrentOfficeID]
+		if !ok {
+			limits = gameContent.Rules.Limits
+		}
 		summary.PlayState = currentPlayStatus(&state.Play, now, offset, limits).State
 		summaries = append(summaries, summary)
 		states[summary.ID] = state
@@ -242,6 +259,13 @@ func rpcAdminPlayerStats(ctx context.Context, logger runtime.Logger, db *sql.DB,
 	}
 	player, state := players[0], states[request.UserID]
 	names := newNameBook(gameContent)
+	offices, err := listOffices(ctx, nk)
+	if err != nil {
+		return "", err
+	}
+	for _, office := range offices {
+		names.names[office.ID] = office.Name
+	}
 
 	activity, err := loadActivity(ctx, db, request.UserID)
 	names.addUsersFromActivity(activity)

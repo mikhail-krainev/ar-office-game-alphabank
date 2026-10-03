@@ -70,16 +70,19 @@ func TestParseMetadata(t *testing.T) {
 }
 
 func TestDepartmentNames(t *testing.T) {
-	departments := []Department{{ID: "b", Name: "дизайн"}, {ID: "a", Name: "Аналитика"}, {ID: "c", Name: "HR"}}
+	departments := []Department{{ID: "b", Name: "дизайн", OfficeID: "hq"}, {ID: "a", Name: "Аналитика", OfficeID: "hq"}, {ID: "c", Name: "HR", OfficeID: "hq"}}
 	sortDepartments(departments)
 	if departments[0].ID != "c" || departments[1].ID != "a" || departments[2].ID != "b" {
 		t.Errorf("sorted = %+v", departments)
 	}
-	if !nameTaken(departments, "ДИЗАЙН", "") {
+	if !nameTaken(departments, "hq", "ДИЗАЙН", "") {
 		t.Error("case-insensitive duplicate not found")
 	}
-	if nameTaken(departments, "Дизайн", "b") {
+	if nameTaken(departments, "hq", "Дизайн", "b") {
 		t.Error("renaming a department to its own name must be allowed")
+	}
+	if nameTaken(departments, "office_msk", "Дизайн", "") {
+		t.Error("another office may have a department with the same name")
 	}
 	id, err := newDepartmentID()
 	if err != nil || len(id) != len("dep_")+8 {
