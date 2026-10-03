@@ -1,8 +1,8 @@
 extends Node
 ## Single entry point for platform-specific functionality (autoload "PlatformServices").
 ## Game code must use this instead of native plugins or JavaScriptBridge.
-## Implementations: AndroidPlatform (native plugin), WebPlatform (v2), DesktopPlatform (debug
-## emulation of phone sensors), PlatformBackend (no native features, e.g. iOS until its plugin exists).
+## Implementations: WebPlatform (the game runs in a phone browser), DesktopPlatform (debug
+## emulation of phone sensors on a PC) and PlatformBackend (no platform features).
 
 signal safe_rect_changed(rect: Rect2)
 signal steps_changed(steps: int)
@@ -20,7 +20,6 @@ signal speech_failed(error: String)
 ## Desktop emulation only: a scheduled notification "arrived" while the game is open.
 signal notification_shown(title: String, body: String)
 
-const ANDROID_SCRIPT: String = "res://platform/android/android_platform.gd"
 const WEB_SCRIPT: String = "res://platform/web/web_platform.gd"
 const DESKTOP_SCRIPT: String = "res://platform/desktop/desktop_platform.gd"
 
@@ -51,9 +50,7 @@ func _ready() -> void:
 
 func _create_backend() -> PlatformBackend:
 	var script_path: String = ""
-	if OS.has_feature("android"):
-		script_path = ANDROID_SCRIPT
-	elif OS.has_feature("web"):
+	if OS.has_feature("web"):
 		script_path = WEB_SCRIPT
 	elif OS.has_feature("pc") and OS.is_debug_build():
 		script_path = DESKTOP_SCRIPT

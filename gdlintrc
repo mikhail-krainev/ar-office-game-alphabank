@@ -30,7 +30,6 @@ excluded_directories: !!set
   .git: null
   .godot: null
   addons: null
-  android: null
 expression-not-assigned: null
 function-argument-name: _?[a-z][a-z0-9]*(_[a-z0-9]+)*
 function-arguments-number: 10

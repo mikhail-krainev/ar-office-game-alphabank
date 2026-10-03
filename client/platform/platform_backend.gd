@@ -1,8 +1,8 @@
 class_name PlatformBackend
 extends Node
 ## Platform implementation behind PlatformServices. This base class is the "nothing available"
-## platform (iOS until its plugin exists): accelerometer and microphone come from the Godot core,
-## everything else reports unsupported. Subclasses override what their platform provides.
+## platform: accelerometer and microphone come from the Godot core, everything else reports
+## unsupported. Subclasses override what their platform provides.
 
 @warning_ignore_start("unused_signal")
 signal steps_changed(steps: int)

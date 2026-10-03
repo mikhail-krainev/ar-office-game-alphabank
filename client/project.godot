@@ -50,7 +50,7 @@ theme/default_font_subpixel_positioning=0
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg", "res://addons/office_game_android/plugin.cfg")
+enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg")
 
 [input_devices]
 

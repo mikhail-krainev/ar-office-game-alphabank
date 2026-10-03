@@ -1,7 +1,7 @@
 class_name TongueTwisterMinigame
 extends Minigame
 ## "Tongue twister": read the phrase aloud; the system speech recognizer (Russian) must hear it
-## close enough. Some Android recognizers work through the cloud, so the game needs a network.
+## close enough. A recognizer may work through the cloud, so the game needs a network.
 
 const DEFAULT_PHRASES: Array[String] = [
 	"Шла Саша по шоссе и сосала сушку",

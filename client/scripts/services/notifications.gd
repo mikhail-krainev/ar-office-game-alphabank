@@ -46,7 +46,7 @@ func _ready() -> void:
 	_enabled = _load_setting("enabled", false)
 	Backend.inbox_may_have_changed.connect(_on_state_changed)
 	PlatformServices.notification_shown.connect(func(title: String, body: String) -> void: _show_banner(title, body, ""))
-	# Android and the desktop ask right away; browsers need a tap, so the web asks from the profile.
+	# The desktop asks right away; browsers need a tap, so the web asks from the profile.
 	if not _load_setting("asked", false) and not OS.has_feature("web") and is_supported():
 		_ask_on_first_login.call_deferred()
 
