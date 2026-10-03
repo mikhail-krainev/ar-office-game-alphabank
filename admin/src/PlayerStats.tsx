@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { api, type ActivityEvent, type LedgerEntry, type PlayerStats as Stats, type StatsDay } from "./api";
 import type { DashboardActions } from "./Dashboard";
 import { Dropdown } from "./Dropdown";
-import { formatDate, formatDateTime, formatDay, formatTime, plural, weekdayOf } from "./format";
+import { formatDate, formatDateTime, formatDay, formatMinutes, formatPlayTime, formatTime, plural, weekdayOf } from "./format";
 import {
   ACTIVITY_LABELS,
   LEDGER_LABELS,
@@ -13,7 +13,7 @@ import {
   label,
   suspiciousLabel,
 } from "./labels";
-import { PresenceBadge } from "./StatsPanel";
+import { PlayBadge, PresenceBadge } from "./StatsPanel";
 
 type Tab = "days" | "journal" | "coins" | "fraud";
 
@@ -74,7 +74,7 @@ export function PlayerStats({
         <div className="player-head">
           <div>
             <h2 className="player-title">
-              {player.display_name} <PresenceBadge player={player} />
+              {player.display_name} <PresenceBadge player={player} /> <PlayBadge player={player} />
             </h2>
             <p className="muted">
               <code>{player.username}</code> · {departmentName(player.department_id)} · аккаунт создан {formatDateTime(player.created_at)}
@@ -95,6 +95,7 @@ export function PlayerStats({
           <Tile value={player.colleagues} label="коллег встречено" />
           <Tile value={player.coins_earned} label="монет заработано" />
           <Tile value={player.balance} label="монет на балансе" />
+          <Tile value={formatPlayTime(player.play_seconds_today)} label="в игре сегодня" />
         </div>
       </section>
 
@@ -127,7 +128,7 @@ export function PlayerStats({
   );
 }
 
-function Tile({ value, label, accent = false }: { value: number; label: string; accent?: boolean }) {
+function Tile({ value, label, accent = false }: { value: number | string; label: string; accent?: boolean }) {
   return (
     <div className={accent ? "tile accent" : "tile"}>
       <div className="tile-value">{value}</div>
@@ -251,6 +252,7 @@ function DaysTable({ days, today, name }: { days: StatsDay[]; today: number; nam
             <th>Выход</th>
             <th>Выполненные задания</th>
             <th>Другое</th>
+            <th className="num">В игре</th>
             <th className="num">Монеты</th>
           </tr>
         </thead>
@@ -292,6 +294,7 @@ function DaysTable({ days, today, name }: { days: StatsDay[]; today: number; nam
                   {day.purchases.length > 0 && <li>покупки: {day.purchases.length}</li>}
                 </ul>
               </td>
+              <td className="num nowrap">{formatPlayTime(day.play_seconds)}</td>
               <td className="num">{day.earned > 0 ? <span className="plus">+{day.earned}</span> : "—"}</td>
             </tr>
           ))}
@@ -311,7 +314,7 @@ interface JournalRow {
   amount?: number;
 }
 
-const PRESENCE_KINDS = new Set(["login", "check_in", "check_out", "room"]);
+const PRESENCE_KINDS = new Set(["login", "check_in", "check_out", "room", "play_warning", "play_rest", "play_blocked"]);
 const TASK_REASONS = new Set(["task_reward", "photo_partner_bonus"]);
 
 function activityRow(event: ActivityEvent, name: (id: string) => string): JournalRow {
@@ -339,6 +342,15 @@ function activityRow(event: ActivityEvent, name: (id: string) => string): Journa
     case "photo_answer":
       detail = `${name(text("from"))} · ${params.confirm ? "подтвердил" : "отклонил"}`;
       break;
+    case "play_warning":
+      detail = `играл без перерыва ${formatMinutes(Number(params.minutes ?? 0))}`;
+      break;
+    case "play_rest":
+      detail = `отдых ${formatMinutes(Number(params.minutes ?? 0))}`;
+      break;
+    case "play_blocked":
+      detail = "не вышел из игры после предупреждения";
+      break;
   }
   return { t: event.t, kind: PRESENCE_KINDS.has(event.kind) ? "presence" : "tasks", title: label(ACTIVITY_LABELS, event.kind), detail };
 }
@@ -355,7 +367,7 @@ function ledgerDetail(entry: LedgerEntry, name: (id: string) => string): string 
 
 const JOURNAL_FILTERS: { value: JournalFilter; label: string }[] = [
   { value: "all", label: "Все события" },
-  { value: "presence", label: "Входы и посещение" },
+  { value: "presence", label: "Входы, посещение и время в игре" },
   { value: "tasks", label: "Задания и коллеги" },
   { value: "coins", label: "Покупки и штрафы" },
 ];

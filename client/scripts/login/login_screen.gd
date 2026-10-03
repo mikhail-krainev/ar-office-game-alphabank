@@ -1,7 +1,8 @@
 extends Control
 ## First screen of the game. With a saved session (it lives a week) the player goes straight in;
 ## otherwise they sign in with the username and password the admin issued. There is no sign-up:
-## wrong credentials send the player to the admin.
+## wrong credentials send the player to the admin. A player who must rest or is locked for the day
+## by the play-time limit (PlayTime) waits on that screen first.
 
 const NEXT_SCENE: String = "res://scenes/intro/morning_intro.tscn"
 const BACKGROUND: Color = Color("#1d1d1f")
@@ -140,4 +141,5 @@ func _set_busy(busy: bool, message: String = "") -> void:
 
 
 func _go_next() -> void:
+	await PlayTime.wait_until_allowed()
 	get_tree().change_scene_to_file.call_deferred(NEXT_SCENE)

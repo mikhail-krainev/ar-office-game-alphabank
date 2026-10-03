@@ -146,6 +146,9 @@ func rpcBuy(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.N
 		return "", err
 	}
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
+		if problem, err := tx.playError(); problem != "" || err != nil {
+			return failedPurchase(problem, tx.me.balance), err
+		}
 		state := tx.me.state
 		claimed, err := tx.claimOperation(request.OperationKey)
 		if err != nil || !claimed {
@@ -309,6 +312,9 @@ func rpcBuyCar(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtim
 		return "", err
 	}
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
+		if problem, err := tx.playError(); problem != "" || err != nil {
+			return failedPurchase(problem, tx.me.balance), err
+		}
 		claimed, err := tx.claimOperation(request.OperationKey)
 		if err != nil || !claimed {
 			return failedPurchase("duplicate_operation", tx.me.balance), err

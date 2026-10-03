@@ -16,6 +16,7 @@ const MESSAGES: Record<string, string> = {
   user_not_found: "Пользователь не найден.",
   admin_protected: "Аккаунт администратора меняется только через server/.env.",
   invalid_payload: "Сервер не понял запрос.",
+  invalid_limits: "Проверьте значения: пауза 0–240 мин, предупреждение 5–480 мин, время на выход 1–60 мин, отдых 1–240 мин, начало раньше конца.",
 };
 
 export function errorText(error: unknown): string {

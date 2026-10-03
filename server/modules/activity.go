@@ -23,6 +23,9 @@ const (
 	activityTaskSkipped = "task_skipped"
 	activityMet         = "met"
 	activityPhotoAnswer = "photo_answer"
+	activityPlayWarning = "play_warning"
+	activityPlayRest    = "play_rest"
+	activityPlayBlocked = "play_blocked"
 )
 
 type activityEvent struct {

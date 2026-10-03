@@ -51,6 +51,7 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		return err
 	}
 	rpcs := map[string]rpcFunc{
+		// Account and admin: from anywhere.
 		"get_profile":             rpcGetProfile,
 		"list_departments":        rpcListDepartments,
 		"admin_create_department": rpcAdminCreateDepartment,
@@ -62,7 +63,9 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"admin_set_banned":        rpcAdminSetBanned,
 		"admin_stats_overview":    rpcAdminStatsOverview,
 		"admin_player_stats":      rpcAdminPlayerStats,
-		// Game.
+		"admin_get_limits":        rpcAdminGetLimits,
+		"admin_set_limits":        rpcAdminSetLimits,
+		// Game: only from the office network (officeOnly below), except the ones in anywhereRpcs.
 		"login":                 rpcLogin,
 		"get_my_profile":        rpcGetMyProfile,
 		"list_tasks":            rpcListTasks,
@@ -92,8 +95,13 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"get_avatar":            rpcGetAvatar,
 		"get_raffle":            rpcGetRaffle,
 		"buy_raffle_ticket":     rpcBuyRaffleTicket,
+		"play_heartbeat":        rpcPlayHeartbeat,
+		"play_rest":             rpcPlayRest,
 	}
 	for id, fn := range rpcs {
+		if gameRpc(id) {
+			fn = officeOnly(fn)
+		}
 		if err := initializer.RegisterRpc(id, fn); err != nil {
 			return err
 		}

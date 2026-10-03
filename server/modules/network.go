@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"net/netip"
 	"strings"
@@ -72,6 +74,39 @@ func (tx *gameTx) networkError() string {
 		return ""
 	}
 	return "office_network_required"
+}
+
+// The whole game opens only in the office network: at home or on mobile internet every game RPC
+// answers office_network_required, so nobody plays at home or on the way to the shop. Accounts and
+// the admin panel work from anywhere, and so do these game RPCs:
+var anywhereRpcs = map[string]bool{
+	// Called when the game goes to the background, to plan reminders such as "check in today".
+	"get_notification_plan": true,
+	// Public pictures of colleagues.
+	"get_avatar": true,
+	// The office screen calls it with the server's HTTP key.
+	"kiosk_codes": true,
+}
+
+var errOfficeNetwork = runtime.NewError("office_network_required", codePermissionDenied)
+
+// gameRpc: an RPC of the game itself, which needs the office network (not admin, account or dev).
+func gameRpc(id string) bool {
+	if anywhereRpcs[id] || id == "get_profile" || id == "list_departments" || strings.HasPrefix(id, "admin_") || strings.HasPrefix(id, "dev_") {
+		return false
+	}
+	return true
+}
+
+// officeOnly refuses the RPC outside the office network (the check is off while OFFICE_NETWORKS is empty).
+func officeOnly(fn rpcFunc) rpcFunc {
+	return func(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
+		ip, _ := ctx.Value(runtime.RUNTIME_CTX_CLIENT_IP).(string)
+		if !inOfficeNetwork(officeNetworks, ip) {
+			return "", errOfficeNetwork
+		}
+		return fn(ctx, logger, db, nk, payload)
+	}
 }
 
 // presenceError: why presence does not count now, or "" when the player is in the office.

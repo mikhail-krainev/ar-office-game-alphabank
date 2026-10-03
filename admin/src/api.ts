@@ -65,6 +65,21 @@ export interface PlayerSummary {
   last_activity: number;
   car: string;
   status: string;
+  play_seconds_today: number;
+  /** Continuous-play limit: ok, warning (must leave the game), resting or blocked until tomorrow. */
+  play_state: PlayState;
+}
+
+export type PlayState = "ok" | "warning" | "resting" | "blocked";
+
+/** Working-time limits (server/modules/limits.go); clocks are "HH:MM" office time. */
+export interface Limits {
+  task_cooldown_minutes: number;
+  task_window_start: string;
+  task_window_end: string;
+  play_limit_minutes: number;
+  exit_grace_minutes: number;
+  rest_minutes: number;
 }
 
 export interface NamedId {
@@ -93,6 +108,7 @@ export interface StatsDay {
   met: string[];
   purchases: string[];
   earned: number;
+  play_seconds: number;
 }
 
 export interface ActivityEvent {
@@ -226,4 +242,6 @@ export const api = {
   setBanned: (s: Session, user_id: string, banned: boolean) => call(s, "admin_set_banned", { user_id, banned }),
   statsOverview: (s: Session) => call<{ players: PlayerSummary[] }>(s, "admin_stats_overview").then((r) => r.players),
   playerStats: (s: Session, user_id: string) => call<PlayerStats>(s, "admin_player_stats", { user_id }),
+  getLimits: (s: Session) => call<{ limits: Limits; defaults: Limits }>(s, "admin_get_limits"),
+  setLimits: (s: Session, limits: Limits) => call<Limits>(s, "admin_set_limits", limits),
 };

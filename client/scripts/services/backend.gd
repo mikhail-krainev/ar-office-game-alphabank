@@ -15,6 +15,8 @@ signal profile_changed(profile: BackendModels.Profile)
 signal inbox_may_have_changed
 ## A call did not reach the server or the server failed; `error` is a ServerSession error key.
 signal request_failed(error: String)
+## The server refused a game call: the player is not in the office network (PlayTime shows it).
+signal office_network_required
 
 const LOGIN_SCENE: String = "res://scenes/login/login.tscn"
 
@@ -23,6 +25,8 @@ var server: ServerSession
 var social: BackendSocial
 var account: BackendAccount
 var raffle: BackendRaffle
+## When tasks count (cooldown, task hours); updated by list_tasks().
+var task_schedule: BackendModels.TaskSchedule = BackendModels.TaskSchedule.new()
 
 var _account_loaded: bool = false
 
@@ -47,6 +51,8 @@ func call_rpc(id: String, payload: Dictionary = {}) -> ServerSession.RpcResult:
 	var result: ServerSession.RpcResult = await server.call_rpc(id, payload)
 	if not result.ok and result.error in [ServerSession.ERROR_NETWORK, ServerSession.ERROR_SERVER]:
 		request_failed.emit(result.error)
+	elif result.error == "office_network_required":
+		office_network_required.emit()
 	return result
 
 
@@ -70,6 +76,11 @@ func load_account() -> String:
 	profile = null
 	_account_loaded = true
 	return ""
+
+
+## A player is signed in and their account is loaded.
+func is_account_loaded() -> bool:
+	return _account_loaded
 
 
 func sign_out() -> void:
@@ -116,14 +127,17 @@ func refresh_profile() -> void:
 # --- Tasks and presence ----------------------------------------------------------
 
 
+## Today's tasks: the check-in and the player's pack. Also refreshes `task_schedule`.
 func list_tasks() -> Array[BackendModels.TaskInfo]:
 	var result: ServerSession.RpcResult = await call_rpc("list_tasks")
 	var tasks: Array[BackendModels.TaskInfo] = []
 	for entry: Variant in result.data.get("tasks", []):
 		if entry is Dictionary:
 			tasks.append(BackendParser.task(entry))
-	if result.ok and profile != null:
-		profile.in_office = bool(result.data.get("in_office", profile.in_office))
+	if result.ok:
+		task_schedule = BackendParser.task_schedule(result.data.get("schedule"))
+		if profile != null:
+			profile.in_office = bool(result.data.get("in_office", profile.in_office))
 	return tasks
 
 
@@ -224,6 +238,29 @@ func select_car(car_id: String) -> BackendModels.ActionResult:
 		profile.car_speed_kmh = int(car.get("speed_kmh", 110))
 		car_changed.emit(car_id)
 	return result
+
+
+# --- Play time -------------------------------------------------------------------
+
+
+## The game is on screen, with the minigame of `minigame_task` ("" = none). The answer says whether
+## the player may go on, must rest or is locked.
+func play_heartbeat(minigame_task: String = "") -> BackendModels.PlayStatus:
+	var response: ServerSession.RpcResult = await server.call_rpc("play_heartbeat", {"minigame": minigame_task})
+	return BackendParser.play_status(response.data, response.error)
+
+
+## The warned player goes to rest right away.
+func play_rest() -> BackendModels.PlayStatus:
+	var response: ServerSession.RpcResult = await call_rpc("play_rest")
+	return BackendParser.play_status(response.data, response.error)
+
+
+## Loads the outfit for screens shown before login() (the rest screen draws the character).
+func load_outfit() -> void:
+	var result: ServerSession.RpcResult = await call_rpc("get_my_profile")
+	if result.ok:
+		outfit_changed.emit(BackendParser.profile(result.data).outfit)
 
 
 # --- Notifications ---------------------------------------------------------------

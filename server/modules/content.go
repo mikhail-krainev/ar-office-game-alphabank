@@ -70,9 +70,9 @@ type Rules struct {
 		MaxCatchUpDays int        `json:"max_catch_up_days"`
 	} `json:"attendance"`
 	Notifications struct {
-		ReminderTimes []string `json:"reminder_times"`
-		FunWindow     []string `json:"fun_window"`
-		FunMax        int      `json:"fun_max"`
+		ReminderTimes []string   `json:"reminder_times"`
+		FunWindows    [][]string `json:"fun_windows"`
+		FunMax        int        `json:"fun_max"`
 	} `json:"notifications"`
 	Photo struct {
 		PartnerBonus int `json:"partner_bonus"`
@@ -93,6 +93,7 @@ type Rules struct {
 		StreakMultiplierStep float64 `json:"streak_multiplier_step"`
 		MaxStreakMultiplier  float64 `json:"max_streak_multiplier"`
 	} `json:"economy"`
+	Limits          Limits   `json:"limits"`
 	AvatarTemplates []string `json:"avatar_templates"`
 }
 
@@ -138,6 +139,9 @@ func loadContent(dir string) (*Content, error) {
 		if err := json.Unmarshal(data, target); err != nil {
 			return nil, fmt.Errorf("%s: %w", name, err)
 		}
+	}
+	if err := validateLimits(content.Rules.Limits); err != nil {
+		return nil, fmt.Errorf("game_rules.json: limits: %w", err)
 	}
 	content.Tasks = tasks.Tasks
 	content.Catalog = catalog.Items

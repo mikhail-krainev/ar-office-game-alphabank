@@ -32,6 +32,28 @@ export function weekdayOf(day: number): string {
   return dayWeekday.format(day * SECONDS_PER_DAY * 1000);
 }
 
+/** 90 -> "1 ч 30 мин", 60 -> "1 час", 5 -> "5 минут". `genitive` is for "более 1 часа". */
+export function formatMinutes(minutes: number, genitive = false): string {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) {
+    return `${rest} ${genitive ? plural(rest, "минуты", "минут", "минут") : plural(rest, "минуту", "минуты", "минут")}`;
+  }
+  if (rest === 0) {
+    return `${hours} ${genitive ? plural(hours, "часа", "часов", "часов") : plural(hours, "час", "часа", "часов")}`;
+  }
+  return `${hours} ч ${rest} мин`;
+}
+
+/** Play time in seconds as "1 ч 05 мин" / "12 мин"; "—" for 0. */
+export function formatPlayTime(seconds: number): string {
+  if (!seconds) {
+    return "—";
+  }
+  const minutes = Math.round(seconds / 60);
+  return minutes >= 60 ? `${Math.floor(minutes / 60)} ч ${String(minutes % 60).padStart(2, "0")} мин` : `${minutes} мин`;
+}
+
 /** "3 дня" style plural. */
 export function plural(n: number, one: string, few: string, many: string): string {
   const mod10 = n % 10;

@@ -6,8 +6,9 @@ import { CreateUserForm } from "./CreateUserForm";
 import { UsersTable } from "./UsersTable";
 import { DepartmentsPanel } from "./DepartmentsPanel";
 import { StatsPanel } from "./StatsPanel";
+import { LimitsPanel } from "./LimitsPanel";
 
-type Section = "access" | "stats";
+type Section = "access" | "stats" | "limits";
 
 export interface DashboardActions {
   session: Session;
@@ -93,16 +94,19 @@ export function Dashboard({ session, onSessionLost }: { session: Session; onSess
         <button role="tab" aria-selected={section === "stats"} className={section === "stats" ? "tab active" : "tab"} onClick={() => setSection("stats")}>
           Статистика
         </button>
+        <button role="tab" aria-selected={section === "limits"} className={section === "limits" ? "tab active" : "tab"} onClick={() => setSection("limits")}>
+          Ограничения
+        </button>
       </nav>
-      {section === "access" ? (
+      {section === "access" && (
         <>
           <CreateUserForm actions={actions} />
           <UsersTable actions={actions} users={players} />
           <DepartmentsPanel actions={actions} players={players} />
         </>
-      ) : (
-        <StatsPanel actions={actions} />
       )}
+      {section === "stats" && <StatsPanel actions={actions} />}
+      {section === "limits" && <LimitsPanel actions={actions} />}
     </div>
   );
 }

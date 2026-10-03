@@ -225,6 +225,14 @@ func _go_to_task(task: BackendModels.TaskInfo) -> void:
 	if task.pending:
 		_hud.flash_message(tr("ERROR_PENDING_CONFIRMATION"))
 		return
+	if not task.is_check_in() and not TaskPanel.lock_text().is_empty():
+		# The break between tasks or the time outside the task hours: no walking there for nothing.
+		_hud.flash_message(TaskPanel.lock_text())
+		return
+	if not task.is_check_in() and not PlayTime.task_lock_text().is_empty():
+		# The play time is up: new tasks wait until after the rest.
+		_hud.flash_message(PlayTime.task_lock_text())
+		return
 	if task.floor_id != OfficeFloors.current:
 		# The task is on another floor: ride the lift first, then walk to it there.
 		OfficeFloors.pending_task_id = task.id
@@ -239,7 +247,15 @@ func _go_to_task(task: BackendModels.TaskInfo) -> void:
 		_pending_task = task
 
 
+## Runs the task's minigame. PlayTime knows a minigame is on screen until its result is handled,
+## so the play-time limit never interrupts it (the rest starts right after it instead).
 func _start_task(task: BackendModels.TaskInfo) -> void:
+	PlayTime.begin_minigame(task.id)
+	await _run_task(task)
+	PlayTime.end_minigame()
+
+
+func _run_task(task: BackendModels.TaskInfo) -> void:
 	_player.face(Vector2.UP)
 	_busy = true
 	var context: Dictionary = {}
@@ -297,7 +313,9 @@ func _scan_code() -> void:
 		return
 	_cancel_pending_actions()
 	_busy = true
+	PlayTime.begin_minigame()
 	var payload: QrPayload = await _minigame_panel.scan_code()
+	PlayTime.end_minigame()
 	_busy = false
 	if payload == null:
 		return

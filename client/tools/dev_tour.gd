@@ -4,9 +4,12 @@ extends Node
 ## a server with DEV_MODE=true; the tour changes that account's progress, so use a test account.
 ## Run (GUI): godot --path client res://tools/dev_tour.tscn -- --device=pixel_8 --out=<dir> [--shot-scale=2]
 ## --shot-scale below 1 shrinks screenshots smoothly, 1 and above enlarges them with crisp pixels.
+## --only=play runs only the play-time limit screens. The tour turns the task limits (hours and the
+## pause between tasks) off for the account, so it can close a whole day at any hour.
 
 var _out: String = ""
 var _shot_scale: float = 0.5
+var _only: String = ""
 
 
 func _ready() -> void:
@@ -15,6 +18,8 @@ func _ready() -> void:
 			_out = argument.trim_prefix("--out=")
 		elif argument.begins_with("--shot-scale="):
 			_shot_scale = maxf(0.1, argument.trim_prefix("--shot-scale=").to_float())
+		elif argument.begins_with("--only="):
+			_only = argument.trim_prefix("--only=")
 	# The emulator's key help would end up in the screenshots.
 	var emulator: Node = get_node_or_null("/root/DeviceEmulator")
 	if emulator != null and emulator.get("_help") is Label:
@@ -40,6 +45,11 @@ func _start() -> void:
 		tree.quit(1)
 		return
 	await _wait(0.5)
+	await Backend.dev_call("dev_task_limits", {"off": true})
+	if _only == "play":
+		await _play_limit_tour()
+		tree.quit()
+		return
 	await _morning_tour()
 	await _home_tour()
 	await _commute_tour()
@@ -47,6 +57,7 @@ func _start() -> void:
 	await _evening_tour()
 	await _social_tour()
 	await _analytics_tour()
+	await _play_limit_tour()
 	await _office_screen_tour()
 	tree.quit()
 
@@ -370,6 +381,70 @@ func _evening_tour() -> void:
 	await _shot("e4_sleep")
 	await _wait(3.0)
 	await _shot("e5_lights_out")
+
+
+## The task list under the limits, then the play-time limit: the warning, its countdown pill, the
+## rest screen, the end of the rest and the day lock. The dev RPC sets the state; PlayTime shows it as after a real heartbeat.
+func _play_limit_tour() -> void:
+	OfficeFloors.reset()
+	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	await _wait(2.5)
+	# The task list with the limits on: today's pack and the pause after the last task.
+	await Backend.dev_call("dev_task_limits", {"off": false})
+	var office: Node = get_tree().current_scene
+	office.call("_open_tasks")
+	await _wait(1.0)
+	await _shot("p0_tasks_limits")
+	(office.get("_task_panel") as TaskPanel).close_panel()
+	await Backend.dev_call("dev_task_limits", {"off": true})
+	var overlay: PlayOverlay = PlayTime.get("_overlay")
+	for step: Array in [["warning", "p1_play_warning"], ["resting", "p3_play_rest"], ["blocked", "p5_play_blocked"]]:
+		await Backend.dev_call("dev_play_state", {"state": step[0]})
+		PlayTime.check_now()
+		await _wait(1.5)
+		await _shot(step[1])
+		if step[0] == "warning":
+			overlay.collapse_warning()
+			await _wait(0.4)
+			await _shot("p2_play_pill")
+		elif step[0] == "resting":
+			overlay.show_rest_done()
+			await _wait(0.4)
+			await _shot("p4_play_rest_done")
+	await Backend.dev_call("dev_play_state", {"state": "ok"})
+	PlayTime.check_now()
+	await _wait(1.0)
+	await _deferred_rest_tour()
+	# Outside the office network every game call is refused and this screen covers the game.
+	overlay.show_network()
+	await _wait(0.6)
+	await _shot("p7_office_network")
+	overlay.hide_screen()
+
+
+## The limit comes during a minigame: a quiet notice, no warning; the rest starts when it closes.
+func _deferred_rest_tour() -> void:
+	var office: Node = get_tree().current_scene
+	var panel: MinigamePanel = office.get("_minigame_panel")
+	for task: BackendModels.TaskInfo in office.get("_tasks"):
+		if task.is_closed() or task.is_check_in() or not task.assignment.is_empty():
+			continue
+		if task.floor_id != OfficeFloors.current:
+			continue
+		await _teleport(office, task.spot)
+		office.call("_go_to_task", task)
+		await _wait(1.0)
+		await Backend.dev_call("dev_play_state", {"state": "deferred"})
+		PlayTime.check_now()
+		await _wait(1.5)
+		await _shot("p6_play_deferred")
+		panel.emit_signal("_resolved", MinigamePanel.Outcome.CANCELLED)
+		await _wait(2.0)
+		await _shot("p6b_play_rest_after_minigame")
+		break
+	await Backend.dev_call("dev_play_state", {"state": "ok"})
+	PlayTime.check_now()
+	await _wait(1.0)
 
 
 ## Holds a finger to the left of the player and keeps it there: the player should keep walking left.

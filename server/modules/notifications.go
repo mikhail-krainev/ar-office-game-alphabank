@@ -32,7 +32,7 @@ type planFacts struct {
 	raffleDrawAt  int64
 	raffleJoined  bool
 	funTexts      []string
-	funWindow     []string
+	funWindows    [][]string
 	funMax        int
 	seed          string
 }
@@ -106,20 +106,38 @@ func planRaffle(facts planFacts, plan []plannedNotification) []plannedNotificati
 	return plan
 }
 
-// planFun: one or two nudges a day at random minutes inside the window, away from other notifications.
+// funSpan is one window for nudges on a day: its start and length in minutes.
+type funSpan struct {
+	start   int64
+	minutes int64
+}
+
+// planFun: one or two nudges a day at random minutes inside the windows, away from other
+// notifications. The windows lie outside working hours, so the game never calls during work.
 func planFun(facts planFacts, day int, plan []plannedNotification) []plannedNotification {
-	if len(facts.funTexts) == 0 || facts.funMax <= 0 || len(facts.funWindow) != 2 {
+	spans := []funSpan{}
+	total := int64(0)
+	for _, window := range facts.funWindows {
+		if len(window) != 2 {
+			continue
+		}
+		startHour, startMinute := parseClock(window[0])
+		endHour, endMinute := parseClock(window[1])
+		start := unixAt(day, startHour, startMinute, facts.offset)
+		minutes := (unixAt(day, endHour, endMinute, facts.offset) - start) / 60
+		if minutes > 0 {
+			spans = append(spans, funSpan{start: start, minutes: minutes})
+			total += minutes
+		}
+	}
+	if len(facts.funTexts) == 0 || facts.funMax <= 0 || total == 0 {
 		return plan
 	}
 	rng := seededRand(fmt.Sprintf("fun|%s|%d", facts.seed, day))
-	startHour, startMinute := parseClock(facts.funWindow[0])
-	endHour, endMinute := parseClock(facts.funWindow[1])
-	start := unixAt(day, startHour, startMinute, facts.offset)
-	minutes := max(0, (unixAt(day, endHour, endMinute, facts.offset)-start)/60)
 	count := 1 + rng.IntN(facts.funMax)
 	used := map[int]bool{}
 	for index := range count {
-		at := start + rng.Int64N(minutes+1)*60
+		at := funMinute(spans, rng.Int64N(total))
 		textIndex := rng.IntN(len(facts.funTexts))
 		if used[textIndex] {
 			textIndex = (textIndex + 1) % len(facts.funTexts)
@@ -131,6 +149,18 @@ func planFun(facts planFacts, day int, plan []plannedNotification) []plannedNoti
 		plan = addPlanned(plan, "fun", day, index, at, map[string]any{"text": facts.funTexts[textIndex]})
 	}
 	return plan
+}
+
+// funMinute: unix time of the `minute`-th minute counted through the spans one after another.
+func funMinute(spans []funSpan, minute int64) int64 {
+	for _, span := range spans {
+		if minute < span.minutes {
+			return span.start + minute*60
+		}
+		minute -= span.minutes
+	}
+	last := spans[len(spans)-1]
+	return last.start + last.minutes*60
 }
 
 func isFree(plan []plannedNotification, at int64) bool {
@@ -169,7 +199,7 @@ func rpcGetNotificationPlan(ctx context.Context, logger runtime.Logger, db *sql.
 			streak:       streak(state.PresenceDays, state.ExcusedDays, tx.today, state.FirstDay),
 			presentToday: state.PresenceDays[dayKey(tx.today)], reminderTimes: rules.ReminderTimes,
 			raffleJoined: contains(draw.draw.Tickets, tx.me.userID),
-			funTexts:     tx.content.FunTexts, funWindow: rules.FunWindow, funMax: rules.FunMax, seed: tx.me.userID,
+			funTexts:     tx.content.FunTexts, funWindows: rules.FunWindows, funMax: rules.FunMax, seed: tx.me.userID,
 		}
 		if !draw.draw.Drawn {
 			facts.raffleDrawAt = draw.draw.DrawAt

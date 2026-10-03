@@ -66,6 +66,10 @@ class TaskInfo:
 	func is_closed() -> bool:
 		return completed or skipped or pending
 
+	## The daily check-in at the reception: always on the list, free of the task limits.
+	func is_check_in() -> bool:
+		return minigame == "presence_qr"
+
 
 class TaskResult:
 	extends RefCounted
@@ -272,3 +276,48 @@ class PlannedNotification:
 	var delay_seconds: int = 0
 	var kind: String = ""
 	var params: Dictionary = {}
+
+
+## When tasks count today (server/modules/limits.go), for locking them before the player starts.
+class TaskSchedule:
+	extends RefCounted
+
+	var cooldown_minutes: int = 0
+	## Seconds until the next task counts, at the moment of the request; 0 = now.
+	var next_task_in: int = 0
+	## Office time, "HH:MM".
+	var window_start: String = ""
+	var window_end: String = ""
+	var in_window: bool = true
+	## Ticks (ms) when the schedule was received, so the countdown runs on.
+	var received_at_ms: int = 0
+
+	func cooldown_left() -> int:
+		return maxi(0, next_task_in - (Time.get_ticks_msec() - received_at_ms) / 1000)
+
+	## "" when tasks count now, otherwise the error key that explains why not.
+	func lock_reason() -> String:
+		if not in_window:
+			return "outside_task_window"
+		if cooldown_left() > 0:
+			return "task_cooldown"
+		return ""
+
+
+## Continuous-play limit (server/modules/play.go).
+class PlayStatus:
+	extends RefCounted
+
+	## DEFERRED: the limit came during a minigame; the rest starts when it ends.
+	enum State { OK, WARNING, DEFERRED, RESTING, BLOCKED }
+
+	var ok: bool = false
+	var error: String = ""
+	var state: State = State.OK
+	var played_seconds: int = 0
+	var limit_minutes: int = 0
+	var grace_minutes: int = 0
+	var rest_minutes: int = 0
+	## Seconds left of the grace (WARNING) or of the rest (RESTING), at the moment of the request.
+	var seconds_left: int = 0
+	var beat_seconds: int = 30

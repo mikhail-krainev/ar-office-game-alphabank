@@ -240,6 +240,39 @@ static func notification_plan(data: Dictionary) -> Array[BackendModels.PlannedNo
 	return result
 
 
+static func task_schedule(data: Variant) -> BackendModels.TaskSchedule:
+	var schedule: BackendModels.TaskSchedule = BackendModels.TaskSchedule.new()
+	var entry: Dictionary = data if data is Dictionary else {}
+	schedule.cooldown_minutes = int(entry.get("cooldown_minutes", 0))
+	schedule.next_task_in = int(entry.get("next_task_in", 0))
+	schedule.window_start = str(entry.get("window_start", ""))
+	schedule.window_end = str(entry.get("window_end", ""))
+	schedule.in_window = bool(entry.get("in_window", true))
+	schedule.received_at_ms = Time.get_ticks_msec()
+	return schedule
+
+
+static func play_status(data: Dictionary, error: String) -> BackendModels.PlayStatus:
+	var status: BackendModels.PlayStatus = BackendModels.PlayStatus.new()
+	status.ok = error.is_empty()
+	status.error = error
+	var states: Dictionary[String, BackendModels.PlayStatus.State] = {
+		"ok": BackendModels.PlayStatus.State.OK,
+		"warning": BackendModels.PlayStatus.State.WARNING,
+		"deferred": BackendModels.PlayStatus.State.DEFERRED,
+		"resting": BackendModels.PlayStatus.State.RESTING,
+		"blocked": BackendModels.PlayStatus.State.BLOCKED,
+	}
+	status.state = states.get(str(data.get("state", "ok")), BackendModels.PlayStatus.State.OK)
+	status.played_seconds = int(data.get("played_seconds", 0))
+	status.limit_minutes = int(data.get("limit_minutes", 0))
+	status.grace_minutes = int(data.get("grace_minutes", 0))
+	status.rest_minutes = int(data.get("rest_minutes", 0))
+	status.seconds_left = int(data.get("seconds_left", 0))
+	status.beat_seconds = maxi(5, int(data.get("beat_seconds", 30)))
+	return status
+
+
 static func _dictionaries(value: Variant) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	if value is Array:

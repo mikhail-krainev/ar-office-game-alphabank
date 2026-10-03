@@ -254,11 +254,17 @@ func TestNotificationPlan(t *testing.T) {
 		t.Errorf("draw announcements = %+v %+v", day, hour)
 	}
 	nudges := testFacts(0, true, 1)
-	nudges.funTexts, nudges.funWindow, nudges.funMax = []string{"a", "b", "c"}, []string{"11:00", "19:30"}, 2
-	for _, item := range ofKind(planNotifications(nudges), "fun") {
-		local := dayOf(item.At, testOffset)
-		if item.At < unixAt(local, 11, 0, testOffset) || item.At > unixAt(local, 19, 30, testOffset) {
-			t.Errorf("nudge outside the window: %+v", item)
+	nudges.funTexts, nudges.funMax = []string{"a", "b", "c"}, 2
+	nudges.funWindows = [][]string{{"07:00", "08:30"}, {"18:00", "21:00"}}
+	for seed := range 20 {
+		nudges.seed = fmt.Sprintf("player-%d", seed)
+		for _, item := range ofKind(planNotifications(nudges), "fun") {
+			local := dayOf(item.At, testOffset)
+			morning := item.At >= unixAt(local, 7, 0, testOffset) && item.At < unixAt(local, 8, 30, testOffset)
+			evening := item.At >= unixAt(local, 18, 0, testOffset) && item.At < unixAt(local, 21, 0, testOffset)
+			if !morning && !evening {
+				t.Errorf("nudge outside the windows: %+v", item)
+			}
 		}
 	}
 	first, second := planNotifications(testFacts(8, false, 3)), planNotifications(testFacts(8, false, 3))

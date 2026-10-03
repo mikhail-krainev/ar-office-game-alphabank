@@ -1,5 +1,5 @@
 {
-	"_comment": "Game rules of the server module. office: office id on the presence codes and its time zone (days, streaks and fines follow office time). attendance.fine_tiers: the n-th workday missed in a row costs `percent` of the balance, rounded up, never below zero; the first missed day only breaks the streak. photo.partner_bonus: coins the colleague gets for confirming a joint photo. raffle: parking draw on the last Friday of every month. avatar_templates: ready-made profile pictures (client AvatarCatalog.TEMPLATES).",
+	"_comment": "Game rules of the server module. office: office id on the presence codes and its time zone (days, streaks and fines follow office time). attendance.fine_tiers: the n-th workday missed in a row costs `percent` of the balance, rounded up, never below zero; the first missed day only breaks the streak. photo.partner_bonus: coins the colleague gets for confirming a joint photo. raffle: parking draw on the last Friday of every month. notifications.fun_windows: office-time windows for light-hearted nudges, outside working hours. limits: defaults of the working-time limits until the admin saves their own in the panel (task cooldown, hours when tasks count, continuous play before the warning, time to leave after it, rest). avatar_templates: ready-made profile pictures (client AvatarCatalog.TEMPLATES).",
 	"office": {
 		"id": "hq",
 		"utc_offset_minutes": 300
@@ -31,9 +31,15 @@
 			"14:00",
 			"18:30"
 		],
-		"fun_window": [
-			"11:00",
-			"19:30"
+		"fun_windows": [
+			[
+				"07:00",
+				"08:30"
+			],
+			[
+				"18:00",
+				"21:00"
+			]
 		],
 		"fun_max": 2
 	},
@@ -48,6 +54,14 @@
 		"window_days": 30,
 		"draw_hour": 18,
 		"draw_minute": 0
+	},
+	"limits": {
+		"task_cooldown_minutes": 30,
+		"task_window_start": "08:00",
+		"task_window_end": "20:00",
+		"play_limit_minutes": 60,
+		"exit_grace_minutes": 5,
+		"rest_minutes": 30
 	},
 	"economy": {
 		"welcome_bonus": 500,

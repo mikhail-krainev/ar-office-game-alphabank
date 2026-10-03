@@ -87,6 +87,13 @@ type PlayerState struct {
 	WelcomeGiven       bool                         `json:"welcome_given"`
 	// Unix time the admin banned the player; 0 when not banned (users.go: rpcAdminSetBanned).
 	BannedAt int64 `json:"banned_at,omitempty"`
+	// Unix time of the last task that started the cooldown (limits.go).
+	LastTaskAt int64 `json:"last_task_at,omitempty"`
+	// DEV_MODE only: tasks count at any hour and without the pause (dev.go: dev_task_limits).
+	DevNoTaskLimits bool `json:"dev_no_task_limits,omitempty"`
+	// Continuous play (play.go) and play seconds per day.
+	Play        PlaySession    `json:"play"`
+	PlaySeconds map[string]int `json:"play_seconds"`
 }
 
 func (s *PlayerState) normalize() {
@@ -109,6 +116,9 @@ func (s *PlayerState) normalize() {
 	}
 	if s.Earned == nil {
 		s.Earned = map[string]int{}
+	}
+	if s.PlaySeconds == nil {
+		s.PlaySeconds = map[string]int{}
 	}
 	if s.TaskLog == nil {
 		s.TaskLog = map[string][]TaskLogEntry{}
@@ -212,6 +222,9 @@ type gameTx struct {
 	content *Content
 	// Parking draw read in this transaction (raffle.go).
 	draw *loadedDraw
+	// Admin limits and today's task pack, read once per transaction (limits.go).
+	loadedLimits *Limits
+	pack         map[string]bool
 }
 
 // runPlayerTx runs `fn` for the calling player and commits its changes, retrying on version conflicts.

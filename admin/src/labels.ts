@@ -10,6 +10,9 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   task_skipped: "Задание пропущено",
   met: "Встреча с коллегами",
   photo_answer: "Ответ на фото коллеги",
+  play_warning: "Предупреждение о времени в игре",
+  play_rest: "Ушёл на отдых",
+  play_blocked: "Игра закрыта до завтра",
 };
 
 export const LEDGER_LABELS: Record<string, string> = {
@@ -44,6 +47,12 @@ export const SUSPICIOUS_LABELS: Record<string, string> = {
 export const SUSPICIOUS_ACTIONS: Record<string, string> = {
   office_check_in: "Вход в офис",
   office_check_out: "Выход из офиса",
+};
+
+export const PLAY_STATES: Record<string, string> = {
+  warning: "предупреждён",
+  resting: "отдыхает",
+  blocked: "закрыто до завтра",
 };
 
 export const ROOM_LABELS: Record<string, string> = {

@@ -25,6 +25,8 @@ func registerDevRpcs(initializer runtime.Initializer) error {
 		"dev_set_office_days": rpcDevSetOfficeDays,
 		"dev_draw_now":        rpcDevDrawNow,
 		"dev_clear_raffle":    rpcDevClearRaffle,
+		"dev_task_limits":     rpcDevTaskLimits,
+		"dev_play_state":      rpcDevPlayState,
 	}
 	for id, fn := range rpcs {
 		if err := initializer.RegisterRpc(id, fn); err != nil {
@@ -127,6 +129,7 @@ func rpcDevResetDay(ctx context.Context, logger runtime.Logger, db *sql.DB, nk r
 		}
 		delete(state.Assignments, key)
 		delete(state.Earned, key)
+		state.LastTaskAt = 0
 		return okResult, nil
 	})
 }
@@ -174,4 +177,52 @@ func rpcDevClearRaffle(ctx context.Context, _ runtime.Logger, _ *sql.DB, nk runt
 		return "", errInternal
 	}
 	return encodeResponse(okResult)
+}
+
+// rpcDevTaskLimits: {"off"}. Lets the caller complete tasks at any hour and without the pause
+// between them, so the dev tour can close a whole day at once.
+func rpcDevTaskLimits(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
+	var request struct {
+		Off bool `json:"off"`
+	}
+	if err := decodePayload(payload, &request); err != nil {
+		return "", err
+	}
+	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
+		tx.me.state.DevNoTaskLimits = request.Off
+		return okResult, nil
+	})
+}
+
+// rpcDevPlayState: {"state"}: ok, warning, deferred, resting or blocked. Puts the caller's play-time limit
+// into that state right away, to see the warning, the rest screen and the lock screen.
+func rpcDevPlayState(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
+	var request struct {
+		State string `json:"state"`
+	}
+	if err := decodePayload(payload, &request); err != nil {
+		return "", err
+	}
+	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
+		limits, err := tx.limits()
+		if err != nil {
+			return nil, err
+		}
+		play := &tx.me.state.Play
+		switch request.State {
+		case playOK:
+			*play = PlaySession{}
+		case playWarning:
+			*play = PlaySession{Seconds: limits.PlayLimitMinutes * 60, LastBeat: tx.now, WarnedAt: tx.now}
+		case playDeferred:
+			*play = PlaySession{Seconds: limits.PlayLimitMinutes * 60, LastBeat: tx.now, WarnedAt: tx.now, RestPending: true, DeferUntil: tx.now + defaultMinigameSeconds}
+		case playResting:
+			*play = PlaySession{LastBeat: tx.now, RestUntil: tx.now + int64(limits.RestMinutes)*60}
+		case playBlocked:
+			*play = PlaySession{LastBeat: tx.now, BlockedDay: tx.today}
+		default:
+			return nil, errInvalidPayload
+		}
+		return currentPlayStatus(play, tx.now, tx.offset, limits), nil
+	})
 }

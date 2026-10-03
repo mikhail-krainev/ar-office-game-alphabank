@@ -112,9 +112,18 @@ func rpcAssignColleague(ctx context.Context, logger runtime.Logger, db *sql.DB, 
 		if task == nil || task.Assignment == "" {
 			return fail("unknown_task"), nil
 		}
+		if !tx.isTodaysTask(task) {
+			return fail("task_not_today"), nil
+		}
 		state := tx.me.state
+		if problem, err := tx.playError(); problem != "" || err != nil {
+			return fail(problem), err
+		}
 		if problem := tx.presenceError(); problem != "" {
 			return fail(problem), nil
+		}
+		if problem, err := tx.taskTimeError(task); problem != "" || err != nil {
+			return fail(problem), err
 		}
 		presence, err := officePresence(tx.ctx, tx.nk, tx.today)
 		if err != nil {
@@ -315,6 +324,9 @@ func rpcRespondPhotoRequest(ctx context.Context, logger runtime.Logger, db *sql.
 		return "", err
 	}
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
+		if problem, err := tx.playError(); problem != "" || err != nil {
+			return fail(problem), err
+		}
 		claimed, err := tx.claimOperation(request.OperationKey)
 		if err != nil || !claimed {
 			return fail("duplicate_operation"), err

@@ -47,6 +47,9 @@ type playerSummary struct {
 	LastActivity int64  `json:"last_activity"`
 	Car          string `json:"car"`
 	Status       string `json:"status"`
+	// Play today and the play-limit state (play.go): ok, warning, resting or blocked.
+	PlaySecondsToday int    `json:"play_seconds_today"`
+	PlayState        string `json:"play_state"`
 }
 
 // summarize computes a player's totals. `today` is the player's own day (dev clock included).
@@ -63,6 +66,7 @@ func summarize(summary *playerSummary, state *PlayerState, today int) {
 	summary.InOffice = inOffice(state, today)
 	summary.Car = state.Car
 	summary.Status = state.Status
+	summary.PlaySecondsToday = state.PlaySeconds[dayKey(today)]
 	for _, done := range state.Completed {
 		summary.TasksTotal += len(done)
 	}
@@ -78,13 +82,13 @@ func summarize(summary *playerSummary, state *PlayerState, today int) {
 	summary.Colleagues = len(met)
 }
 
-// playerToday: the day the game uses for this player (the dev clock shifts it in DEV_MODE).
-func playerToday(state *PlayerState) int {
+// playerNow: the time the game uses for this player (the dev clock shifts it in DEV_MODE).
+func playerNow(state *PlayerState) int64 {
 	now := time.Now().Unix()
 	if devMode {
 		now += int64(state.DevDayShift) * secondsPerDay
 	}
-	return dayOf(now, gameContent.officeOffset())
+	return now
 }
 
 func parseState(raw sql.NullString) *PlayerState {
@@ -104,7 +108,11 @@ const playerRowsQuery = `
 	WHERE u.id <> $1`
 
 // loadPlayerRows reads players (not admins) with their state. An empty `userID` means all players.
-func loadPlayerRows(ctx context.Context, db *sql.DB, userID string) ([]playerSummary, map[string]*PlayerState, error) {
+func loadPlayerRows(ctx context.Context, db *sql.DB, nk runtime.NakamaModule, userID string) ([]playerSummary, map[string]*PlayerState, error) {
+	limits, err := loadLimits(ctx, nk)
+	if err != nil {
+		return nil, nil, err
+	}
 	query, args := playerRowsQuery+` ORDER BY u.create_time DESC`, []any{systemUserID}
 	if userID != "" {
 		query, args = playerRowsQuery+` AND u.id = $2`, []any{systemUserID, userID}
@@ -143,7 +151,10 @@ func loadPlayerRows(ctx context.Context, db *sql.DB, userID string) ([]playerSum
 		if lastActivity.Valid {
 			summary.LastActivity = lastActivity.Time.Unix()
 		}
-		summarize(&summary, state, playerToday(state))
+		now := playerNow(state)
+		offset := gameContent.officeOffset()
+		summarize(&summary, state, dayOf(now, offset))
+		summary.PlayState = currentPlayStatus(&state.Play, now, offset, limits).State
 		summaries = append(summaries, summary)
 		states[summary.ID] = state
 	}
@@ -155,7 +166,7 @@ func rpcAdminStatsOverview(ctx context.Context, logger runtime.Logger, db *sql.D
 	if err := requireAdmin(ctx, nk); err != nil {
 		return "", err
 	}
-	players, _, err := loadPlayerRows(ctx, db, "")
+	players, _, err := loadPlayerRows(ctx, db, nk, "")
 	if err != nil {
 		logger.Error("stats overview: %v", err)
 		return "", errInternal
@@ -181,6 +192,8 @@ type statsDay struct {
 	Met        []string       `json:"met"`
 	Purchases  []string       `json:"purchases"`
 	Earned     int            `json:"earned"`
+	// Seconds the game was on screen that day.
+	PlaySeconds int `json:"play_seconds"`
 }
 
 type ledgerEntry struct {
@@ -219,7 +232,7 @@ func rpcAdminPlayerStats(ctx context.Context, logger runtime.Logger, db *sql.DB,
 	if _, err := playerMetadata(ctx, nk, request.UserID); err != nil {
 		return "", err
 	}
-	players, states, err := loadPlayerRows(ctx, db, request.UserID)
+	players, states, err := loadPlayerRows(ctx, db, nk, request.UserID)
 	if err != nil {
 		logger.Error("stats of %s: %v", request.UserID, err)
 		return "", errInternal
@@ -288,6 +301,7 @@ func statsDays(state *PlayerState, today int, names *nameBook) []statsDay {
 			CheckinAt: state.CheckinAt[key], CheckoutAt: state.CheckoutAt[key],
 			Tasks: state.TaskLog[key], Skipped: names.tasks(state.Skipped[key]), Pending: names.tasks(state.Pending[key]),
 			Met: state.Met[key], Purchases: state.Purchases[key], Earned: state.Earned[key],
+			PlaySeconds: state.PlaySeconds[key],
 		}
 		if record.Tasks == nil {
 			record.Tasks = []TaskLogEntry{}
@@ -302,7 +316,7 @@ func statsDays(state *PlayerState, today int, names *nameBook) []statsDay {
 			names.user(id)
 		}
 		idle := !record.Present && len(record.Tasks) == 0 && len(record.Skipped) == 0 && len(record.Pending) == 0 &&
-			len(record.Purchases) == 0 && record.Earned == 0
+			len(record.Purchases) == 0 && record.Earned == 0 && record.PlaySeconds == 0
 		if !record.Workday && idle {
 			continue
 		}

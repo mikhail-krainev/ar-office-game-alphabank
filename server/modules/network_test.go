@@ -46,3 +46,16 @@ func TestInOfficeNetwork(t *testing.T) {
 		t.Error("an empty list turns the check off")
 	}
 }
+
+func TestGameRpcsNeedTheOfficeNetwork(t *testing.T) {
+	for _, id := range []string{"login", "list_tasks", "complete_task", "play_heartbeat", "get_shop", "get_inbox"} {
+		if !gameRpc(id) {
+			t.Errorf("%s must need the office network", id)
+		}
+	}
+	for _, id := range []string{"get_profile", "list_departments", "admin_list_users", "dev_skip_day", "get_notification_plan", "kiosk_codes"} {
+		if gameRpc(id) {
+			t.Errorf("%s must work from anywhere", id)
+		}
+	}
+}

@@ -22,7 +22,8 @@ var difficultyMultipliers = map[string]float64{"normal": 1.0, "hard": 2.0, "very
 // Errors of honest play that are not logged as suspicious.
 var benignTaskErrors = map[string]bool{
 	"presence_required": true, "task_failed": true, "already_completed": true, "task_skipped": true,
-	"pending_confirmation": true, "no_colleague_available": true,
+	"pending_confirmation": true, "no_colleague_available": true, "task_not_today": true,
+	"task_cooldown": true, "outside_task_window": true, "play_resting": true, "play_blocked": true,
 }
 
 type taskView struct {
@@ -88,9 +89,16 @@ func rpcListTasks(ctx context.Context, logger runtime.Logger, db *sql.DB, nk run
 		}
 		state := tx.me.state
 		multiplier := tx.multiplier()
+		schedule, err := tx.taskSchedule()
+		if err != nil {
+			return nil, err
+		}
 		tasks := []taskView{}
 		for i := range tx.content.Tasks {
 			task := &tx.content.Tasks[i]
+			if !tx.isTodaysTask(task) {
+				continue
+			}
 			tasks = append(tasks, taskView{
 				ID: task.ID, Title: task.Title, Description: task.Description, Room: task.Room, Floor: task.Floor,
 				Spot: task.Spot, Minigame: task.Minigame, Fallback: task.Fallback, Params: task.Params,
@@ -102,11 +110,11 @@ func rpcListTasks(ctx context.Context, logger runtime.Logger, db *sql.DB, nk run
 				Pending:   contains(dayList(state.Pending, tx.today), task.ID),
 			})
 		}
-		return map[string]any{"tasks": tasks, "in_office": inOffice(state, tx.today)}, nil
+		return map[string]any{"tasks": tasks, "in_office": inOffice(state, tx.today), "schedule": schedule}, nil
 	})
 }
 
-// rpcSkipTask: {"task_id"}. Closes a skippable task for today without a reward.
+// rpcSkipTask: {"task_id"}. Closes a skippable task of today's pack without a reward.
 func rpcSkipTask(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	var request struct {
 		TaskID string `json:"task_id"`
@@ -117,9 +125,14 @@ func rpcSkipTask(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runt
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
 		state := tx.me.state
 		task := tx.content.task(request.TaskID)
+		if problem, err := tx.playError(); problem != "" || err != nil {
+			return fail(problem), err
+		}
 		switch {
 		case task == nil:
 			return fail("unknown_task"), nil
+		case !tx.isTodaysTask(task):
+			return fail("task_not_today"), nil
 		case !task.Skippable:
 			return fail("task_not_skippable"), nil
 		case contains(dayList(state.Completed, tx.today), task.ID):
@@ -156,6 +169,11 @@ func rpcCompleteTask(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 	proof := parseProof(request.Proof)
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
 		result := taskResult{Balance: tx.me.balance}
+		// Checked before the operation key is claimed, so the client may retry after the rest.
+		if problem, err := tx.playError(); problem != "" || err != nil {
+			result.Error = problem
+			return result, err
+		}
 		claimed, err := tx.claimOperation(request.OperationKey)
 		if err != nil {
 			return nil, err
@@ -192,6 +210,9 @@ func rpcCompleteTask(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 			return result, nil
 		}
 		result.OK = true
+		if task.Minigame != presenceMinigame {
+			tx.me.state.LastTaskAt = tx.now
+		}
 		if task.Minigame == photoMinigame {
 			// The reward waits for the colleague: they confirm the photo on their phone.
 			result.Pending = true
@@ -237,6 +258,8 @@ func (tx *gameTx) taskError(task *Task, success bool, proof taskProof) (string, 
 		return "task_skipped", nil
 	case contains(dayList(state.Pending, tx.today), task.ID):
 		return "pending_confirmation", nil
+	case !tx.isTodaysTask(task):
+		return "task_not_today", nil
 	case task.Minigame == presenceMinigame:
 		if problem := tx.networkError(); problem != "" {
 			return problem, nil
@@ -245,6 +268,9 @@ func (tx *gameTx) taskError(task *Task, success bool, proof taskProof) (string, 
 	}
 	if problem := tx.presenceError(); problem != "" {
 		return problem, nil
+	}
+	if problem, err := tx.taskTimeError(task); problem != "" || err != nil {
+		return problem, err
 	}
 	return tx.verifySocial(task, proof)
 }

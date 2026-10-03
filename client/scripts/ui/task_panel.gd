@@ -1,7 +1,9 @@
 class_name TaskPanel
 extends CanvasLayer
-## Daily task list. Every open task has a marker on the map; "Go" walks there and starts it on arrival.
-## Hard tasks show a difficulty tag with the reward multiplier; skippable ones have a "Skip" button.
+## Daily task list: the check-in and the player's pack for today. Every open task has a marker on
+## the map; "Go" walks there and starts it on arrival. Hard tasks show a difficulty tag with the
+## reward multiplier; skippable ones have a "Skip" button. During the break between tasks and
+## outside the task hours (Backend.task_schedule) the tasks are locked, with the reason on top.
 
 signal go_requested(task: BackendModels.TaskInfo)
 signal skip_requested(task: BackendModels.TaskInfo)
@@ -11,6 +13,12 @@ const SIDE_MARGIN: float = 12.0
 
 var _panel: PanelContainer
 var _subtitle: Label
+var _notice: Label
+var _tasks: Array[BackendModels.TaskInfo] = []
+var _player_cell: Vector2i
+var _profile: BackendModels.Profile
+## Lock text the list was built with; the list is rebuilt when it changes (the countdown ticks).
+var _lock_text: String = ""
 var _scroll: ScrollContainer
 var _list: VBoxContainer
 
@@ -46,8 +54,12 @@ func _ready() -> void:
 	titles.add_child(UiStyle.make_label(tr("TASKS_TITLE"), 16))
 	_subtitle = UiStyle.make_label("", 10, UiStyle.RED)
 	titles.add_child(_subtitle)
+	_notice = UiStyle.make_label("", 9, UiStyle.MUTED)
+	_notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	titles.add_child(_notice)
 	var close: Button = UiStyle.make_button("✕", false, 14)
 	close.custom_minimum_size = Vector2(34, 30)
+	close.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	close.pressed.connect(close_panel)
 	header.add_child(close)
 
@@ -65,16 +77,54 @@ func is_open() -> bool:
 
 
 func open(tasks: Array[BackendModels.TaskInfo], player_cell: Vector2i, profile: BackendModels.Profile) -> void:
+	_tasks = tasks
+	_player_cell = player_cell
+	_profile = profile
+	_rebuild()
+	visible = true
+
+
+func _process(_delta: float) -> void:
+	if visible and lock_text() != _lock_text:
+		_rebuild()
+
+
+## Why tasks cannot start now, for the player: "" when they can.
+static func lock_text() -> String:
+	var schedule: BackendModels.TaskSchedule = Backend.task_schedule
+	match schedule.lock_reason():
+		"outside_task_window":
+			return TranslationServer.translate("TASKS_LOCK_WINDOW") % [schedule.window_start, schedule.window_end]
+		"task_cooldown":
+			return TranslationServer.translate("TASKS_LOCK_COOLDOWN") % TimeText.short_minutes(schedule.cooldown_left())
+	return ""
+
+
+func _rebuild() -> void:
 	var safe: Rect2 = PlatformServices.get_safe_rect()
 	var width: float = safe.size.x - SIDE_MARGIN * 2.0
 	_panel.custom_minimum_size = Vector2(width, 0)
-	_scroll.custom_minimum_size = Vector2(0, minf(430.0, safe.size.y - 140.0))
-	_subtitle.text = tr("TASKS_STREAK") % [profile.streak_days, "%.1f" % profile.multiplier]
+	_scroll.custom_minimum_size = Vector2(0, minf(430.0, safe.size.y - 160.0))
+	_subtitle.text = tr("TASKS_STREAK") % [_profile.streak_days, "%.1f" % _profile.multiplier]
+	_lock_text = lock_text()
+	_notice.custom_minimum_size = Vector2(width - 70.0, 0)
+	_notice.text = _pack_text()
+	if not _lock_text.is_empty():
+		_notice.text += "\n" + _lock_text
 	for child: Node in _list.get_children():
 		child.queue_free()
-	for task: BackendModels.TaskInfo in tasks:
-		_list.add_child(_make_row(task, task.spot == player_cell, width - 24.0))
-	visible = true
+	for task: BackendModels.TaskInfo in _tasks:
+		_list.add_child(_make_row(task, task.spot == _player_cell, width - 24.0))
+
+
+func _pack_text() -> String:
+	var count: int = _tasks.filter(func(task: BackendModels.TaskInfo) -> bool: return not task.is_check_in()).size()
+	if count == 0:
+		return tr("TASKS_NONE_TODAY")
+	var cooldown: int = Backend.task_schedule.cooldown_minutes
+	if cooldown <= 0:
+		return tr("TASKS_PACK_INFO_NO_PAUSE") % count
+	return tr("TASKS_PACK_INFO") % [count, TimeText.short_minutes(cooldown * 60)]
 
 
 func close_panel() -> void:
@@ -139,9 +189,17 @@ func _make_row(task: BackendModels.TaskInfo, at_spot: bool, width: float) -> Con
 	footer.add_child(reward)
 
 	var button: Button
+	var schedule: BackendModels.TaskSchedule = Backend.task_schedule
+	var lock: String = "" if task.is_check_in() else schedule.lock_reason()
 	if closed:
 		var state_key: String = "TASK_DONE" if task.completed else ("TASK_PENDING" if task.pending else "TASK_SKIPPED")
 		button = UiStyle.make_button(tr(state_key), false, 12)
+		button.disabled = true
+	elif lock == "task_cooldown":
+		button = UiStyle.make_button(tr("TASK_LOCKED_COOLDOWN") % TimeText.short_minutes(schedule.cooldown_left()), false, 10)
+		button.disabled = true
+	elif lock == "outside_task_window":
+		button = UiStyle.make_button(tr("TASK_LOCKED_WINDOW") % schedule.window_start, false, 10)
 		button.disabled = true
 	else:
 		button = UiStyle.make_button(tr("TASK_START") if at_spot else tr("TASK_GO"), true, 12)

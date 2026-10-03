@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, type PlayerSummary } from "./api";
 import type { DashboardActions } from "./Dashboard";
 import { Dropdown } from "./Dropdown";
-import { formatDateTime, formatDay } from "./format";
+import { formatDateTime, formatDay, formatPlayTime } from "./format";
+import { PLAY_STATES } from "./labels";
 import { PlayerStats } from "./PlayerStats";
 
-type SortKey = "created" | "activity" | "streak" | "office_days" | "tasks" | "coins";
+type SortKey = "created" | "activity" | "streak" | "office_days" | "tasks" | "coins" | "play";
 
 const SORTS: { value: SortKey; label: string; key: (p: PlayerSummary) => number }[] = [
   { value: "created", label: "Сначала новые", key: (p) => p.created_at },
@@ -14,6 +15,7 @@ const SORTS: { value: SortKey; label: string; key: (p: PlayerSummary) => number 
   { value: "office_days", label: "По дням в офисе", key: (p) => p.office_days },
   { value: "tasks", label: "По заданиям", key: (p) => p.tasks_total },
   { value: "coins", label: "По заработанным монетам", key: (p) => p.coins_earned },
+  { value: "play", label: "По времени в игре сегодня", key: (p) => p.play_seconds_today },
 ];
 
 const ALL_DEPARTMENTS = "__all__";
@@ -69,6 +71,7 @@ export function StatsPanel({ actions }: { actions: DashboardActions }) {
 
   const inOffice = (players ?? []).filter((p) => p.in_office).length;
   const presentToday = (players ?? []).filter((p) => p.present_today).length;
+  const limited = (players ?? []).filter((p) => p.play_state === "resting" || p.play_state === "blocked").length;
 
   return (
     <section className="card">
@@ -80,7 +83,8 @@ export function StatsPanel({ actions }: { actions: DashboardActions }) {
       </div>
       {players && (
         <p className="muted summary-line">
-          Игроков: <b>{players.length}</b> · сейчас в офисе: <b>{inOffice}</b> · были сегодня: <b>{presentToday}</b>
+          Игроков: <b>{players.length}</b> · сейчас в офисе: <b>{inOffice}</b> · были сегодня: <b>{presentToday}</b> · на
+          отдыхе или закрыто: <b>{limited}</b>
         </p>
       )}
       <div className="filters">
@@ -114,6 +118,7 @@ export function StatsPanel({ actions }: { actions: DashboardActions }) {
                 <th className="num">Заданий</th>
                 <th className="num">Заработано</th>
                 <th className="num">Баланс</th>
+                <th className="num">В игре сегодня</th>
                 <th>Последняя активность</th>
               </tr>
             </thead>
@@ -126,7 +131,7 @@ export function StatsPanel({ actions }: { actions: DashboardActions }) {
                   </td>
                   <td className="nowrap">{departmentName(p.department_id)}</td>
                   <td>
-                    <PresenceBadge player={p} />
+                    <PresenceBadge player={p} /> <PlayBadge player={p} />
                   </td>
                   <td className="num">
                     <b>{p.streak}</b>
@@ -136,6 +141,7 @@ export function StatsPanel({ actions }: { actions: DashboardActions }) {
                   <td className="num">{p.tasks_total}</td>
                   <td className="num">{p.coins_earned}</td>
                   <td className="num">{p.balance}</td>
+                  <td className="num nowrap">{formatPlayTime(p.play_seconds_today)}</td>
                   <td className="nowrap">
                     {p.last_activity ? formatDateTime(p.last_activity) : p.last_login_day ? formatDay(p.last_login_day) : "не играл"}
                   </td>
@@ -147,6 +153,14 @@ export function StatsPanel({ actions }: { actions: DashboardActions }) {
       )}
     </section>
   );
+}
+
+/** Continuous-play limit state; nothing while the player plays within the limit. */
+export function PlayBadge({ player }: { player: PlayerSummary }) {
+  if (player.banned || player.play_state === "ok" || !player.play_state) {
+    return null;
+  }
+  return <span className={player.play_state === "warning" ? "badge soft" : "badge missed"}>{PLAY_STATES[player.play_state]}</span>;
 }
 
 export function PresenceBadge({ player }: { player: PlayerSummary }) {

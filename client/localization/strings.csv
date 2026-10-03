@@ -181,7 +181,7 @@ NOTE_A,ЛЯ,A
 NOTE_AS,ЛЯ#,A#
 NOTE_B,СИ,B
 ERROR_PRESENCE_REQUIRED,Сначала отсканируй код ВХОД на экране у ресепшна,Scan the IN code on the reception screen first
-ERROR_OFFICE_NETWORK_REQUIRED,Подключись к Wi-Fi офиса: задания засчитываются только в его сети,Connect to the office Wi-Fi: tasks count only on its network
+ERROR_OFFICE_NETWORK_REQUIRED,Подключись к Wi-Fi офиса: игра работает только в его сети,Connect to the office Wi-Fi: the game works only on its network
 ERROR_PRESENCE_TOKEN_INVALID,QR-код устарел или недействителен,The QR code has expired or is invalid
 ERROR_PRESENCE_TOKEN_REUSED,Этот QR-код уже использован,This QR code has already been used
 ERROR_COLLEAGUE_INVALID,Неверный профиль коллеги,Invalid colleague profile
@@ -367,3 +367,38 @@ ERROR_INVALID_PAYLOAD,Сервер не понял запрос,The server did n
 ERROR_NOT_PLAYER,Это аккаунт администратора,This is the admin account
 ERROR_ALREADY_IN_OFFICE,Ты уже в офисе,You're already at the office
 ERROR_NOT_IN_OFFICE,Ты сейчас не в офисе,You're not at the office now
+ERROR_TASK_COOLDOWN,Пауза между заданиями ещё не закончилась,The break between tasks is not over yet
+ERROR_OUTSIDE_TASK_WINDOW,Задания засчитываются только в рабочее время,Tasks count only during working hours
+ERROR_TASK_NOT_TODAY,Этого задания сегодня нет в списке,This task is not on today's list
+ERROR_PLAY_RESTING,Сейчас перерыв: игра откроется после отдыха,Break time: the game opens after the rest
+ERROR_PLAY_BLOCKED,На сегодня игра закрыта,The game is closed for today
+TASKS_PACK_INFO,Заданий сегодня: %d · пауза между ними %s,Tasks today: %d · break between them %s
+TASKS_PACK_INFO_NO_PAUSE,Заданий сегодня: %d,Tasks today: %d
+TASKS_LOCK_COOLDOWN,Следующее задание — через %s,Next task in %s
+TASKS_LOCK_WINDOW,Задания засчитываются с %s до %s,Tasks count from %s to %s
+TASKS_NONE_TODAY,Сегодня выходной: заданий нет,Day off: no tasks today
+TASK_LOCKED_COOLDOWN,через %s,in %s
+TASK_LOCKED_WINDOW,с %s,from %s
+TIME_HOURS,час|часа|часов,hour|hours|hours
+TIME_HOURS_GEN,часа|часов|часов,hour|hours|hours
+TIME_MINUTES,минуту|минуты|минут,minute|minutes|minutes
+TIME_MINUTES_GEN,минуты|минут|минут,minute|minutes|minutes
+TIME_HOURS_MINUTES,%d ч %d мин,%d h %d min
+TIME_MINUTES_SHORT,%d мин,%d min
+PLAY_WARNING_TITLE,Пора отдохнуть,Time for a break
+PLAY_WARNING_TEXT,"Вы проводите в игре уже более %s! Отдохните и вернитесь в игру через %s, иначе доступ на сегодня будет ограничен!","You have been playing for more than %s! Take a break and come back in %s, or access will be limited for today!"
+PLAY_WARNING_HINT,"Выйдите из игры, пока идёт таймер",Leave the game before the timer runs out
+PLAY_REST_NOW,Отдохнуть сейчас,Rest now
+PLAY_WARNING_OK,Понятно,Got it
+PLAY_PILL,Выйти из игры: %s,Leave the game: %s
+PLAY_REST_TITLE,ПЕРЕРЫВ,BREAK
+PLAY_REST_TEXT,Отдохните и выпейте кофе. Игра откроется через:,Rest and have a coffee. The game opens in:
+PLAY_REST_DONE,Перерыв окончен. Можно возвращаться!,The break is over. Welcome back!
+PLAY_RESUME,Вернуться в игру,Back to the game
+PLAY_BLOCKED_TITLE,НА СЕГОДНЯ ВСЁ,THAT'S ALL FOR TODAY
+PLAY_BLOCKED_TEXT,"На сегодня вы провели слишком много времени в игре! Вам нужно отдохнуть. С любовью, Альфа Банк.","You have spent too much time in the game today! You need some rest. With love, Alfa-Bank."
+PLAY_DEFERRED_NOTICE,Время в игре вышло. Спокойно доиграйте мини-игру: после неё или после выхода из неё включится режим отдыха.,Your play time is up. Finish the minigame calmly: the rest starts once it ends or you leave it.
+PLAY_TASKS_AFTER_REST,Время в игре вышло: новые задания после отдыха,Your play time is up: new tasks after the rest
+NETWORK_TITLE,ТОЛЬКО В ОФИСЕ,OFFICE ONLY
+NETWORK_TEXT,Игра работает только в Wi-Fi офиса. Подключитесь к корпоративной сети: в мобильном интернете и дома игра недоступна.,The game works only on the office Wi-Fi. Connect to the corporate network: it is not available on mobile internet or at home.
+NETWORK_RETRY,Проверить снова,Check again
