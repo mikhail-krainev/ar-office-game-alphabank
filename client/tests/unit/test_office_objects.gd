@@ -17,15 +17,15 @@ func _target(id: String) -> OfficeObjects.Target:
 
 func test_target_matches_any_of_its_labels() -> void:
 	var mug: OfficeObjects.Target = _target("mug")
-	assert_float(mug.confidence_in(_labels({"Coffee": 0.71, "Room": 0.4}))).is_equal_approx(0.71, 0.001)
-	assert_float(mug.confidence_in(_labels({"Cup": 0.6, "Cappuccino": 0.9}))).is_equal_approx(0.9, 0.001)
-	assert_bool(mug.is_recognized(_labels({"Cup": 0.9}))).is_true()
+	assert_float(mug.confidence_in(_labels({"coffee mug": 0.71, "person": 0.4}))).is_equal_approx(0.71, 0.001)
+	assert_float(mug.confidence_in(_labels({"cup": 0.6, "coffee mug": 0.9}))).is_equal_approx(0.9, 0.001)
+	assert_bool(mug.is_recognized(_labels({"cup": 0.9}))).is_true()
 
 
 func test_low_confidence_and_other_objects_do_not_count() -> void:
 	var mug: OfficeObjects.Target = _target("mug")
-	assert_bool(mug.is_recognized(_labels({"Cup": OfficeObjects.MIN_CONFIDENCE - 0.01}))).is_false()
-	assert_bool(mug.is_recognized(_labels({"Chair": 0.99, "Plant": 0.98}))).is_false()
+	assert_bool(mug.is_recognized(_labels({"cup": OfficeObjects.MIN_CONFIDENCE - 0.01}))).is_false()
+	assert_bool(mug.is_recognized(_labels({"chair": 0.99, "potted plant": 0.98}))).is_false()
 	assert_float(mug.confidence_in([])).is_equal(0.0)
 
 

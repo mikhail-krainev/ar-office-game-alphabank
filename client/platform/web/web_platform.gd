@@ -1,8 +1,9 @@
 extends PlatformBackend
-## Web implementation (v2). Accelerometer (DeviceMotion) and microphone come from the Godot core.
-## Camera, QR (getUserMedia + jsQR), faces (MediaPipe) and the step counter run in camera_bridge.js;
-## only results come back: a small RGB preview, QR text, face boxes, steps. Pose, markers, objects
-## and speech are not bridged yet, so those tasks use their fallbacks. The camera needs HTTPS.
+## Web implementation. Accelerometer (DeviceMotion) and microphone come from the Godot core.
+## Camera, QR (getUserMedia + jsQR), faces, pose and objects (MediaPipe), ArUco markers (js-aruco2),
+## speech (Web Speech API) and the step counter run in camera_bridge.js; only results come back: a
+## small RGB preview, QR text, face boxes, pose landmarks, marker ids, object labels, recognized text,
+## steps. The camera and speech need HTTPS.
 ## Notifications use the Notification API: they are timed in the page, so they arrive only while the
 ## game tab is open (closed-tab delivery needs Web Push from the server). On iPhone the API exists
 ## only for a web app added to the home screen (iOS 16.4+).
@@ -10,9 +11,15 @@ extends PlatformBackend
 
 const PERMISSION_TIMEOUT: float = 60.0
 const BRIDGE_PATH: String = "res://platform/web/camera_bridge.js"
-const CAMERA_FEATURES: Array[Feature] = [Feature.CAMERA, Feature.QR_SCAN, Feature.FACE_DETECTION]
+const CAMERA_FEATURES: Array[Feature] = [
+	Feature.CAMERA, Feature.QR_SCAN, Feature.FACE_DETECTION, Feature.POSE_DETECTION,
+	Feature.MARKER_DETECTION, Feature.OBJECT_RECOGNITION,
+]
 const MOTION_FEATURES: Array[Feature] = [Feature.ACCELEROMETER, Feature.PEDOMETER]
-const CAMERA_MODES: Dictionary[CameraMode, String] = {CameraMode.QR: "qr", CameraMode.FACES: "faces"}
+const CAMERA_MODES: Dictionary[CameraMode, String] = {
+	CameraMode.QR: "qr", CameraMode.FACES: "faces", CameraMode.POSE: "pose",
+	CameraMode.MARKERS: "markers", CameraMode.LABELS: "labels",
+}
 const HELPERS_JS: String = """
 window.alfaOffice = window.alfaOffice || {
 	timers: {},
@@ -56,6 +63,8 @@ var _pick_callback: JavaScriptObject
 ## Callbacks stay referenced while JavaScript may call them.
 var _camera_callbacks: JavaScriptObject
 var _camera_callback_refs: Array[JavaScriptObject] = []
+var _speech_callbacks: JavaScriptObject
+var _speech_callback_refs: Array[JavaScriptObject] = []
 var _counting_steps: bool = false
 var _steps: int = 0
 
@@ -82,15 +91,16 @@ func has_feature(feature: PlatformBackend.Feature) -> bool:
 	match feature:
 		Feature.ACCELEROMETER, Feature.PEDOMETER:
 			return _is_phone() and _motion_permission() not in ["denied", "unsupported"]
-		Feature.CAMERA, Feature.QR_SCAN, Feature.FACE_DETECTION:
+		Feature.CAMERA, Feature.QR_SCAN, Feature.FACE_DETECTION, Feature.POSE_DETECTION, Feature.MARKER_DETECTION, Feature.OBJECT_RECOGNITION:
 			return bool(JavaScriptBridge.eval("window.alfaCamera.supported()", true)) and _camera_permission() != "denied"
-		Feature.MICROPHONE:
-			return super(feature)
+		Feature.SPEECH_RECOGNITION:
+			return bool(JavaScriptBridge.eval("window.alfaSpeech.supported()", true)) and _microphone_permission() != "denied"
 		Feature.NOTIFICATIONS:
 			return str(JavaScriptBridge.eval("window.alfaOffice.permission()", true)) != "unsupported"
 		Feature.PHOTO_LIBRARY:
 			return true
-	return false
+	# The microphone comes from the Godot core.
+	return super(feature)
 
 
 ## Browsers show the permission prompt only after a tap, so call this from a button handler.
@@ -99,6 +109,8 @@ func request_access(features: Array[PlatformBackend.Feature]) -> bool:
 	if features.any(func(feature: Feature) -> bool: return feature in MOTION_FEATURES) and _motion_permission() == "denied":
 		return false
 	if features.any(func(feature: Feature) -> bool: return feature in CAMERA_FEATURES) and not await _request_camera():
+		return false
+	if features.has(Feature.SPEECH_RECOGNITION) and not await _request_microphone():
 		return false
 	if not features.has(Feature.NOTIFICATIONS):
 		return true
@@ -115,13 +127,10 @@ func request_access(features: Array[PlatformBackend.Feature]) -> bool:
 
 func start_camera(mode: CameraMode, front: bool) -> void:
 	var camera_mode: String = CAMERA_MODES.get(mode, "preview")
-	_camera_callback_refs = [
-		JavaScriptBridge.create_callback(_on_frame), JavaScriptBridge.create_callback(_on_qr),
-		JavaScriptBridge.create_callback(_on_faces), JavaScriptBridge.create_callback(_on_camera_error),
-	]
-	_camera_callbacks = JavaScriptBridge.create_object("Object")
-	for index: int in _camera_callback_refs.size():
-		_camera_callbacks.set(["frame", "qr", "faces", "error"][index], _camera_callback_refs[index])
+	_camera_callbacks = _make_callbacks({
+		"frame": _on_frame, "qr": _on_qr, "faces": _on_faces, "pose": _on_pose,
+		"markers": _on_markers, "labels": _on_labels, "error": _on_camera_error,
+	}, _camera_callback_refs)
 	var camera: JavaScriptObject = JavaScriptBridge.get_interface("alfaCamera")
 	camera.call("start", camera_mode, front, _camera_callbacks)
 
@@ -130,6 +139,18 @@ func stop_camera() -> void:
 	JavaScriptBridge.eval("window.alfaCamera.stop()", true)
 	_camera_callbacks = null
 	_camera_callback_refs.clear()
+
+
+func start_speech(locale: String) -> void:
+	_speech_callbacks = _make_callbacks({"result": _on_speech_result, "error": _on_speech_error}, _speech_callback_refs)
+	var speech: JavaScriptObject = JavaScriptBridge.get_interface("alfaSpeech")
+	speech.call("start", locale, _speech_callbacks)
+
+
+func stop_speech() -> void:
+	JavaScriptBridge.eval("window.alfaSpeech.stop()", true)
+	_speech_callbacks = null
+	_speech_callback_refs.clear()
 
 
 func start_step_counter() -> void:
@@ -187,6 +208,41 @@ func _on_faces(args: Array) -> void:
 		faces_detected.emit(SensorModels.parse_faces(str(args[0])))
 
 
+func _on_pose(args: Array) -> void:
+	if not args.is_empty():
+		pose_detected.emit(SensorModels.parse_pose(str(args[0])))
+
+
+func _on_markers(args: Array) -> void:
+	if not args.is_empty():
+		markers_detected.emit(SensorModels.parse_markers(str(args[0])))
+
+
+func _on_labels(args: Array) -> void:
+	if not args.is_empty():
+		labels_detected.emit(SensorModels.parse_labels(str(args[0])))
+
+
+func _on_speech_result(args: Array) -> void:
+	if args.size() >= 2:
+		speech_recognized.emit(str(args[0]), bool(args[1]))
+
+
+func _on_speech_error(args: Array) -> void:
+	speech_failed.emit(str(args[0]) if not args.is_empty() else "error")
+
+
+## A JavaScript object {name: callback}. The callbacks are kept in `refs` while JavaScript may call them.
+func _make_callbacks(handlers: Dictionary[String, Callable], refs: Array[JavaScriptObject]) -> JavaScriptObject:
+	refs.clear()
+	var callbacks: JavaScriptObject = JavaScriptBridge.create_object("Object")
+	for name: String in handlers:
+		var callback: JavaScriptObject = JavaScriptBridge.create_callback(handlers[name])
+		refs.append(callback)
+		callbacks.set(name, callback)
+	return callbacks
+
+
 func _on_camera_error(args: Array) -> void:
 	push_warning("Web camera: %s" % (str(args[0]) if not args.is_empty() else "error"))
 
@@ -199,6 +255,20 @@ func _request_camera() -> bool:
 		await get_tree().process_frame
 		waited += get_process_delta_time()
 	return _camera_permission() == "granted"
+
+
+## Shows the browser's microphone prompt once; false only when the player refused.
+func _request_microphone() -> bool:
+	JavaScriptBridge.eval("window.alfaSpeech.requestPermission()", true)
+	var waited: float = 0.0
+	while _microphone_permission() in ["unknown", "pending"] and waited < PERMISSION_TIMEOUT:
+		await get_tree().process_frame
+		waited += get_process_delta_time()
+	return _microphone_permission() == "granted"
+
+
+func _microphone_permission() -> String:
+	return str(JavaScriptBridge.eval("window.alfaSpeech.permission()", true))
 
 
 func _camera_permission() -> String:

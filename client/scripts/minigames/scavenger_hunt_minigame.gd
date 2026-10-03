@@ -1,7 +1,7 @@
 class_name ScavengerHuntMinigame
 extends Minigame
 ## "Scavenger hunt": find the printed ArUco markers (DICT_4X4_50) stuck to office objects: the water
-## cooler, a plant, the logo. Recognizing real objects without markers is planned for later.
+## cooler, a plant, the logo. The web build detects them with js-aruco2.
 
 const DEFAULT_TIME_LIMIT: float = 300.0
 const HOLD_SECONDS: float = 0.5

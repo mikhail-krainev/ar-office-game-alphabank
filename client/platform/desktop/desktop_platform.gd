@@ -20,7 +20,7 @@ var tilt: Vector2 = Vector2.ZERO
 var face_count: int = 0
 var smiling: bool = false
 var marker_id: int = 0
-## ML Kit label the emulated camera "sees" in CameraMode.LABELS.
+## Object label the emulated camera "sees" in CameraMode.LABELS.
 var label_id: String = ""
 ## 0 = standing, 1 = full squat.
 var squat_depth: float = 0.0
@@ -219,7 +219,7 @@ func _labels() -> Array[SensorModels.ObjectLabel]:
 	var result: Array[SensorModels.ObjectLabel] = []
 	if not label_id.is_empty():
 		result.append(SensorModels.ObjectLabel.new(label_id, 0.86))
-	result.append(SensorModels.ObjectLabel.new("Room", 0.42))
+	result.append(SensorModels.ObjectLabel.new("person", 0.42))
 	return result
 
 

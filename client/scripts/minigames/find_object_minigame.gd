@@ -1,7 +1,7 @@
 class_name FindObjectMinigame
 extends Minigame
 ## "Find the object": the game names an everyday office thing - a mug, a plant, a screen - and the
-## player shows it to the camera. ML Kit recognizes the object; the frame is only used on the device.
+## player shows it to the camera. MediaPipe models recognize it; the frame never leaves the phone.
 ## Each round asks for a different object, and the camera has to leave it before the next round.
 
 const DEFAULT_ROUNDS: int = 3

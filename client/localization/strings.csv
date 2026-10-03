@@ -202,10 +202,11 @@ OBJ_SCREEN,Монитор,Screen
 OBJ_CHAIR,Стул,Chair
 OBJ_CLOCK,Часы,Clock
 OBJ_PHONE,Телефон,Phone
-OBJ_WHITEBOARD,Маркерная доска,Whiteboard
+OBJ_KEYBOARD,Клавиатура,Keyboard
 OBJ_PAPERS,Бумаги,Papers
 OBJ_GLASSES,Очки,Glasses
 OBJ_BAG,Сумка,Bag
+OBJ_BOTTLE,Бутылка,Bottle
 ROOM_PA_OPEN_SPACE,Опенспейс аналитиков,Analysts' open space
 ROOM_PA_DATA_LAB,Дата-лаб,Data lab
 ROOM_PA_CORRIDOR,Коридор,Corridor

@@ -1,11 +1,13 @@
 class_name OfficeObjects
 extends RefCounted
-## Objects for the "Find the object" task. Every target lists the ML Kit labels that count as a hit;
-## only labels from the bundled base model are used, so recognition works offline and needs no
-## custom model. One object often produces several labels (a mug is "Cup", "Coffee" or "Cappuccino"),
-## so each target accepts a small group of them.
+## Objects for the "Find the object" task. Every target lists the labels that count as a hit. The
+## web build recognizes objects with two stock MediaPipe models: the EfficientDet-Lite0 detector (COCO
+## classes, e.g. "cup", "potted plant") and the EfficientNet-Lite0 classifier (ImageNet classes, e.g.
+## "coffee mug", "wall clock"). No custom model is trained, so only things those classes cover are used.
+## One object often produces several labels, so each target accepts a small group of them.
 
-const MIN_CONFIDENCE: float = 0.55
+## Detector scores and classifier probabilities of a clearly visible object are usually above this.
+const MIN_CONFIDENCE: float = 0.45
 
 
 class Target:
@@ -34,16 +36,17 @@ class Target:
 
 static func defaults() -> Array[Target]:
 	return [
-		Target.new("mug", "OBJ_MUG", PackedStringArray(["Cup", "Coffee", "Cappuccino", "Saucer", "Juice"])),
-		Target.new("plant", "OBJ_PLANT", PackedStringArray(["Plant", "Flowerpot", "Flower", "Flora"])),
-		Target.new("screen", "OBJ_SCREEN", PackedStringArray(["Computer", "Television", "Screenshot"])),
-		Target.new("chair", "OBJ_CHAIR", PackedStringArray(["Chair", "Couch", "Loveseat"])),
-		Target.new("clock", "OBJ_CLOCK", PackedStringArray(["Clock"])),
-		Target.new("phone", "OBJ_PHONE", PackedStringArray(["Mobile phone", "Telephone"])),
-		Target.new("whiteboard", "OBJ_WHITEBOARD", PackedStringArray(["Whiteboard", "Blackboard", "Presentation"])),
-		Target.new("papers", "OBJ_PAPERS", PackedStringArray(["Paper", "Newspaper", "Receipt", "Menu", "Book"])),
-		Target.new("glasses", "OBJ_GLASSES", PackedStringArray(["Glasses", "Sunglasses", "Goggles"])),
-		Target.new("bag", "OBJ_BAG", PackedStringArray(["Bag", "Handbag", "Backpack"])),
+		Target.new("mug", "OBJ_MUG", PackedStringArray(["cup", "coffee mug"])),
+		Target.new("plant", "OBJ_PLANT", PackedStringArray(["potted plant", "pot", "vase"])),
+		Target.new("screen", "OBJ_SCREEN", PackedStringArray(["tv", "laptop", "monitor", "screen", "desktop computer", "television", "notebook"])),
+		Target.new("chair", "OBJ_CHAIR", PackedStringArray(["chair", "couch", "folding chair", "rocking chair", "barber chair", "studio couch"])),
+		Target.new("clock", "OBJ_CLOCK", PackedStringArray(["clock", "wall clock", "analog clock", "digital clock"])),
+		Target.new("phone", "OBJ_PHONE", PackedStringArray(["cell phone", "cellular telephone", "dial telephone"])),
+		Target.new("keyboard", "OBJ_KEYBOARD", PackedStringArray(["keyboard", "computer keyboard", "typewriter keyboard"])),
+		Target.new("papers", "OBJ_PAPERS", PackedStringArray(["book", "binder", "envelope", "menu", "book jacket", "comic book"])),
+		Target.new("glasses", "OBJ_GLASSES", PackedStringArray(["sunglasses", "sunglass"])),
+		Target.new("bag", "OBJ_BAG", PackedStringArray(["backpack", "handbag", "suitcase", "purse", "mailbag", "plastic bag"])),
+		Target.new("bottle", "OBJ_BOTTLE", PackedStringArray(["bottle", "water bottle", "pop bottle"])),
 	]
 
 

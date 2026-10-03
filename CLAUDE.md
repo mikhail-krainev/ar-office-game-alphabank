@@ -39,7 +39,10 @@
 | Шаги, наклон | DeviceMotion |
 | Уведомления | Notification API (пока открыта вкладка), Web Push от сервера — позже |
 | Выбор фото из галереи | `JavaScriptBridge` + `<input type="file">` |
-| Предметы, поза, метки, речь | пока нет: задания идут в упрощённой экранной версии |
+| Поза | MediaPipe Pose Landmarker |
+| Предметы | MediaPipe Object Detector (COCO) + Image Classifier (ImageNet) |
+| Метки ArUco | js-aruco2 (DICT_4X4_50) |
+| Речь | Web Speech API (`SpeechRecognition`) |
 
 Игровой код обращается только к `PlatformServices`, никогда напрямую к `JavaScriptBridge`.
 

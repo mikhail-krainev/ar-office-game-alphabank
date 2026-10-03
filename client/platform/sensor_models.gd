@@ -1,7 +1,7 @@
 class_name SensorModels
 extends RefCounted
-## Data passed from the platform layer to game code. Native plugins send JSON; these helpers
-## convert it so game code never parses plugin payloads itself.
+## Data passed from the platform layer to game code. The web bridge sends JSON; these helpers
+## convert it so game code never parses bridge payloads itself.
 
 
 ## One detected face. Coordinates are normalized to the camera frame (0..1).
@@ -17,7 +17,7 @@ class Face:
 		smiling = p_smiling
 
 
-## One recognized object: the ML Kit label text and how sure the model is.
+## One recognized object: the model label text and how sure the model is.
 class ObjectLabel:
 	extends RefCounted
 
@@ -29,7 +29,7 @@ class ObjectLabel:
 		confidence = p_confidence
 
 
-## Pose landmark names used by game code (ML Kit / Vision / MediaPipe names map to these).
+## Pose landmark names used by game code (MediaPipe landmark indices map to these).
 const POSE_LANDMARKS: Array[StringName] = [
 	&"nose", &"left_shoulder", &"right_shoulder", &"left_hip", &"right_hip",
 	&"left_knee", &"right_knee", &"left_ankle", &"right_ankle",
@@ -84,7 +84,7 @@ static func parse_markers(json: String) -> PackedInt32Array:
 	return result
 
 
-## Labels JSON: {"labels": [{"id": "Coffee", "confidence": 0.82}, ...]}, most confident first.
+## Labels JSON: {"labels": [{"id": "coffee mug", "confidence": 0.82}, ...]}, most confident first.
 static func parse_labels(json: String) -> Array[ObjectLabel]:
 	var result: Array[ObjectLabel] = []
 	var parsed: Variant = JSON.parse_string(json)
