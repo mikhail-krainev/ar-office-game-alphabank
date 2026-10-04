@@ -56,18 +56,20 @@ type MorningReport struct {
 }
 
 type PlayerState struct {
-	FirstDay           int                          `json:"first_day"`
-	LastLoginDay       int                          `json:"last_login_day"`
-	ProcessedDay       int                          `json:"processed_day"`
-	BestStreak         int                          `json:"best_streak"`
-	DevDayShift        int                          `json:"dev_day_shift,omitempty"`
-	PresenceDays       map[string]bool              `json:"presence_days"`
-	ExcusedDays        map[string]bool              `json:"excused_days"`
-	CheckinAt          map[string]int64             `json:"checkin_at"`
-	CheckoutAt         map[string]int64             `json:"checkout_at"`
-	Completed          map[string][]string          `json:"completed"`
-	Skipped            map[string][]string          `json:"skipped"`
-	Pending            map[string][]string          `json:"pending"`
+	FirstDay     int                 `json:"first_day"`
+	LastLoginDay int                 `json:"last_login_day"`
+	ProcessedDay int                 `json:"processed_day"`
+	BestStreak   int                 `json:"best_streak"`
+	DevDayShift  int                 `json:"dev_day_shift,omitempty"`
+	PresenceDays map[string]bool     `json:"presence_days"`
+	ExcusedDays  map[string]bool     `json:"excused_days"`
+	CheckinAt    map[string]int64    `json:"checkin_at"`
+	CheckoutAt   map[string]int64    `json:"checkout_at"`
+	Completed    map[string][]string `json:"completed"`
+	Skipped      map[string][]string `json:"skipped"`
+	Pending      map[string][]string `json:"pending"`
+	// Tasks taken in their room (tasks.go: rpcTakeTask); only taken tasks can be completed.
+	Taken              map[string][]string          `json:"taken"`
 	Earned             map[string]int               `json:"earned"`
 	TaskLog            map[string][]TaskLogEntry    `json:"task_log"`
 	Met                map[string][]string          `json:"met"`
@@ -82,11 +84,13 @@ type PlayerState struct {
 	HasCustomAvatar    bool                         `json:"has_custom_avatar"`
 	UsedPresenceTokens []string                     `json:"used_presence_tokens"`
 	// Office of the last entry code; "" in states written before offices existed (the default office).
-	PresenceOffice string         `json:"presence_office,omitempty"`
-	PhotoRequests  []PhotoRequest `json:"photo_requests"`
-	MorningReport  MorningReport  `json:"morning_report"`
-	CoinsEarned    int            `json:"coins_earned"`
-	WelcomeGiven   bool           `json:"welcome_given"`
+	PresenceOffice string `json:"presence_office,omitempty"`
+	// Room of the last room code inside the office interval; "" right after the entry and the exit.
+	Room          string         `json:"room,omitempty"`
+	PhotoRequests []PhotoRequest `json:"photo_requests"`
+	MorningReport MorningReport  `json:"morning_report"`
+	CoinsEarned   int            `json:"coins_earned"`
+	WelcomeGiven  bool           `json:"welcome_given"`
 	// Unix time the admin banned the player; 0 when not banned (users.go: rpcAdminSetBanned).
 	BannedAt int64 `json:"banned_at,omitempty"`
 	// Unix time of the last task that started the cooldown (limits.go).
@@ -111,7 +115,7 @@ func (s *PlayerState) normalize() {
 	if s.CheckoutAt == nil {
 		s.CheckoutAt = map[string]int64{}
 	}
-	for _, m := range []*map[string][]string{&s.Completed, &s.Skipped, &s.Pending, &s.Met, &s.Purchases} {
+	for _, m := range []*map[string][]string{&s.Completed, &s.Skipped, &s.Pending, &s.Taken, &s.Met, &s.Purchases} {
 		if *m == nil {
 			*m = map[string][]string{}
 		}
@@ -261,7 +265,7 @@ func runUserTx(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtim
 			return "", err
 		}
 		tx.offset = gameContent.officeOffset()
-		tx.now = time.Now().Unix()
+		tx.now = gameNow()
 		if devMode {
 			tx.now += int64(tx.me.state.DevDayShift) * secondsPerDay
 		}

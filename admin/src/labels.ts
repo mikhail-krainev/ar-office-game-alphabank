@@ -5,6 +5,7 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   check_in: "Вход в офис",
   check_out: "Выход из офиса",
   room: "Отметка в комнате",
+  task_taken: "Задание взято",
   task_done: "Задание выполнено",
   task_pending: "Задание ждёт подтверждения",
   task_skipped: "Задание пропущено",
@@ -42,6 +43,7 @@ export const SUSPICIOUS_LABELS: Record<string, string> = {
   same_department_twice: "Два коллеги из одного департамента",
   photo_declined_by_partner: "Коллега не подтвердил фото",
   daily_cap_reached: "Дневной лимит монет",
+  task_not_taken: "Задание не взято в его комнате",
 };
 
 /** Actions in the suspicious log that are not tasks. */

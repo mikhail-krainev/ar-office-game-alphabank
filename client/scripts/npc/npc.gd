@@ -21,6 +21,7 @@ var _state: State = State.WORKING
 var _activity_index: int = 0
 var _work_left: float = 0.0
 var _path: PackedVector2Array = PackedVector2Array()
+var _bubble: SpeechBubble
 
 
 func setup(p_definition: NpcRoster.Definition, map: WorldMap) -> void:
@@ -37,6 +38,16 @@ func setup(p_definition: NpcRoster.Definition, map: WorldMap) -> void:
 
 func is_hit(world_position: Vector2) -> bool:
 	return HIT_RECT.has_point(world_position - global_position)
+
+
+## A line of a chat in a speech bubble above the head.
+func say(text: String, duration: float = 3.2) -> void:
+	if text.is_empty():
+		return
+	if _bubble == null:
+		_bubble = SpeechBubble.new()
+		add_child(_bubble)
+	_bubble.say(text, duration)
 
 
 func begin_talk(listener_position: Vector2) -> void:

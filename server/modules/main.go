@@ -41,6 +41,7 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		return errors.New("set PRESENCE_SECRET (16+ characters)")
 	}
 	devMode = env["DEV_MODE"] == "true"
+	testClock = env["TEST_CLOCK"] == "true"
 	// OFFICE_NETWORKS only seeds the network of the default office; the admin edits offices in the panel.
 	if _, err := parseOfficeNetworks(env["OFFICE_NETWORKS"]); err != nil {
 		return err
@@ -67,6 +68,8 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"admin_player_stats":      rpcAdminPlayerStats,
 		"admin_get_limits":        rpcAdminGetLimits,
 		"admin_set_limits":        rpcAdminSetLimits,
+		"admin_get_clock":         rpcAdminGetClock,
+		"admin_set_clock":         rpcAdminSetClock,
 		// Game: only from the office network (officeOnly below), except the ones in anywhereRpcs.
 		"login":                 rpcLogin,
 		"get_my_profile":        rpcGetMyProfile,
@@ -76,6 +79,8 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"office_check_in":       rpcOfficeCheckIn,
 		"office_check_out":      rpcOfficeCheckOut,
 		"enter_room":            rpcEnterRoom,
+		"leave_office":          rpcLeaveOffice,
+		"take_task":             rpcTakeTask,
 		"kiosk_codes":           rpcKioskCodes,
 		"get_shop":              rpcGetShop,
 		"buy":                   rpcBuy,
@@ -111,6 +116,12 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 	if devMode {
 		logger.Warn("DEV_MODE is on: dev RPCs and the dev clock are enabled")
 		if err := registerDevRpcs(initializer); err != nil {
+			return err
+		}
+	}
+	if testClock {
+		logger.Warn("TEST_CLOCK is on: the admin can move the game time forward")
+		if err := loadClock(ctx, nk); err != nil {
 			return err
 		}
 	}

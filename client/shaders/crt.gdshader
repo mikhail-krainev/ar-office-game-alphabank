@@ -1,5 +1,6 @@
 shader_type canvas_item;
 // Full-screen retro post-process: curvature, chromatic aberration, cheap glow, scanlines, noise, vignette.
+// Transparent pixels stay transparent: the web camera video under the canvas shows through them.
 
 uniform sampler2D screen_texture : hint_screen_texture, filter_nearest;
 uniform float curvature : hint_range(0.0, 0.2) = 0.02;
@@ -31,6 +32,7 @@ void fragment() {
 		COLOR = vec4(0.0, 0.0, 0.0, 1.0);
 	} else {
 		vec2 px = SCREEN_PIXEL_SIZE;
+		float alpha = texture(screen_texture, SCREEN_UV).a;
 		vec3 color;
 		color.r = texture(screen_texture, uv + vec2(px.x * aberration_px, 0.0)).r;
 		color.g = texture(screen_texture, uv).g;
@@ -55,6 +57,6 @@ void fragment() {
 		vec2 centered = uv * 2.0 - 1.0;
 		color *= clamp(1.0 - vignette_strength * 0.35 * dot(centered, centered), 0.0, 1.0);
 
-		COLOR = vec4(color, 1.0);
+		COLOR = vec4(color, alpha);
 	}
 }

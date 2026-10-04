@@ -332,8 +332,14 @@ function activityRow(event: ActivityEvent, name: (id: string) => string): Journa
     case "check_in":
       detail = text("office") ? `офис «${name(text("office"))}»` : "";
       break;
+    case "check_out":
+      detail = text("how") === "home" ? "кнопка «Поехать домой»" : "";
+      break;
     case "room":
       detail = label(ROOM_LABELS, text("room"));
+      break;
+    case "task_taken":
+      detail = `${name(text("task"))} · ${label(ROOM_LABELS, text("room"))}`;
       break;
     case "task_done":
       detail = `${name(text("task"))} · +${String(params.reward ?? 0)}`;

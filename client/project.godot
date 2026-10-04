@@ -23,6 +23,7 @@ PlayTime="*res://scripts/services/play_time.gd"
 [audio]
 
 driver/enable_input=true
+driver/enable_input.web=false
 
 [debug]
 
@@ -41,6 +42,7 @@ window/stretch/mode="viewport"
 window/stretch/aspect="expand"
 window/stretch/scale_mode="integer"
 window/handheld/orientation=1
+window/per_pixel_transparency/allowed=true
 
 [gui]
 

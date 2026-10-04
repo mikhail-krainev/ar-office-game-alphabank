@@ -79,7 +79,7 @@ func _home_tour() -> void:
 	await _teleport(home, _find(layout, "wardrobe").stand_cell)
 	await _wait(1.2)
 	await _shot("h2_bedroom")
-	home.call("_use", _find(layout, "wardrobe"))
+	home.call("_open_wardrobe")
 	await _wait(1.5)
 	await _shot("h3_wardrobe")
 	var wardrobe: WardrobePanel = home.get("_wardrobe")
@@ -97,21 +97,8 @@ func _home_tour() -> void:
 	wardrobe.call("_save_and_close")
 	await _wait(1.2)
 	await _shot("h6_new_look")
-	await _teleport(home, _find(layout, "laptop").stand_cell)
-	home.call("_use", _find(layout, "laptop"))
-	await _wait(1.6)
-	await _shot("h7_laptop")
-	var dialogue: DialogueBox = home.get("_dialogue")
-	for i: int in 6:
-		if dialogue.is_open():
-			dialogue.call("_advance")
-			await _wait(0.4)
-	await _wait(0.8)
-	await _shot("h8_laptop_choice")
-	(home.get("_choice") as ChoicePrompt).emit_signal("_answered", false)
-	await _wait(0.5)
 	await _teleport(home, _find(layout, "keys").stand_cell)
-	home.call("_use", _find(layout, "keys"))
+	home.call("_open_garage")
 	await _wait(1.5)
 	await _shot("h9_garage")
 	(home.get("_shop_panel") as ShopPanel).visible = false
@@ -149,19 +136,13 @@ func _office_tour() -> void:
 	await _teleport(office, Vector2i(24, 23))
 	await _wait(1.0)
 	await _shot("o2_reception_pins")
-	await _drag_check(office)
 	for child: Node in (office.get("_entities") as Node).get_children():
 		var npc: Npc = child as Npc
 		if npc != null and npc.definition.id == "reception":
-			office.call("_approach", npc)
-	await _wait(3.0)
+			office.call("_chat_with", npc)
+	await _wait(4.0)
 	await _shot("o3_reception_talk")
-	var dialogue: DialogueBox = office.get("_dialogue")
-	for i: int in 8:
-		if dialogue.is_open():
-			dialogue.call("_advance")
-			await _wait(0.4)
-	await _wait(0.8)
+	await _wait(6.0)
 	office.call("_open_tasks")
 	await _wait(1.0)
 	await _shot("o4_tasks")
@@ -182,6 +163,7 @@ func _office_tour() -> void:
 		if task.skippable:
 			await Backend.skip_task(task.id)
 		elif task.assignment.is_empty():
+			await _take(task)
 			await Backend.complete_task(task.id, true, {"colleague_ids": []})
 	office.call("_refresh_tasks")
 	await _wait(1.0)
@@ -212,6 +194,7 @@ func _minigame_tour(office: Node) -> void:
 			continue
 		index += 1
 		await _teleport(office, task.spot)
+		await _take(task)
 		office.call("_go_to_task", task)
 		await _wait(0.8)
 		if setups.has(task.minigame):
@@ -257,6 +240,7 @@ func _social_tour() -> void:
 		if task.id != "selfie":
 			continue
 		await _teleport(office, task.spot)
+		await _take(task)
 		office.call("_go_to_task", task)
 		await _wait(1.2)
 		await _shot("s2_photo_partner")
@@ -292,6 +276,15 @@ func _social_tour() -> void:
 	await _shot("s10_profile_history")
 	profile.close_panel()
 	await _raffle_tour(office)
+
+
+## Scans the task's room code and takes the task, as the player does at the room door. Before the
+## check-in the server refuses both; the task is still marked taken, so its minigame opens for a shot.
+func _take(task: BackendModels.TaskInfo) -> void:
+	if not task.is_check_in():
+		await Backend.enter_room(String(task.room))
+		await Backend.take_task(task.id)
+	task.taken = true
 
 
 ## Entry code from the dev server, then the check-in task (or a plain entry if it is done today).
@@ -354,6 +347,7 @@ func _analytics_tour() -> void:
 		if task.floor_id != OfficeFloors.ANALYTICS or task.minigame == "meet_colleague" and task.assignment.is_empty():
 			continue
 		await _teleport(office, task.spot)
+		await _take(task)
 		office.call("_go_to_task", task)
 		await _wait(1.4)
 		await _shot("a7_%s" % task.id)
@@ -364,7 +358,7 @@ func _analytics_tour() -> void:
 		var npc: Npc = child as Npc
 		if npc != null and npc.definition.id == "masha":
 			await _teleport(office, (office.get("_map") as WorldMap).world_to_cell(npc.global_position) + Vector2i(0, 1))
-			office.call("_approach", npc)
+			office.call("_chat_with", npc)
 	await _wait(2.0)
 	await _shot("a8_talk_masha")
 	OfficeFloors.reset()
@@ -432,6 +426,7 @@ func _deferred_rest_tour() -> void:
 		if task.floor_id != OfficeFloors.current:
 			continue
 		await _teleport(office, task.spot)
+		await _take(task)
 		office.call("_go_to_task", task)
 		await _wait(1.0)
 		await Backend.dev_call("dev_play_state", {"state": "deferred"})
@@ -447,37 +442,11 @@ func _deferred_rest_tour() -> void:
 	await _wait(1.0)
 
 
-## Holds a finger to the left of the player and keeps it there: the player should keep walking left.
 ## The reception screen with the rotating presence code, normally shown on a TV in the office.
 func _office_screen_tour() -> void:
 	get_tree().change_scene_to_file("res://scenes/kiosk/office_screen.tscn")
 	await _wait(1.2)
 	await _shot("k1_office_screen")
-
-
-func _drag_check(scene: Node) -> void:
-	var viewport: Viewport = get_viewport()
-	var player: Player = scene.get("_player")
-	var start_x: float = player.global_position.x
-	var center: Vector2 = viewport.get_visible_rect().size / 2.0
-	var press: InputEventScreenTouch = InputEventScreenTouch.new()
-	press.pressed = true
-	press.position = center + Vector2(-20, 0)
-	viewport.push_input(press, true)
-	for i: int in 6:
-		var drag: InputEventScreenDrag = InputEventScreenDrag.new()
-		drag.position = center + Vector2(-20 - i * 20, 0)
-		drag.relative = Vector2(-20, 0)
-		viewport.push_input(drag, true)
-		await get_tree().process_frame
-	await _wait(1.5)
-	await _shot("o2b_drag")
-	var release: InputEventScreenTouch = InputEventScreenTouch.new()
-	release.pressed = false
-	release.position = center + Vector2(-120, 0)
-	viewport.push_input(release, true)
-	print("drag check: player moved %.0f px, still walking=%s" % [player.global_position.x - start_x, player.is_walking()])
-	await _wait(1.0)
 
 
 func _find(layout: HomeLayout, id: String) -> HomeLayout.Interactable:

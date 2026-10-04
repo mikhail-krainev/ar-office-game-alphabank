@@ -14,13 +14,16 @@ HOME_ROOM_HALL,Прихожая,Hallway
 HOME_ROOM_LIVING,Гостиная,Living room
 HOME_ROOM_KITCHEN,Кухня,Kitchen
 HUD_TITLE,АЛЬФА ОФИС,ALFA OFFICE
-HUD_HINT,"Нажми на карту - иди. Красные метки - задания: нажми, и игра начнётся на месте",Tap the map to walk. Red markers are tasks: tap one to go and start it
+HUD_HINT,"Персонаж живёт сам. Выбери задание в списке справа или нажми на красную метку",The character lives by itself. Pick a task in the list on the right or tap a red marker
 HUD_HOME_TITLE,ДОМА,AT HOME
-HUD_HOME_HINT,"Гуляй по квартире. Шкаф - гардероб, ноутбук или дверь - поехать в офис","Walk around the flat. Wardrobe for outfits, laptop or door to go to the office"
+HUD_HOME_HINT,"Утро дома. Кнопки внизу: гардероб, гараж и поездка в офис","Morning at home. The buttons below: wardrobe, garage and the trip to the office"
 HUD_BLOCKED,Туда не пройти,Can't go there
 HUD_TASKS,ЗАДАНИЯ,TASKS
 HUD_SHOP,МАГАЗИН,SHOP
-HUD_GO_HOME,ОТПРАВИТЬСЯ ДОМОЙ,GO HOME
+HUD_GO_HOME,ПОЕХАТЬ ДОМОЙ,GO HOME
+HUD_GO_OFFICE,ПОЕХАТЬ В ОФИС,GO TO THE OFFICE
+HUD_WARDROBE,Гардероб,Wardrobe
+HUD_GARAGE,Гараж,Garage
 HUD_ALL_DONE,Все задания закрыты! Можно домой,All tasks closed! Time to go home
 HUD_GO_HOME_REMARK,"Всё, на сегодня хватит!",That's it for today!
 DIALOGUE_YOU,Ты,You
@@ -31,7 +34,6 @@ HOME_LAPTOP_QUESTION,Закрыть ноутбук и поехать в офис
 TASKS_TITLE,Задания на сегодня,Today's tasks
 TASKS_STREAK,Серия: %d дн. · множитель x%s,Streak: %d days · multiplier x%s
 TASK_START,Начать,Start
-TASK_GO,Идти,Go
 TASK_DONE,Готово,Done
 TASK_REWARD,+%d альфа-коинов,+%d alfa coins
 TASK_DIFFICULTY_HARD,Сложно,Hard
@@ -139,7 +141,10 @@ QR_ALREADY_CHECKED_IN,Ты уже в офисе,You're already at the office
 QR_BACK_IN_OFFICE,С возвращением в офис!,Welcome back to the office!
 QR_CHECKED_OUT,"Ты вышел из офиса. Задания подождут до следующего входа","You've left the office. Tasks will wait until you come back"
 MG_NO_SENSORS,На этом устройстве нет нужных датчиков.,This device lacks the required sensors.
-MG_NO_PERMISSION,Нет доступа к датчикам.,No access to the sensors.
+MG_NO_PERMISSION,Нет доступа к датчикам движения.,No access to the motion sensors.
+MG_NO_MIC_PERMISSION,"Нет доступа к микрофону. Разреши его в настройках сайта (значок слева от адреса) и открой задание снова.","No access to the microphone. Allow it in the site settings (the icon left of the address) and open the task again."
+MG_NO_MIC_SYSTEM,"Браузеру запрещён микрофон в настройках телефона. iPhone: Настройки - Safari (или твой браузер) - Микрофон - Разрешить. Android: Настройки - Приложения - браузер - Разрешения - Микрофон. Потом открой задание снова.","The browser has no microphone access in the phone settings. iPhone: Settings - Safari (or your browser) - Microphone - Allow. Android: Settings - Apps - the browser - Permissions - Microphone. Then open the task again."
+MG_NO_CAMERA_PERMISSION,"Нет доступа к камере. Разреши её в настройках сайта (значок слева от адреса) и открой задание снова.","No access to the camera. Allow it in the site settings (the icon left of the address) and open the task again."
 MG_FALLBACK,Играем в упрощённую версию.,Playing the simplified version.
 MG_UNAVAILABLE,Задание недоступно на этом устройстве,This task isn't available on this device
 MG_PRESENCE_HINT,Отсканируй QR-код на экране у ресепшна,Scan the QR code on the reception screen
@@ -149,7 +154,8 @@ MG_CARRY_FINISH,Отсканируй QR у двери: %s,Scan the door code: %s
 MG_CARRY_WRONG_ROOM,Не та комната. Нужна: %s,Wrong room. Go to: %s
 MG_CARRY_ARRIVED,Я НА МЕСТЕ,I'M THERE
 MG_CARRY_LEVEL,Кофе: %d%%,Coffee: %d%%
-MG_STAIRS_HINT,Пройди %d шагов по офису. Телефон можно убрать в карман,Walk %d steps around the office. The phone can stay in your pocket
+MG_CARRY_GET_READY,"Возьми телефон ровно, как поднос",Hold the phone flat like a tray
+MG_STAIRS_HINT,"Пройди %d шагов по офису или по лестнице. Шаги считает телефон: держи его в руке или в кармане","Walk %d steps around the office or up the stairs. The phone counts them: keep it in your hand or pocket"
 MG_FOUND,Найдено: %d/%d,Found: %d/%d
 MG_SQUATS_HINT,"Поставь телефон так, чтобы были видны ноги. Сделай %d приседаний",Place the phone so your legs are visible. Do %d squats
 MG_SQUATS_NO_BODY,Не вижу ног,Can't see your legs
@@ -157,6 +163,7 @@ MG_SQUATS_DOWN,Вниз!,Down!
 MG_SQUATS_UP,Вверх!,Up!
 MG_SING_HINT,"Спой ноту и держи, пока полоска не заполнится",Sing the note and hold it until the bar fills
 MG_SING_SILENCE,тишина,silence
+MG_SING_HEARD,Слышу: %s,I hear: %s
 MG_TWISTER_HINT,Нажми и произнеси скороговорку вслух,Press and say the tongue twister aloud
 MG_TWISTER_SPEAK,ГОВОРИТЬ,SPEAK
 MG_TWISTER_LISTENING,СЛУШАЮ...,LISTENING...
@@ -217,12 +224,8 @@ FLOOR_HQ,Главный офис,Main office
 FLOOR_ANALYTICS,Продуктовая аналитика,Product analytics
 FLOOR_TITLE,%d этаж · %s,Floor %d · %s
 FLOOR_SHORT,%d эт.,fl. %d
-HUD_HINT_ANALYTICS,Этаж продуктовой аналитики. Здесь задания на знакомство с коллегами из других отделов. Лифт в холле,Product analytics floor. Tasks here are about meeting colleagues from other departments. The lift is in the lobby
-LIFT_QUESTION,Поехать на лифте: %s?,Take the lift: %s?
-LIFT_GO,Поехали,Let's go
-LIFT_STAY,Остаться,Stay
+HUD_HINT_ANALYTICS,Этаж продуктовой аналитики. Здесь задания на знакомство с коллегами из других отделов,Product analytics floor. Tasks here are about meeting colleagues from other departments
 LIFT_RIDING,Лифт: %s,Lift: %s
-LIFT_TASK_ELSEWHERE,Задание на другом этаже: %s. Идём к лифту,The task is on another floor: %s. Heading to the lift
 DEPT_DIGITAL,Цифровые продукты,Digital products
 DEPT_HR,HR,HR
 DEPT_MANAGEMENT,Руководство,Management
@@ -402,5 +405,17 @@ PLAY_BLOCKED_TEXT,"На сегодня вы провели слишком мно
 PLAY_DEFERRED_NOTICE,Время в игре вышло. Спокойно доиграйте мини-игру: после неё или после выхода из неё включится режим отдыха.,Your play time is up. Finish the minigame calmly: the rest starts once it ends or you leave it.
 PLAY_TASKS_AFTER_REST,Время в игре вышло: новые задания после отдыха,Your play time is up: new tasks after the rest
 NETWORK_TITLE,ТОЛЬКО В ОФИСЕ,OFFICE ONLY
-NETWORK_TEXT,Игра работает только в Wi-Fi офиса. Подключитесь к корпоративной сети: в мобильном интернете и дома игра недоступна.,The game works only on the office Wi-Fi. Connect to the corporate network: it is not available on mobile internet or at home.
+NETWORK_TEXT,"В игру можно войти, только находясь в офисе и подключившись к корпоративной сети Wi-Fi. В мобильном интернете и дома игра недоступна.",The game works only on the office Wi-Fi. Connect to the corporate network: it is not available on mobile internet or at home.
 NETWORK_RETRY,Проверить снова,Check again
+HUD_GO_HOME_QUESTION,"Поехать домой? Визит в офис уже засчитан, а невыполненные задания просто останутся на сегодня","Go home? Your office visit already counts, open tasks just stay undone for today"
+HUD_GO_HOME_CONFIRM,Домой,Go home
+HUD_GO_HOME_CANCEL,Остаться,Stay
+TASK_TAKE,Взять,Take
+TASKS_ROOM_RULE,"Задание берут в его комнате: приди туда и отсканируй QR-код у двери","A task is taken in its room: go there and scan the QR code by the door"
+TASK_ROOM_QUESTION,"Задание ждёт в комнате «%s». Приди туда и отсканируй QR-код у двери, чтобы взять его","The task waits in the room «%s». Go there and scan the QR code by the door to take it"
+TASK_ROOM_SCAN,Сканировать,Scan
+TASK_ROOM_CANCEL,Не сейчас,Not now
+TASK_ROOM_WRONG_CODE,Это другой код. Нужен QR-код комнаты «%s»,That's another code. Scan the QR code of the room «%s»
+QR_ROOM_TASKS,Заданий в этой комнате: %d. Открой список и возьми,Tasks in this room: %d. Open the list to take one
+ERROR_WRONG_ROOM,Сначала отсканируй QR-код комнаты задания,Scan the QR code of the task's room first
+ERROR_TASK_NOT_TAKEN,Сначала возьми задание в его комнате,Take the task in its room first

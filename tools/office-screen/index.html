@@ -1,0 +1,314 @@
+<!doctype html>
+<!--
+Office screen in the browser, for a LAN test (./run-lan.sh prints the link): the rotating entry and
+exit codes of an office plus the static QR codes of every room door, so one laptop replaces the
+reception screen and the printed door posters.
+
+The codes come from the kiosk_codes RPC with the server's HTTP key. The key is passed in the URL
+fragment (#key=...&office=...), which the browser never sends to the server, so it stays out of the
+files and logs here. Do not open this link on the players' phones.
+
+Room ids and names mirror client/scripts/world/office_layout.gd, analytics_layout.gd and
+client/localization/strings.csv (the same sources as tools/printables/make_printables.py).
+-->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Экран офиса</title>
+<script src="qrcode.js"></script>
+<style>
+	:root {
+		--bg: #1d1d1f;
+		--panel: #2a2a2d;
+		--ink: #f5f5f7;
+		--muted: #a1a1a6;
+		--red: #ef3124;
+		--green: #2fbf71;
+	}
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		background: var(--bg);
+		color: var(--ink);
+		font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	}
+	header {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		padding: 12px 20px;
+		background: var(--red);
+	}
+	header h1 { margin: 0; font-size: 20px; letter-spacing: 0.08em; }
+	nav { display: flex; gap: 8px; margin-left: auto; }
+	nav button {
+		border: 2px solid #fff;
+		background: transparent;
+		color: #fff;
+		padding: 6px 14px;
+		font: inherit;
+		font-weight: 600;
+		cursor: pointer;
+		border-radius: 6px;
+	}
+	nav button[aria-selected="true"] { background: #fff; color: var(--red); }
+	main { padding: 20px; }
+	.hidden { display: none !important; }
+	.status { color: var(--muted); margin: 0 0 16px; min-height: 1.4em; }
+	.status.error { color: #ff6b5f; font-weight: 600; }
+	.presence {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+		gap: 20px;
+	}
+	.card {
+		background: var(--panel);
+		border-radius: 12px;
+		padding: 16px;
+		text-align: center;
+	}
+	.card h2 { margin: 0 0 12px; font-size: 28px; }
+	.card.entry h2 { color: var(--green); }
+	.card.exit h2 { color: var(--red); }
+	.qr {
+		display: block;
+		margin: 0 auto;
+		background: #fff;
+		image-rendering: pixelated;
+		width: 100%;
+		height: auto;
+	}
+	.presence .qr { max-width: min(60vh, 520px); }
+	.timer { margin-top: 20px; }
+	.bar { height: 10px; background: #3a3a3d; border-radius: 5px; overflow: hidden; }
+	.bar div { height: 100%; background: var(--ink); transition: width 0.25s linear; }
+	.timer p { margin: 8px 0 0; color: var(--muted); text-align: center; }
+	.floor h2 { margin: 24px 0 12px; font-size: 20px; }
+	.floor:first-child h2 { margin-top: 0; }
+	.rooms {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+		gap: 16px;
+	}
+	.rooms .card { cursor: zoom-in; }
+	.rooms .card h3 { margin: 0 0 4px; font-size: 18px; }
+	.rooms .card code { color: var(--muted); font-size: 13px; }
+	.rooms .qr { margin-top: 10px; }
+	.hint { color: var(--muted); margin: 0 0 16px; }
+	#zoom {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.92);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 16px;
+		cursor: zoom-out;
+		padding: 20px;
+	}
+	#zoom h2 { margin: 0; font-size: 32px; }
+	#zoom .qr { width: auto; height: min(80vh, 90vw); }
+</style>
+</head>
+<body>
+<header>
+	<h1>АЛЬФА ОФИС</h1>
+	<nav>
+		<button type="button" data-tab="presence" aria-selected="true">Вход и выход</button>
+		<button type="button" data-tab="rooms" aria-selected="false">Комнаты</button>
+	</nav>
+</header>
+<main>
+	<p id="status" class="status"></p>
+	<section id="presence">
+		<div class="presence">
+			<div class="card entry"><h2>ВХОД</h2><canvas id="entry" class="qr"></canvas></div>
+			<div class="card exit"><h2>ВЫХОД</h2><canvas id="exit" class="qr"></canvas></div>
+		</div>
+		<div class="timer">
+			<div class="bar"><div id="bar"></div></div>
+			<p id="countdown"></p>
+		</div>
+	</section>
+	<section id="rooms" class="hidden">
+		<p class="hint">Коды дверей статичные и засчитываются только после кода входа. Нажмите на код, чтобы увеличить.</p>
+		<div id="floors"></div>
+	</section>
+</main>
+<div id="zoom" class="hidden"><h2 id="zoom-title"></h2><canvas id="zoom-qr" class="qr"></canvas></div>
+<script>
+"use strict";
+
+const SCHEME = "alfaoffice://";
+const FLOORS = [
+	{
+		title: "3 этаж · Главный офис",
+		rooms: [
+			["reception", "Ресепшн"],
+			["corridor", "Коридор"],
+			["open_space", "Опенспейс"],
+			["cabinet", "Кабинет руководителя"],
+			["meeting", "Переговорная"],
+			["kitchen", "Кухня"],
+			["lounge", "Зона отдыха"],
+			["design", "Отдел дизайна"],
+		],
+	},
+	{
+		title: "5 этаж · Продуктовая аналитика",
+		rooms: [
+			["pa_hall", "Лифтовый холл"],
+			["pa_corridor", "Коридор"],
+			["pa_open_space", "Опенспейс аналитиков"],
+			["pa_data_lab", "Дата-лаб"],
+			["pa_coffee", "Кофе-поинт"],
+			["pa_workshop", "Переговорная «Гипотеза»"],
+		],
+	},
+];
+const RETRY_MS = 3000;
+
+// Not URLSearchParams: it turns "+" into a space, and the key is pasted from server/.env as is.
+const params = new Map(location.hash.slice(1).split("&").filter(Boolean).map((pair) => {
+	const [name, ...value] = pair.split("=");
+	return [name, decodeURIComponent(value.join("="))];
+}));
+const key = params.get("key") || "";
+const office = params.get("office") || "";
+const statusLine = document.getElementById("status");
+
+function drawQr(canvas, text, scale) {
+	const qr = qrcode(0, "M");
+	qr.addData(text);
+	qr.make();
+	const quiet = 4;
+	const size = qr.getModuleCount() + quiet * 2;
+	canvas.width = size * scale;
+	canvas.height = size * scale;
+	const context = canvas.getContext("2d");
+	context.fillStyle = "#fff";
+	context.fillRect(0, 0, canvas.width, canvas.height);
+	context.fillStyle = "#000";
+	for (let row = 0; row < qr.getModuleCount(); row++) {
+		for (let column = 0; column < qr.getModuleCount(); column++) {
+			if (qr.isDark(row, column)) {
+				context.fillRect((column + quiet) * scale, (row + quiet) * scale, scale, scale);
+			}
+		}
+	}
+}
+
+function setStatus(text, isError) {
+	statusLine.textContent = text;
+	statusLine.classList.toggle("error", Boolean(isError));
+}
+
+// Rotating codes: ask the server, redraw, ask again when they expire.
+let expiresAt = 0;
+let period = 30;
+
+async function refreshCodes() {
+	if (!key) {
+		setStatus("В ссылке нет ключа (#key=...). Возьмите ссылку из вывода ./run-lan.sh.", true);
+		return;
+	}
+	try {
+		const response = await fetch("/v2/rpc/kiosk_codes?unwrap&http_key=" + encodeURIComponent(key), {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(office ? { office } : {}),
+			cache: "no-store",
+		});
+		const data = await response.json();
+		if (!response.ok) {
+			throw new Error(data.message || "HTTP " + response.status);
+		}
+		drawQr(document.getElementById("entry"), SCHEME + "presence/" + data.entry, 8);
+		drawQr(document.getElementById("exit"), SCHEME + "checkout/" + data.exit, 8);
+		period = data.period;
+		expiresAt = Date.now() + data.seconds_left * 1000;
+		setStatus("Офис: " + data.office);
+		// A little after the step changes on the server.
+		setTimeout(refreshCodes, data.seconds_left * 1000 + 300);
+	} catch (error) {
+		setStatus("Нет кодов от сервера: " + error.message + ". Повтор через 3 с.", true);
+		setTimeout(refreshCodes, RETRY_MS);
+	}
+}
+
+function tick() {
+	const left = Math.max(0, (expiresAt - Date.now()) / 1000);
+	document.getElementById("bar").style.width = (expiresAt ? (left / period) * 100 : 0) + "%";
+	document.getElementById("countdown").textContent = expiresAt ? "Коды сменятся через " + Math.ceil(left) + " с" : "";
+}
+
+function buildRooms() {
+	const floors = document.getElementById("floors");
+	for (const floor of FLOORS) {
+		const section = document.createElement("div");
+		section.className = "floor";
+		section.innerHTML = "<h2></h2><div class=\"rooms\"></div>";
+		section.querySelector("h2").textContent = floor.title;
+		for (const [id, name] of floor.rooms) {
+			const card = document.createElement("div");
+			card.className = "card";
+			card.innerHTML = "<h3></h3><code></code><canvas class=\"qr\"></canvas>";
+			card.querySelector("h3").textContent = name;
+			card.querySelector("code").textContent = id;
+			drawQr(card.querySelector("canvas"), SCHEME + "room/" + id, 6);
+			card.addEventListener("click", () => zoom(name + " · " + floor.title, SCHEME + "room/" + id));
+			section.querySelector(".rooms").append(card);
+		}
+		floors.append(section);
+	}
+}
+
+function zoom(title, text) {
+	document.getElementById("zoom-title").textContent = title;
+	drawQr(document.getElementById("zoom-qr"), text, 12);
+	document.getElementById("zoom").classList.remove("hidden");
+}
+
+function closeZoom() {
+	document.getElementById("zoom").classList.add("hidden");
+}
+
+document.getElementById("zoom").addEventListener("click", closeZoom);
+document.addEventListener("keydown", (event) => {
+	if (event.key === "Escape") {
+		closeZoom();
+	}
+});
+for (const button of document.querySelectorAll("nav button")) {
+	button.addEventListener("click", () => {
+		for (const other of document.querySelectorAll("nav button")) {
+			const selected = other === button;
+			other.setAttribute("aria-selected", String(selected));
+			document.getElementById(other.dataset.tab).classList.toggle("hidden", !selected);
+		}
+	});
+}
+
+// Keep the laptop screen on while the page is open.
+async function keepAwake() {
+	try {
+		await navigator.wakeLock?.request("screen");
+	} catch {
+		// Not supported or refused: the screen may sleep, the codes still work.
+	}
+}
+document.addEventListener("visibilitychange", () => {
+	if (document.visibilityState === "visible") {
+		keepAwake();
+	}
+});
+
+buildRooms();
+refreshCodes();
+keepAwake();
+setInterval(tick, 250);
+</script>
+</body>
+</html>

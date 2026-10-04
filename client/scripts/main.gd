@@ -1,14 +1,22 @@
 extends WorldScene
-## Office gameplay on the current floor (OfficeFloors): tap-to-move, NPC conversations, task markers
-## with minigames, the reward shop, the inbox and the profile. The lift in the reception goes to the
-## other floor; a task on another floor takes the player there first.
-## Once every task is completed, skipped or waiting for a colleague, the player can go home.
+## Office gameplay on the current floor (OfficeFloors): the character lives by itself (walks between
+## rooms, chats with colleagues), the player picks tasks with minigames, opens the reward shop, the
+## inbox and the profile. A task is taken in its room: when the last room code is another room, the
+## game asks to scan the code of the task's room first. Then the minigame starts right away: the
+## player does it in the real office, so the character does not walk anywhere.
+## After the check-in the player can go home at any time: tasks only add coins and gifts.
 ## "QR" scans a room door code (the character walks to that room, on any floor), the office screen
 ## code (starts the check-in) or a colleague's profile code.
+## On arrival from the commute the entry code scan opens by itself until the player checks in.
 
-const TALK_DISTANCE: float = 40.0
 ## NPCs can be talked to from this many cells away, e.g. across the reception desk.
 const TALK_REACH_CELLS: int = 2
+## Lines of a chat with a colleague, shown as speech bubbles, and the time each one stays.
+const CHAT_MAX_LINES: int = 4
+const CHAT_LINE_SECONDS: float = 2.8
+## Activity weights of the character: chat with a colleague, then visit a room, else a short stroll.
+const CHAT_CHANCE: float = 0.45
+const ROOM_CHANCE: float = 0.4
 const NPC_SCRIPT: GDScript = preload("res://scripts/npc/npc.gd")
 const EVENING_SCENE: String = "res://scenes/intro/evening_outro.tscn"
 const OFFICE_SCENE: String = "res://scenes/main.tscn"
@@ -20,9 +28,6 @@ const EXIT_SPEED_FACTOR: float = 1.8
 ## Task minigame that reads the office screen code.
 const CHECK_IN_MINIGAME: String = "presence_qr"
 
-var _pending_npc: Npc
-var _pending_task: BackendModels.TaskInfo
-var _talking: bool = false
 var _busy: bool = false
 var _leaving: bool = false
 var _dialogues: DialogueRepository = DialogueRepository.new()
@@ -31,11 +36,9 @@ var _pins: Dictionary[String, TaskPin] = {}
 var _home_button: Button
 ## Room reached physically while a modal was open; the character walks there once it closes.
 var _pending_room: StringName = &""
-## Floor to ride to once the player reaches the lift.
-var _pending_lift: StringName = &""
 var _corner: PlayerCorner
+var _task_list: TaskList
 
-@onready var _dialogue: DialogueBox = $DialogueBox
 @onready var _task_panel: TaskPanel = $TaskPanel
 @onready var _shop_panel: ShopPanel = $ShopPanel
 @onready var _minigame_panel: MinigamePanel = $MinigamePanel
@@ -45,6 +48,7 @@ var _corner: PlayerCorner
 
 func _ready() -> void:
 	var floor_id: StringName = OfficeFloors.current
+	var by_lift: bool = OfficeFloors.arrived_by_lift
 	_setup_world(OfficeFloors.create_layout(floor_id))
 	if OfficeFloors.arrived_by_lift and _map.layout.has_elevator():
 		_player.global_position = _map.cell_to_world(_map.layout.elevator_cell)
@@ -62,6 +66,9 @@ func _ready() -> void:
 	_hud.add_action(tr("HUD_SCAN"), false).pressed.connect(_scan_code)
 	_hud.add_action(tr("HUD_SHOP"), false).pressed.connect(_open_shop)
 	_corner = PlayerCorner.attach(self, _hud)
+	_task_list = TaskList.new()
+	_task_list.task_pressed.connect(_on_task_list_pressed)
+	_hud.add_corner_panel(_task_list)
 	Notifications.banner_pressed.connect(_on_banner_pressed)
 	Presence.zone_changed.connect(_on_zone_changed)
 	Backend.request_failed.connect(_on_request_failed)
@@ -71,6 +78,8 @@ func _ready() -> void:
 		await Backend.login()
 	await _refresh_tasks()
 	_update_room()
+	if not by_lift and await _auto_check_in():
+		return
 	_resume_after_lift()
 
 
@@ -80,38 +89,21 @@ func _process(delta: float) -> void:
 		var room_id: StringName = _pending_room
 		_pending_room = &""
 		_walk_to_room(room_id)
-	if _pending_npc != null and not _talking and _player.global_position.distance_to(_pending_npc.global_position) <= TALK_DISTANCE:
-		_talk_to(_pending_npc)
 
 
 func _is_modal_open() -> bool:
 	return (
-		_talking or _busy or _leaving or _dialogue.is_open() or _task_panel.is_open() or _shop_panel.is_open()
+		_busy or _leaving or _task_panel.is_open() or _shop_panel.is_open()
 		or _minigame_panel.is_open() or _choice.is_open() or (_corner != null and _corner.is_open())
 	)
 
 
+## Only task markers react to taps: the character is not steered.
 func _on_tap(world_position: Vector2) -> void:
-	_cancel_pending_actions()
-	for child: Node in _entities.get_children():
-		var npc: Npc = child as Npc
-		if npc != null and npc.is_hit(world_position):
-			_approach(npc)
-			return
 	for pin: TaskPin in _pins.values():
 		if pin.visible and pin.is_hit(world_position):
 			_go_to_task(pin.task)
 			return
-	if _is_lift_hit(world_position):
-		_go_to_lift(OfficeFloors.next_floor(OfficeFloors.current), true)
-		return
-	_walk_to(world_position)
-
-
-func _cancel_pending_actions() -> void:
-	_pending_npc = null
-	_pending_task = null
-	_pending_lift = &""
 
 
 func _refresh_tasks() -> void:
@@ -127,21 +119,59 @@ func _refresh_tasks() -> void:
 			_entities.add_child(pin)
 			_pins[task.id] = pin
 		pin.setup(task, _map.cell_to_world(task.spot))
+	_task_list.set_tasks(_tasks)
 	_update_go_home()
 
 
-# --- NPCs ------------------------------------------------------------------------
+# --- The character's own life ----------------------------------------------------
 
 
-func _approach(npc: Npc) -> void:
-	_pending_npc = npc
-	_hud.hide_hint()
-	var npc_cell: Vector2i = _map.world_to_cell(npc.global_position)
-	if _player.global_position.distance_to(npc.global_position) <= TALK_DISTANCE or WorldScene.chebyshev(_player_cell(), npc_cell) <= 1:
+func _run_activity() -> void:
+	var npcs: Array[Npc] = []
+	for child: Node in _entities.get_children():
+		if child is Npc:
+			npcs.append(child as Npc)
+	var roll: float = randf()
+	if roll < CHAT_CHANCE and not npcs.is_empty():
+		await _chat_with(npcs.pick_random())
+	elif roll < CHAT_CHANCE + ROOM_CHANCE:
+		await _visit_room()
+	else:
+		await _wander()
+
+
+## Walks up to a colleague and has a short chat in speech bubbles.
+func _chat_with(npc: Npc) -> void:
+	var cell: Vector2i = _cell_near(npc)
+	if cell == WorldMap.INVALID_CELL:
 		return
-	# Pick the closest reachable cell near the NPC. Cells right next to it are preferred, but a cell
-	# two steps away is fine when furniture such as the reception desk is in between.
-	var best_path: PackedVector2Array = PackedVector2Array()
+	if cell != _player_cell() and not await _auto_walk(cell):
+		return
+	var npc_cell: Vector2i = _map.world_to_cell(npc.global_position)
+	if WorldScene.chebyshev(_player_cell(), npc_cell) > TALK_REACH_CELLS:
+		# The colleague walked away meanwhile.
+		return
+	_player.face(npc.global_position - _player.global_position)
+	npc.begin_talk(_player.global_position)
+	var lines: Array[DialogueRepository.Line] = _dialogues.next_conversation(npc.definition.id)
+	for i: int in mini(lines.size(), CHAT_MAX_LINES):
+		if lines[i].is_player:
+			_player.say(lines[i].text, CHAT_LINE_SECONDS)
+		else:
+			npc.say(lines[i].text, CHAT_LINE_SECONDS)
+		if not await _auto_wait(CHAT_LINE_SECONDS):
+			break
+	if is_instance_valid(npc):
+		npc.end_talk()
+
+
+## The closest reachable cell next to the NPC; a cell two steps away is fine when furniture such as
+## the reception desk is in between.
+func _cell_near(npc: Npc) -> Vector2i:
+	var npc_cell: Vector2i = _map.world_to_cell(npc.global_position)
+	if WorldScene.chebyshev(_player_cell(), npc_cell) <= 1:
+		return _player_cell()
+	var best_cell: Vector2i = WorldMap.INVALID_CELL
 	var best_score: int = 1 << 30
 	for dy: int in range(-TALK_REACH_CELLS, TALK_REACH_CELLS + 1):
 		for dx: int in range(-TALK_REACH_CELLS, TALK_REACH_CELLS + 1):
@@ -154,45 +184,22 @@ func _approach(npc: Npc) -> void:
 			var score: int = path.size() + 4 * (WorldScene.chebyshev(cell, npc_cell) - 1) + (0 if dx == 0 or dy == 0 else 1)
 			if score < best_score:
 				best_score = score
-				best_path = path
-	if best_path.is_empty():
-		_pending_npc = null
-		_hud.flash_message(tr("HUD_BLOCKED"))
+				best_cell = cell
+	return best_cell
+
+
+## Walks into a random room of the floor and looks around there for a while.
+func _visit_room() -> void:
+	var rooms: Array[MapLayout.Room] = _map.layout.rooms
+	if rooms.is_empty():
 		return
-	_player.walk_path(best_path)
-	_marker.show_target(best_path[best_path.size() - 1])
-
-
-func _talk_to(npc: Npc) -> void:
-	_pending_npc = null
-	_talking = true
-	_stop_player()
-	_player.face(npc.global_position - _player.global_position)
-	npc.begin_talk(_player.global_position)
-	_dialogue.open(npc.definition.display_name, npc.definition.id, _dialogues.next_conversation(npc.definition.id))
-	await _dialogue.finished
-	npc.end_talk()
-	_talking = false
-
-
-func _on_player_arrived() -> void:
-	super()
-	if _pending_npc != null and not _talking:
-		var npc_cell: Vector2i = _map.world_to_cell(_pending_npc.global_position)
-		if WorldScene.chebyshev(_player_cell(), npc_cell) <= TALK_REACH_CELLS:
-			_talk_to(_pending_npc)
-		else:
-			_pending_npc = null
-	if _pending_task != null:
-		var task: BackendModels.TaskInfo = _pending_task
-		_pending_task = null
-		if _player_cell() == task.spot:
-			_start_task(task)
-	if _pending_lift != &"":
-		var floor_id: StringName = _pending_lift
-		_pending_lift = &""
-		if _player_cell() == _map.layout.elevator_cell:
-			_ask_lift(floor_id)
+	var room: MapLayout.Room = rooms.pick_random()
+	var floor_rect: Rect2i = room.floor_rect()
+	var target: Vector2i = floor_rect.position + Vector2i(randi_range(0, floor_rect.size.x - 1), randi_range(0, floor_rect.size.y - 1))
+	var cell: Vector2i = _map.find_nearest_walkable(_map.cell_to_world(target), maxi(floor_rect.size.x, floor_rect.size.y))
+	if cell != WorldMap.INVALID_CELL and await _auto_walk(cell):
+		_player.face(Vector2.from_angle(randf() * TAU))
+		await _auto_wait(randf_range(1.5, 4.0))
 
 
 # --- Tasks and shop --------------------------------------------------------------
@@ -204,7 +211,7 @@ func _open_tasks() -> void:
 	_busy = true
 	await _refresh_tasks()
 	_busy = false
-	_task_panel.open(_tasks, _player_cell(), Backend.profile)
+	_task_panel.open(_tasks, Backend.profile)
 
 
 func _open_shop() -> void:
@@ -213,9 +220,13 @@ func _open_shop() -> void:
 	_shop_panel.open()
 
 
+func _on_task_list_pressed(task: BackendModels.TaskInfo) -> void:
+	if not _is_modal_open():
+		_go_to_task(task)
+
+
 func _go_to_task(task: BackendModels.TaskInfo) -> void:
 	_task_panel.close_panel()
-	_pending_npc = null
 	if task.completed:
 		_hud.flash_message(tr("ERROR_ALREADY_COMPLETED"))
 		return
@@ -233,18 +244,48 @@ func _go_to_task(task: BackendModels.TaskInfo) -> void:
 		# The play time is up: new tasks wait until after the rest.
 		_hud.flash_message(PlayTime.task_lock_text())
 		return
-	if task.floor_id != OfficeFloors.current:
-		# The task is on another floor: ride the lift first, then walk to it there.
-		OfficeFloors.pending_task_id = task.id
-		_hud.flash_message(tr("LIFT_TASK_ELSEWHERE") % OfficeFloors.title(task.floor_id))
-		_go_to_lift(task.floor_id, false)
+	if not task.taken and not await _take_task(task):
 		return
-	if _player_cell() == task.spot:
-		_stop_player()
-		_start_task(task)
-		return
-	if _walk_to_cell(task.spot):
-		_pending_task = task
+	# The minigame happens in the real office, so the character does not have to walk to the marker.
+	_stop_player()
+	_start_task(task)
+
+
+## Takes the task on the server. Away from the task's room the player scans its door code first.
+## Returns true when the task can start here and now.
+func _take_task(task: BackendModels.TaskInfo) -> bool:
+	_busy = true
+	var taken: BackendModels.ActionResult = await Backend.take_task(task.id)
+	_busy = false
+	if taken.ok:
+		task.taken = true
+		return true
+	if taken.error != "wrong_room":
+		_hud.flash_message(tr("ERROR_" + taken.error.to_upper()))
+		return false
+	var room_name: String = tr(TaskPanel.room_key(task.room))
+	if not await _choice.ask(tr("TASK_ROOM_QUESTION") % room_name, tr("TASK_ROOM_SCAN"), tr("TASK_ROOM_CANCEL")):
+		return false
+	var payload: QrPayload = await _scan_payload()
+	if payload == null:
+		return false
+	if payload.kind != QrPayload.Kind.ROOM or StringName(payload.value) != task.room:
+		_hud.flash_message(tr("TASK_ROOM_WRONG_CODE") % room_name)
+		return false
+	if not await _enter_room(task.room):
+		return false
+	_busy = true
+	taken = await Backend.take_task(task.id)
+	_busy = false
+	if not taken.ok:
+		_hud.flash_message(tr("ERROR_" + taken.error.to_upper()))
+		return false
+	task.taken = true
+	if OfficeFloors.floor_of_room(task.room) != OfficeFloors.current:
+		# The room is on another floor: the game follows the player there, the task waits taken.
+		_move_to_room(task.room)
+		return false
+	return true
 
 
 ## Runs the task's minigame. PlayTime knows a minigame is on screen until its result is handled,
@@ -311,35 +352,15 @@ func _skip_task(task: BackendModels.TaskInfo) -> void:
 func _scan_code() -> void:
 	if _is_modal_open():
 		return
-	_cancel_pending_actions()
-	_busy = true
-	PlayTime.begin_minigame()
-	var payload: QrPayload = await _minigame_panel.scan_code()
-	PlayTime.end_minigame()
-	_busy = false
+	var payload: QrPayload = await _scan_payload()
 	if payload == null:
 		return
 	match payload.kind:
 		QrPayload.Kind.ROOM:
 			var room_id: StringName = StringName(payload.value)
-			var floor_id: StringName = OfficeFloors.floor_of_room(room_id)
-			if floor_id == &"":
-				_hud.flash_message(tr("QR_UNKNOWN_ROOM"))
-				return
-			# Door codes are static, so they count only after the entry code at the reception.
-			_busy = true
-			var entered: BackendModels.ActionResult = await Backend.enter_room(String(room_id))
-			_busy = false
-			if not entered.ok:
-				_hud.flash_message(tr("ERROR_" + entered.error.to_upper()))
-				return
-			Presence.set_zone_from_qr(room_id)
-			if floor_id != OfficeFloors.current:
-				# The player is physically on another floor: the game follows them there.
-				OfficeFloors.pending_room = room_id
-				_travel(floor_id)
-				return
-			_walk_to_room(room_id)
+			if await _enter_room(room_id):
+				_hint_room_tasks(room_id)
+				_move_to_room(room_id)
 		QrPayload.Kind.PRESENCE:
 			await _start_check_in(payload.value)
 		QrPayload.Kind.CHECKOUT:
@@ -349,6 +370,51 @@ func _scan_code() -> void:
 			_hud.flash_message(tr("QR_CHECKED_OUT") if left.ok else tr("ERROR_" + left.error.to_upper()))
 		QrPayload.Kind.USER:
 			_hud.flash_message(tr("QR_COLLEAGUE_HINT"))
+
+
+## Opens the camera for any QR code; null when the player closed it.
+func _scan_payload() -> QrPayload:
+	_busy = true
+	PlayTime.begin_minigame()
+	var payload: QrPayload = await _minigame_panel.scan_code()
+	PlayTime.end_minigame()
+	_busy = false
+	return payload
+
+
+## Sends a room door code to the server. Door codes are static, so they count only after the entry
+## code at the reception. Returns true when the server accepted it.
+func _enter_room(room_id: StringName) -> bool:
+	if OfficeFloors.floor_of_room(room_id) == &"":
+		_hud.flash_message(tr("QR_UNKNOWN_ROOM"))
+		return false
+	_busy = true
+	var entered: BackendModels.ActionResult = await Backend.enter_room(String(room_id))
+	_busy = false
+	if not entered.ok:
+		_hud.flash_message(tr("ERROR_" + entered.error.to_upper()))
+		return false
+	Presence.set_zone_from_qr(room_id)
+	return true
+
+
+## The character walks to the room the player is physically in, riding the lift to another floor.
+func _move_to_room(room_id: StringName) -> void:
+	var floor_id: StringName = OfficeFloors.floor_of_room(room_id)
+	if floor_id != OfficeFloors.current:
+		OfficeFloors.pending_room = room_id
+		_travel(floor_id)
+		return
+	_walk_to_room(room_id)
+
+
+## After a room code: tells how many open tasks of today can be taken in this room.
+func _hint_room_tasks(room_id: StringName) -> void:
+	var count: int = _tasks.filter(
+		func(task: BackendModels.TaskInfo) -> bool: return task.room == room_id and not task.is_closed() and not task.is_check_in()
+	).size()
+	if count > 0:
+		_hud.flash_message(tr("QR_ROOM_TASKS") % count)
 
 
 ## The entry code was scanned outside the task. The first entry of the day is the check-in task
@@ -367,6 +433,19 @@ func _start_check_in(token: String) -> void:
 	_hud.flash_message(tr("QR_BACK_IN_OFFICE") if entered.ok else tr("ERROR_" + entered.error.to_upper()))
 
 
+## Arrival at the office: the entry code scan opens right away, no need to pick the check-in task.
+## Returns true when the check-in started.
+func _auto_check_in() -> bool:
+	if Backend.profile == null or Backend.profile.in_office:
+		return false
+	for task: BackendModels.TaskInfo in _tasks:
+		if task.minigame == CHECK_IN_MINIGAME and not task.is_closed() and task.floor_id == OfficeFloors.current:
+			_stop_player()
+			await _start_task(task)
+			return true
+	return false
+
+
 func _on_request_failed(error: String) -> void:
 	_hud.flash_message(tr("ERROR_" + error.to_upper()))
 
@@ -381,47 +460,7 @@ func _on_banner_pressed(kind: String) -> void:
 		_corner.open_inbox()
 
 
-# --- Lift ------------------------------------------------------------------------
-
-
-func _is_lift_hit(world_position: Vector2) -> bool:
-	var layout: MapLayout = _map.layout
-	if not layout.has_elevator():
-		return false
-	var cell: Vector2i = _map.world_to_cell(world_position)
-	return layout.elevator.has_point(cell) or cell == layout.elevator_cell
-
-
-## Walks to the lift doors; on arrival asks (or, for a task elsewhere, just rides) to `floor_id`.
-func _go_to_lift(floor_id: StringName, ask: bool) -> void:
-	var layout: MapLayout = _map.layout
-	if not layout.has_elevator():
-		return
-	if _player_cell() == layout.elevator_cell:
-		_stop_player()
-		if ask:
-			_ask_lift(floor_id)
-		else:
-			_travel(floor_id)
-		return
-	if _walk_to_cell(layout.elevator_cell):
-		if ask:
-			_pending_lift = floor_id
-		else:
-			_pending_lift = &""
-			_ride_on_arrival(floor_id)
-
-
-func _ride_on_arrival(floor_id: StringName) -> void:
-	await _player.arrived
-	if _player_cell() == _map.layout.elevator_cell:
-		_travel(floor_id)
-
-
-func _ask_lift(floor_id: StringName) -> void:
-	_player.face(Vector2.UP)
-	if await _choice.ask(tr("LIFT_QUESTION") % OfficeFloors.title(floor_id), tr("LIFT_GO"), tr("LIFT_STAY")):
-		_travel(floor_id)
+# --- Floors ------------------------------------------------------------------------
 
 
 ## Fades out and reloads the office on the other floor; the player steps out of the lift there.
@@ -429,8 +468,6 @@ func _travel(floor_id: StringName) -> void:
 	if _leaving:
 		return
 	_leaving = true
-	_end_drag()
-	_cancel_pending_actions()
 	_hud.flash_message(tr("LIFT_RIDING") % OfficeFloors.title(floor_id))
 	var tween: Tween = create_tween()
 	tween.tween_property(_fade, "color:a", 1.0, FADE_TIME)
@@ -440,18 +477,12 @@ func _travel(floor_id: StringName) -> void:
 	get_tree().change_scene_to_file(OFFICE_SCENE)
 
 
-## After a lift ride: walk to the task or room that sent the player here.
+## After a lift ride: walk to the room that sent the player here.
 func _resume_after_lift() -> void:
 	var room_id: StringName = OfficeFloors.pending_room
-	var task_id: String = OfficeFloors.pending_task_id
 	OfficeFloors.pending_room = &""
-	OfficeFloors.pending_task_id = ""
 	if room_id != &"":
 		_walk_to_room(room_id)
-		return
-	for task: BackendModels.TaskInfo in _tasks:
-		if task.id == task_id and task.floor_id == OfficeFloors.current:
-			_go_to_task(task)
 
 
 ## The character walks to the walkable cell closest to the room centre.
@@ -474,23 +505,35 @@ func _walk_to_room(room_id: StringName) -> void:
 # --- End of the day --------------------------------------------------------------
 
 
+## The office visit counts from the check-in, so from then on the player can leave at any time.
 func _update_go_home() -> void:
-	if _home_button != null or _tasks.is_empty():
+	var profile: BackendModels.Profile = Backend.profile
+	if _home_button != null or profile == null or not (profile.present_today or profile.in_office):
 		return
-	if not _tasks.all(func(task: BackendModels.TaskInfo) -> bool: return task.is_closed()):
-		return
-	_home_button = _hud.add_wide_action(tr("HUD_GO_HOME"))
+	var all_closed: bool = not _has_open_tasks()
+	_home_button = _hud.add_wide_action(tr("HUD_GO_HOME"), all_closed)
 	_home_button.pressed.connect(_go_home)
-	_hud.flash_message(tr("HUD_ALL_DONE"))
+	if all_closed:
+		_hud.flash_message(tr("HUD_ALL_DONE"))
 
 
-## Walks the player out through the entrance, then plays the evening cutscene.
+func _has_open_tasks() -> bool:
+	return _tasks.any(func(task: BackendModels.TaskInfo) -> bool: return not task.is_closed())
+
+
+## Closes the office interval on the server, walks the player out through the entrance, then plays
+## the evening cutscene. Open tasks simply stay undone: the visit already counts.
 func _go_home() -> void:
 	if _is_modal_open():
 		return
+	if _has_open_tasks() and not await _choice.ask(tr("HUD_GO_HOME_QUESTION"), tr("HUD_GO_HOME_CONFIRM"), tr("HUD_GO_HOME_CANCEL")):
+		return
+	if Backend.profile != null and Backend.profile.in_office:
+		_busy = true
+		# A failure is no reason to stay: an interval left open ends with the day.
+		await Backend.leave_office()
+		_busy = false
 	_leaving = true
-	_end_drag()
-	_cancel_pending_actions()
 	_marker.hide_marker()
 	_home_button.visible = false
 	_hud.hide_hint()

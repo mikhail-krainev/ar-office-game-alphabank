@@ -1,7 +1,8 @@
 class_name Hud
 extends CanvasLayer
 ## Portrait HUD inside the safe area: brand and room at the top, coin balance top-right,
-## large action buttons at the bottom within thumb reach, hint and short messages.
+## large action buttons at the bottom within thumb reach, short messages, and a hint under the brand
+## that the player closes with a cross (it stays closed for the session).
 
 const RED: Color = Color("#ef3124")
 const INK: Color = Color("#1d1d1f")
@@ -17,6 +18,12 @@ const ACTION_HEIGHT: float = 38.0
 const MAX_FLYING_COINS: int = 12
 ## Corner buttons sit this far below the top margin, under the coin counter.
 const CORNER_TOP: float = 32.0
+## The hint sits under the brand bar and leaves the right side to the corner panel (TaskList).
+const HINT_TOP: float = 46.0
+const HINT_RIGHT_GAP: float = 158.0
+
+## Hints the player closed this session; they do not come back on the next scene.
+static var _closed_hints: Dictionary[String, bool] = {}
 
 var _glitch_left: float = 0.0
 var _message_left: float = 0.0
@@ -63,10 +70,20 @@ func set_title(text: String) -> void:
 
 func set_hint(text: String) -> void:
 	_hint.text = text
-	_hint_panel.visible = not text.is_empty()
+	_hint_panel.visible = not text.is_empty() and not _closed_hints.has(text)
 
 
 ## Small buttons in the top-right corner under the balance (inbox, profile).
+## Panel in the top-right corner under the corner buttons, e.g. today's tasks.
+func add_corner_panel(control: Control) -> void:
+	control.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	control.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	control.offset_left = -MARGIN
+	control.offset_right = -MARGIN
+	control.offset_top = MARGIN + CORNER_TOP + PlayerCorner.BUTTON_SIDE + 6.0
+	_root.add_child(control)
+
+
 func add_corner(control: Control) -> void:
 	_corner.add_child(control)
 
@@ -80,8 +97,8 @@ func add_action(text: String, primary: bool) -> Button:
 	return button
 
 
-## Full-width pulsing button above the action row, e.g. "Go home" once the day is done.
-func add_wide_action(text: String) -> Button:
+## Full-width button above the action row, e.g. "Go home"; `pulse` makes it breathe to draw the eye.
+func add_wide_action(text: String, pulse: bool = true) -> Button:
 	var button: Button = UiStyle.make_button(text, true, 14)
 	button.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	button.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -91,10 +108,10 @@ func add_wide_action(text: String) -> Button:
 	button.offset_bottom = bottom
 	button.offset_top = bottom - ACTION_HEIGHT
 	_root.add_child(button)
-	hide_hint()
-	var pulse: Tween = button.create_tween().set_loops()
-	pulse.tween_property(button, "modulate", Color(1.2, 1.2, 1.2), 0.6)
-	pulse.tween_property(button, "modulate", Color.WHITE, 0.6)
+	if pulse:
+		var breathing: Tween = button.create_tween().set_loops()
+		breathing.tween_property(button, "modulate", Color(1.2, 1.2, 1.2), 0.6)
+		breathing.tween_property(button, "modulate", Color.WHITE, 0.6)
 	return button
 
 
@@ -105,6 +122,11 @@ func show_room(room_name: String) -> void:
 
 func hide_hint() -> void:
 	_hint_panel.visible = false
+
+
+func _close_hint() -> void:
+	_closed_hints[_hint.text] = true
+	hide_hint()
 
 
 func flash_message(text: String) -> void:
@@ -198,18 +220,24 @@ func _build_bottom() -> void:
 	_root.add_child(_actions)
 
 	_hint_panel = PanelContainer.new()
-	_hint_panel.add_theme_stylebox_override("panel", UiStyle.panel(Color(UiStyle.PAPER, 0.92), 8, 5))
+	_hint_panel.add_theme_stylebox_override("panel", UiStyle.panel(Color(UiStyle.PAPER, 0.92), 6, 5))
 	_hint_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hint_panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	_hint_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_hint_panel.offset_left = MARGIN * 2
-	_hint_panel.offset_right = -MARGIN * 2
-	_hint_panel.offset_bottom = -MARGIN * 2 - ACTION_HEIGHT
+	_hint_panel.position = Vector2(MARGIN, MARGIN + HINT_TOP)
+	_hint_panel.visible = false
 	_root.add_child(_hint_panel)
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hint_panel.add_child(row)
 	_hint = UiStyle.make_label("", 10, INK)
-	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_hint_panel.add_child(_hint)
+	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(_hint)
+	var close: Button = UiStyle.make_button("✕", false, 10)
+	close.custom_minimum_size = Vector2(22, 22)
+	close.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	close.pressed.connect(_close_hint)
+	row.add_child(close)
 
 
 func _process(delta: float) -> void:
@@ -239,5 +267,8 @@ func _fit_message() -> void:
 func _apply_safe_rect(rect: Rect2) -> void:
 	_root.position = rect.position
 	_root.size = rect.size
-	if not _actions.visible:
-		_hint_panel.offset_bottom = -MARGIN * 2
+	var width: float = maxf(120.0, rect.size.x - MARGIN - HINT_RIGHT_GAP)
+	# An autowrapped label needs a width; the rest of the row is the cross and the panel padding.
+	_hint.custom_minimum_size = Vector2(width - 36.0, 0)
+	_hint_panel.custom_minimum_size = Vector2(width, 0)
+	_hint_panel.reset_size()

@@ -64,7 +64,7 @@ func validTripEnd(until, today int) bool {
 }
 
 func officeToday() int {
-	return dayOf(time.Now().Unix(), gameContent.officeOffset())
+	return dayOf(gameNow(), gameContent.officeOffset())
 }
 
 // rpcAdminListUsers: -> {"users": [userView]}, newest first.

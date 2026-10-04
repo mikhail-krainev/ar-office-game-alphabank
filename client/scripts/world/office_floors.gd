@@ -14,8 +14,6 @@ const NUMBERS: Dictionary[StringName, int] = {HQ: 3, ANALYTICS: 5}
 static var current: StringName = HQ
 ## The player came by lift: start in front of its doors instead of the main entrance.
 static var arrived_by_lift: bool = false
-## Task to walk to right after arriving on the floor.
-static var pending_task_id: String = ""
 ## Room to walk to right after arriving (a room QR code from the other floor was scanned).
 static var pending_room: StringName = &""
 
@@ -60,5 +58,4 @@ static func next_floor(floor_id: StringName) -> StringName:
 static func reset() -> void:
 	current = HQ
 	arrived_by_lift = false
-	pending_task_id = ""
 	pending_room = &""

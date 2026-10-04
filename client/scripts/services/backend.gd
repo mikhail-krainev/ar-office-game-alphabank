@@ -163,6 +163,17 @@ func check_in(token: String) -> BackendModels.ActionResult:
 	return await _presence_action("office_check_in", {"token": token})
 
 
+## A task is taken in its room: the last room code must be the task's room ("wrong_room" otherwise).
+func take_task(task_id: String) -> BackendModels.ActionResult:
+	var response: ServerSession.RpcResult = await call_rpc("take_task", {"task_id": task_id})
+	return BackendParser.action(response.data, response.error)
+
+
+## "Go home": closes the office interval without the exit code.
+func leave_office() -> BackendModels.ActionResult:
+	return await _presence_action("leave_office", {})
+
+
 ## Exit code: tasks and room codes stop counting until the next entry.
 func check_out(token: String) -> BackendModels.ActionResult:
 	return await _presence_action("office_check_out", {"token": token})

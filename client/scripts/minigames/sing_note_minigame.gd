@@ -14,6 +14,8 @@ const MAX_READ_FRAMES: int = 8192
 const GAUGE_CENTER: Vector2 = Vector2(160, 250)
 const GAUGE_RADIUS: float = 90.0
 const GAUGE_RANGE_CENTS: float = 100.0
+## The pitch is the median of this many latest estimates: single octave slips do not move the needle.
+const SMOOTHING_WINDOW: int = 5
 
 var _notes: Array[int] = DEFAULT_NOTES.duplicate()
 var _index: int = 0
@@ -26,6 +28,8 @@ var _frequency: float = 0.0
 var _cents: float = 0.0
 var _accuracy_sum: float = 0.0
 var _accuracy_count: int = 0
+var _estimates: Array[float] = []
+var _heard_label: Label
 
 var _note_label: Label
 var _status: Label
@@ -40,6 +44,7 @@ func _ready() -> void:
 	_time_left = _time_limit
 	add_hint(tr("MG_SING_HINT"))
 	_note_label = add_big_label(48, 40, UiStyle.RED)
+	_heard_label = add_big_label(GAUGE_CENTER.y + 34.0, 12, UiStyle.MUTED)
 	_status = add_status()
 	PlatformServices.start_microphone()
 
@@ -67,13 +72,15 @@ func _process(delta: float) -> void:
 	var current: int = _notes[mini(_index, _notes.size() - 1)]
 	_note_label.text = tr(PitchDetector.note_key(current))
 	var heard: String = "%d Hz" % roundi(_frequency) if _frequency > 0.0 else tr("MG_SING_SILENCE")
+	_heard_label.text = tr("MG_SING_HEARD") % tr(PitchDetector.note_key(roundi(PitchDetector.frequency_to_midi(_frequency)))) if _frequency > 0.0 else ""
 	_status.text = "%s   %s   %s" % [tr("MG_ROUND") % [mini(_index + 1, _notes.size()), _notes.size()], heard, tr("MG_TIME") % ceili(maxf(_time_left, 0.0))]
 	queue_redraw()
 
 
 func _read_microphone() -> void:
 	var samples: PackedFloat32Array = PlatformServices.read_microphone(MAX_READ_FRAMES)
-	if samples.is_empty():
+	if samples.is_empty() or PlatformServices.get_microphone_sample_rate() <= 0.0:
+		# Samples without a known rate would mix with later ones at another rate.
 		return
 	var factor: int = maxi(1, roundi(PlatformServices.get_microphone_sample_rate() / TARGET_RATE))
 	# Box-filter downsampling keeps YIN cheap enough for GDScript.
@@ -91,9 +98,18 @@ func _analyze() -> void:
 		return
 	var factor: int = maxi(1, roundi(PlatformServices.get_microphone_sample_rate() / TARGET_RATE))
 	var rate: float = PlatformServices.get_microphone_sample_rate() / factor
-	_frequency = PitchDetector.detect(_buffer, rate)
-	if _frequency <= 0.0:
+	var estimate: float = PitchDetector.detect(_buffer, rate)
+	if estimate <= 0.0:
+		_estimates.clear()
+		_frequency = 0.0
 		return
+	_estimates.append(estimate)
+	if _estimates.size() > SMOOTHING_WINDOW:
+		_estimates.remove_at(0)
+	var sorted: Array[float] = _estimates.duplicate()
+	sorted.sort()
+	@warning_ignore("integer_division")
+	_frequency = sorted[sorted.size() / 2]
 	_cents = PitchDetector.cents_off_pitch_class(_frequency, _notes[mini(_index, _notes.size() - 1)])
 	if absf(_cents) <= TOLERANCE_CENTS:
 		_accuracy_sum += 1.0 - absf(_cents) / TOLERANCE_CENTS

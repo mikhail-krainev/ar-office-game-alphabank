@@ -87,7 +87,7 @@ func rpcDevPresenceCodes(ctx context.Context, _ runtime.Logger, _ *sql.DB, nk ru
 	if err != nil {
 		return "", err
 	}
-	office, _ := metadata.placement(dayOf(time.Now().Unix(), gameContent.officeOffset()))
+	office, _ := metadata.placement(dayOf(gameNow(), gameContent.officeOffset()))
 	return encodeResponse(currentKioskCodes(office, time.Now().Unix()))
 }
 

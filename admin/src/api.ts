@@ -118,6 +118,17 @@ export interface Limits {
   rest_minutes: number;
 }
 
+/** Test clock (server/modules/clock.go): the game time is the real time plus shift_seconds. */
+export interface Clock {
+  /** False without TEST_CLOCK=true on the server; the tab is hidden then. */
+  enabled: boolean;
+  shift_seconds: number;
+  /** Game time, unix seconds. */
+  now: number;
+  utc_offset_minutes: number;
+  max_shift_seconds: number;
+}
+
 export interface NamedId {
   id: string;
   name: string;
@@ -287,4 +298,6 @@ export const api = {
   playerStats: (s: Session, user_id: string) => call<PlayerStats>(s, "admin_player_stats", { user_id }),
   getLimits: (s: Session, office_id: string) => call<{ limits: Limits; defaults: Limits }>(s, "admin_get_limits", { office_id }),
   setLimits: (s: Session, office_id: string, limits: Limits) => call<Limits>(s, "admin_set_limits", { office_id, limits }),
+  getClock: (s: Session) => call<Clock>(s, "admin_get_clock"),
+  setClock: (s: Session, shift_seconds: number) => call<Clock>(s, "admin_set_clock", { shift_seconds }),
 };

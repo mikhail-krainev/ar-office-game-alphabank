@@ -18,6 +18,7 @@ const (
 	activityCheckIn     = "check_in"
 	activityCheckOut    = "check_out"
 	activityRoom        = "room"
+	activityTaskTaken   = "task_taken"
 	activityTaskDone    = "task_done"
 	activityTaskPending = "task_pending"
 	activityTaskSkipped = "task_skipped"

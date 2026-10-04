@@ -838,3 +838,18 @@ code.network {
   max-width: 360px;
   margin-bottom: 16px;
 }
+
+.clock-now {
+  display: grid;
+  gap: 4px;
+  margin: 18px 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--accent);
+  background: var(--bg);
+  border-radius: 0 8px 8px 0;
+}
+
+.clock-now strong {
+  font-size: 1.4rem;
+  font-variant-numeric: tabular-nums;
+}

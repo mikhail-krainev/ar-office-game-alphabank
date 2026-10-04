@@ -23,6 +23,8 @@ type Task struct {
 	Reward      int            `json:"reward"`
 	Difficulty  string         `json:"difficulty"`
 	Skippable   bool           `json:"skippable"`
+	// Hidden tasks never get into a pack, e.g. while their minigame works badly.
+	Hidden bool `json:"hidden,omitempty"`
 }
 
 type CatalogItem struct {

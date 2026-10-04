@@ -1,0 +1,757 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2050 2006" width="2050" height="2006" font-family="-apple-system, 'Helvetica Neue', Arial, sans-serif">
+<style>
+  .bg { fill: #FAFAF7; }
+  .card { fill: #FFFFFF; stroke: #D0D7DE; stroke-width: 1; }
+  .card.embedded { stroke-dasharray: 5 3; stroke: #9AA4AE; }
+  .title { font-size: 13px; font-weight: 700; fill: #FFFFFF; }
+  .col { font-size: 11.5px; fill: #24292F; }
+  .col.key { font-weight: 700; }
+  .type { font-size: 10.5px; fill: #8C959F; font-family: Menlo, monospace; }
+  .badge { font-size: 8.5px; font-weight: 700; }
+  .link path { fill: none; stroke-width: 1.6; stroke-linejoin: round; }
+  .link .mark path { stroke-width: 1.6; }
+  .dim .link:not(.on) { opacity: .08; }
+  .dim .table:not(.on) { opacity: .25; }
+  .link.on path { stroke-width: 2.6; }
+</style>
+<rect class="bg" width="2050" height="2006"/>
+<g id="diagram">
+<g id="links">
+<g class="link" data-a="departments" data-b="offices" stroke="#1F6FEB"><title>departments.office → offices.id</title><path d="M1740,316 L1725,315 Q1720,310 1715,310 L1715,310 Q1710,310 1710,305 L1710,106 Q1710,100 1716,100 L1740,100"/><g class="mark"><path d="M1728,316 L1740,310 M1728,316 L1740,316 M1728,316 L1740,322 M1724,310 L1724,322"/><path d="M1732,94 L1732,106 M1727,94 L1727,106"/></g></g>
+<g class="link" data-a="raffle_tickets" data-b="raffles" stroke="#BF8700"><title>raffle_tickets.raffle_id → raffles.id</title><path d="M1740,628 L1725,625 Q1720,620 1715,620 L1715,620 Q1710,620 1710,615 L1710,415 Q1710,410 1715,410 L1715,410 Q1720,410 1725,415 L1740,412"/><g class="mark"><path d="M1728,628 L1740,622 M1728,628 L1740,628 M1728,628 L1740,634 M1724,622 L1724,634"/><path d="M1732,406 L1732,418 M1727,406 L1727,418"/></g></g>
+<g class="link" data-a="raffles" data-b="offices" stroke="#1F6FEB"><title>raffles.office → offices.id</title><path d="M1990,432 L2005,435 Q2010,430 2015,430 L2015,430 Q2020,430 2020,425 L2020,106 Q2020,100 2014,100 L1990,100"/><g class="mark"><path d="M2002,432 L1990,426 M2002,432 L1990,432 M2002,432 L1990,438 M2006,426 L2006,438"/><path d="M1998,94 L1998,106 M2003,94 L2003,106"/></g></g>
+<g class="link" data-a="game_state" data-b="users" stroke="#24292E"><title>game_state.user_id → users.id</title><path d="M900,740 L876,740 Q870,740 870,734 L870,336 Q870,330 876,330 L900,330"/><g class="mark"><path d="M892,734 L892,746 M887,734 L887,746"/><path d="M892,324 L892,336 M887,324 L887,336"/></g></g>
+<g class="link" data-a="player_day_tasks" data-b="tasks" stroke="#8250DF"><title>player_day_tasks.task_id → tasks.id</title><path d="M480,1126 L466,1126 Q460,1120 454,1120 L345,1120 Q340,1120 340,1125 L340,1125 Q340,1130 335,1130 L310,1130"/><g class="mark"><path d="M468,1126 L480,1120 M468,1126 L480,1126 M468,1126 L480,1132 M464,1120 L464,1132"/><path d="M318,1124 L318,1136 M323,1124 L323,1136"/></g></g>
+<g class="link" data-a="office_presence" data-b="users" stroke="#24292E"><title>office_presence.user_id → users.id</title><path d="M1320,316 L1306,316 Q1300,310 1294,310 L1186,310 Q1180,310 1180,316 L1180,324 Q1180,330 1174,330 L1150,330"/><g class="mark"><path d="M1312,310 L1312,322 M1307,310 L1307,322"/><path d="M1158,324 L1158,336 M1163,324 L1163,336"/></g></g>
+<g class="link" data-a="owned_items" data-b="shop_items" stroke="#8250DF"><title>owned_items.item_id → shop_items.id</title><path d="M1570,924 L1584,926 Q1590,920 1596,920 L1704,920 Q1710,920 1710,926 L1710,944 Q1710,950 1716,950 L1740,950"/><g class="mark"><path d="M1582,924 L1570,918 M1582,924 L1570,924 M1582,924 L1570,930 M1586,918 L1586,930"/><path d="M1732,944 L1732,956 M1727,944 L1727,956"/></g></g>
+<g class="link" data-a="account_metadata" data-b="offices" stroke="#1F6FEB"><title>account_metadata.office → offices.id</title><path d="M1570,140 L1704,140 Q1710,140 1710,134 L1710,106 Q1710,100 1716,100 L1740,100"/><g class="mark"><path d="M1582,140 L1570,134 M1582,140 L1570,140 M1582,140 L1570,146 M1586,134 L1586,146"/><path d="M1732,94 L1732,106 M1727,94 L1727,106"/></g></g>
+<g class="link" data-a="owned_cars" data-b="cars" stroke="#8250DF"><title>owned_cars.car_id → cars.id</title><path d="M1570,1352 L1584,1356 Q1590,1350 1596,1350 L1704,1350 Q1710,1350 1710,1344 L1710,1305 Q1710,1300 1715,1300 L1715,1300 Q1720,1300 1725,1305 L1740,1302"/><g class="mark"><path d="M1582,1352 L1570,1346 M1582,1352 L1570,1352 M1582,1352 L1570,1358 M1586,1346 L1586,1358"/><path d="M1732,1296 L1732,1308 M1727,1296 L1727,1308"/></g></g>
+<g class="link" data-a="operations" data-b="users" stroke="#24292E"><title>operations.user_id → users.id</title><path d="M730,276 L744,276 Q750,270 756,270 L864,270 Q870,270 870,276 L870,324 Q870,330 876,330 L900,330"/><g class="mark"><path d="M742,276 L730,270 M742,276 L730,276 M742,276 L730,282 M746,270 L746,282"/><path d="M892,324 L892,336 M887,324 L887,336"/></g></g>
+<g class="link" data-a="player_outfit" data-b="wardrobe_items" stroke="#8250DF"><title>player_outfit.item_id → wardrobe_items.id</title><path d="M1570,1216 L1584,1216 Q1590,1210 1596,1210 L1704,1210 Q1710,1210 1710,1204 L1710,1145 Q1710,1140 1715,1140 L1715,1140 Q1720,1140 1725,1145 L1740,1146"/><g class="mark"><path d="M1582,1216 L1570,1210 M1582,1216 L1570,1216 M1582,1216 L1570,1222 M1586,1210 L1586,1222"/><path d="M1732,1140 L1732,1152 M1727,1140 L1727,1152"/></g></g>
+<g class="link" data-a="account_metadata" data-b="departments" stroke="#1F6FEB"><title>account_metadata.trip_department → departments.id</title><path d="M1570,200 L1694,200 Q1700,200 1700,206 L1700,264 Q1700,270 1706,270 L1714,270 Q1720,270 1726,276 L1740,276"/><g class="mark"><path d="M1582,200 L1570,194 M1582,200 L1570,200 M1582,200 L1570,206 M1586,194 L1586,206"/><path d="M1732,270 L1732,282 M1727,270 L1727,282"/></g></g>
+<g class="link" data-a="account_metadata" data-b="offices" stroke="#1F6FEB"><title>account_metadata.trip_office → offices.id</title><path d="M1570,180 L1704,180 Q1710,180 1710,174 L1710,106 Q1710,100 1716,100 L1740,100"/><g class="mark"><path d="M1582,180 L1570,174 M1582,180 L1570,180 M1582,180 L1570,186 M1586,174 L1586,186"/><path d="M1732,94 L1732,106 M1727,94 L1727,106"/></g></g>
+<g class="link" data-a="activity" data-b="users" stroke="#24292E"><title>activity.user_id → users.id</title><path d="M730,412 L744,416 Q750,410 756,410 L864,410 Q870,410 870,404 L870,336 Q870,330 876,330 L900,330"/><g class="mark"><path d="M742,412 L730,406 M742,412 L730,412 M742,412 L730,418 M746,406 L746,418"/><path d="M892,324 L892,336 M887,324 L887,336"/></g></g>
+<g class="link" data-a="player_days" data-b="game_state" stroke="#2DA44E"><title>player_days.user_id → game_state.user_id</title><path d="M730,850 L874,850 Q880,850 880,844 L880,686 Q880,680 886,680 L1174,680 Q1180,680 1180,686 L1180,734 Q1180,740 1174,740 L1150,740"/><g class="mark"><path d="M742,850 L730,844 M742,850 L730,850 M742,850 L730,856 M746,844 L746,856"/><path d="M1158,734 L1158,746 M1163,734 L1163,746"/></g></g>
+<g class="link" data-a="inbox_items" data-b="inbox" stroke="#0A7E8C"><title>inbox_items.user_id → inbox.user_id</title><path d="M310,590 L444,590 Q450,590 450,596 L450,695 Q450,700 455,700 L455,700 Q460,700 465,705 L480,704"/><g class="mark"><path d="M322,590 L310,584 M322,590 L310,590 M322,590 L310,596 M326,584 L326,596"/><path d="M472,698 L472,710 M467,698 L467,710"/></g></g>
+<g class="link" data-a="account_metadata" data-b="departments" stroke="#1F6FEB"><title>account_metadata.department → departments.id</title><path d="M1570,160 L1694,160 Q1700,160 1700,166 L1700,264 Q1700,270 1706,270 L1714,270 Q1720,270 1726,276 L1740,276"/><g class="mark"><path d="M1582,160 L1570,154 M1582,160 L1570,160 M1582,160 L1570,166 M1586,154 L1586,166"/><path d="M1732,270 L1732,282 M1727,270 L1727,282"/></g></g>
+<g class="link" data-a="daily_purchases" data-b="shop_items" stroke="#8250DF"><title>daily_purchases.item_id → shop_items.id</title><path d="M1570,1080 L1704,1080 Q1710,1080 1710,1074 L1710,956 Q1710,950 1716,950 L1740,950"/><g class="mark"><path d="M1582,1080 L1570,1074 M1582,1080 L1570,1080 M1582,1080 L1570,1086 M1586,1074 L1586,1086"/><path d="M1732,944 L1732,956 M1727,944 L1727,956"/></g></g>
+<g class="link" data-a="task_log" data-b="tasks" stroke="#8250DF"><title>task_log.task_id → tasks.id</title><path d="M480,1282 L466,1286 Q460,1280 454,1280 L346,1280 Q340,1280 340,1274 L340,1136 Q340,1130 334,1130 L310,1130"/><g class="mark"><path d="M468,1282 L480,1276 M468,1282 L480,1282 M468,1282 L480,1288 M464,1276 L464,1288"/><path d="M318,1124 L318,1136 M323,1124 L323,1136"/></g></g>
+<g class="link" data-a="owned_items" data-b="game_state" stroke="#2DA44E"><title>owned_items.user_id → game_state.user_id</title><path d="M1320,904 L1306,906 Q1300,900 1294,900 L1186,900 Q1180,900 1180,894 L1180,746 Q1180,740 1174,740 L1150,740"/><g class="mark"><path d="M1308,904 L1320,898 M1308,904 L1320,904 M1308,904 L1320,910 M1304,898 L1304,910"/><path d="M1158,734 L1158,746 M1163,734 L1163,746"/></g></g>
+<g class="link" data-a="suspicious" data-b="users" stroke="#24292E"><title>suspicious.user_id → users.id</title><path d="M1320,532 L1306,536 Q1300,530 1294,530 L1186,530 Q1180,530 1180,524 L1180,336 Q1180,330 1174,330 L1150,330"/><g class="mark"><path d="M1308,532 L1320,526 M1308,532 L1320,532 M1308,532 L1320,538 M1304,526 L1304,538"/><path d="M1158,324 L1158,336 M1163,324 L1163,336"/></g></g>
+<g class="link" data-a="reward_requests" data-b="shop_items" stroke="#8250DF"><title>reward_requests.item_id → shop_items.id</title><path d="M1570,748 L1584,746 Q1590,740 1596,740 L1704,740 Q1710,740 1710,746 L1710,944 Q1710,950 1716,950 L1740,950"/><g class="mark"><path d="M1582,748 L1570,742 M1582,748 L1570,748 M1582,748 L1570,754 M1586,742 L1586,754"/><path d="M1732,944 L1732,956 M1727,944 L1727,956"/></g></g>
+<g class="link" data-a="wallet_ledger" data-b="users" stroke="#24292E"><title>wallet_ledger.user_id → users.id</title><path d="M730,120 L864,120 Q870,120 870,126 L870,324 Q870,330 876,330 L900,330"/><g class="mark"><path d="M742,120 L730,114 M742,120 L730,120 M742,120 L730,126 M746,114 L746,126"/><path d="M892,324 L892,336 M887,324 L887,336"/></g></g>
+<g class="link" data-a="account_metadata" data-b="users" stroke="#24292E"><title>account_metadata.user_id → users.id</title><path d="M1320,100 L1186,100 Q1180,100 1180,106 L1180,324 Q1180,330 1174,330 L1150,330"/><g class="mark"><path d="M1312,94 L1312,106 M1307,94 L1307,106"/><path d="M1158,324 L1158,336 M1163,324 L1163,336"/></g></g>
+<g class="link" data-a="avatars" data-b="users" stroke="#24292E"><title>avatars.user_id → users.id</title><path d="M730,588 L744,586 Q750,580 756,580 L864,580 Q870,580 870,574 L870,336 Q870,330 876,330 L900,330"/><g class="mark"><path d="M738,582 L738,594 M743,582 L743,594"/><path d="M892,324 L892,336 M887,324 L887,336"/></g></g>
+<g class="link" data-a="daily_purchases" data-b="game_state" stroke="#2DA44E"><title>daily_purchases.user_id → game_state.user_id</title><path d="M1320,1020 L1186,1020 Q1180,1020 1180,1014 L1180,746 Q1180,740 1174,740 L1150,740"/><g class="mark"><path d="M1308,1020 L1320,1014 M1308,1020 L1320,1020 M1308,1020 L1320,1026 M1304,1014 L1304,1026"/><path d="M1158,734 L1158,746 M1163,734 L1163,746"/></g></g>
+<g class="link" data-a="office_presence" data-b="offices" stroke="#1F6FEB"><title>office_presence.office → offices.id</title><path d="M1570,416 L1584,416 Q1590,410 1596,410 L1694,410 Q1700,410 1700,404 L1700,315 Q1700,310 1705,310 L1705,310 Q1710,310 1710,305 L1710,106 Q1710,100 1716,100 L1740,100"/><g class="mark"><path d="M1582,416 L1570,410 M1582,416 L1570,416 M1582,416 L1570,422 M1586,410 L1586,422"/><path d="M1732,94 L1732,106 M1727,94 L1727,106"/></g></g>
+<g class="link" data-a="player_day_tasks" data-b="game_state" stroke="#2DA44E"><title>player_day_tasks.user_id → game_state.user_id</title><path d="M730,1086 L744,1086 Q750,1080 756,1080 L874,1080 Q880,1080 880,1074 L880,686 Q880,680 886,680 L1174,680 Q1180,680 1180,686 L1180,734 Q1180,740 1174,740 L1150,740"/><g class="mark"><path d="M742,1086 L730,1080 M742,1086 L730,1086 M742,1086 L730,1092 M746,1080 L746,1092"/><path d="M1158,734 L1158,746 M1163,734 L1163,746"/></g></g>
+<g class="link" data-a="task_assignments" data-b="tasks" stroke="#8250DF"><title>task_assignments.task_id → tasks.id</title><path d="M480,1478 L466,1476 Q460,1470 454,1470 L346,1470 Q340,1470 340,1464 L340,1136 Q340,1130 334,1130 L310,1130"/><g class="mark"><path d="M468,1478 L480,1472 M468,1478 L480,1478 M468,1478 L480,1484 M464,1472 L464,1484"/><path d="M318,1124 L318,1136 M323,1124 L323,1136"/></g></g>
+<g class="link" data-a="inbox" data-b="users" stroke="#24292E"><title>inbox.user_id → users.id</title><path d="M730,704 L744,706 Q750,700 756,700 L864,700 Q870,700 870,694 L870,336 Q870,330 876,330 L900,330"/><g class="mark"><path d="M738,698 L738,710 M743,698 L743,710"/><path d="M892,324 L892,336 M887,324 L887,336"/></g></g>
+<g class="link" data-a="reward_requests" data-b="users" stroke="#24292E"><title>reward_requests.user_id → users.id</title><path d="M1320,728 L1306,726 Q1300,720 1294,720 L1196,720 Q1190,720 1190,714 L1190,336 Q1190,330 1184,330 L1150,330"/><g class="mark"><path d="M1308,728 L1320,722 M1308,728 L1320,728 M1308,728 L1320,734 M1304,722 L1304,734"/><path d="M1158,324 L1158,336 M1163,324 L1163,336"/></g></g>
+<g class="link" data-a="player_outfit" data-b="game_state" stroke="#2DA44E"><title>player_outfit.user_id → game_state.user_id</title><path d="M1320,1176 L1306,1176 Q1300,1170 1294,1170 L1186,1170 Q1180,1170 1180,1164 L1180,746 Q1180,740 1174,740 L1150,740"/><g class="mark"><path d="M1308,1176 L1320,1170 M1308,1176 L1320,1176 M1308,1176 L1320,1182 M1304,1170 L1304,1182"/><path d="M1158,734 L1158,746 M1163,734 L1163,746"/></g></g>
+<g class="link" data-a="task_log" data-b="game_state" stroke="#2DA44E"><title>task_log.user_id → game_state.user_id</title><path d="M730,1242 L744,1246 Q750,1240 756,1240 L1174,1240 Q1180,1240 1180,1234 L1180,746 Q1180,740 1174,740 L1150,740"/><g class="mark"><path d="M742,1242 L730,1236 M742,1242 L730,1242 M742,1242 L730,1248 M746,1236 L746,1248"/><path d="M1158,734 L1158,746 M1163,734 L1163,746"/></g></g>
+<g class="link" data-a="owned_cars" data-b="game_state" stroke="#2DA44E"><title>owned_cars.user_id → game_state.user_id</title><path d="M1320,1332 L1306,1336 Q1300,1330 1294,1330 L1186,1330 Q1180,1330 1180,1324 L1180,746 Q1180,740 1174,740 L1150,740"/><g class="mark"><path d="M1308,1332 L1320,1326 M1308,1332 L1320,1332 M1308,1332 L1320,1338 M1304,1326 L1304,1338"/><path d="M1158,734 L1158,746 M1163,734 L1163,746"/></g></g>
+<g class="link" data-a="raffles" data-b="users" stroke="#24292E"><title>raffles.winner → users.id</title><path d="M1740,532 L1726,536 Q1720,530 1714,530 L1596,530 Q1590,530 1590,524 L1590,456 Q1590,450 1584,450 L1186,450 Q1180,450 1180,444 L1180,336 Q1180,330 1174,330 L1150,330"/><g class="mark"><path d="M1728,532 L1740,526 M1728,532 L1740,532 M1728,532 L1740,538 M1724,526 L1724,538"/><path d="M1158,324 L1158,336 M1163,324 L1163,336"/></g></g>
+<g class="link" data-a="photo_requests" data-b="tasks" stroke="#8250DF"><title>photo_requests.task_id → tasks.id</title><path d="M480,1790 L346,1790 Q340,1790 340,1784 L340,1136 Q340,1130 334,1130 L310,1130"/><g class="mark"><path d="M468,1790 L480,1784 M468,1790 L480,1790 M468,1790 L480,1796 M464,1784 L464,1796"/><path d="M318,1124 L318,1136 M323,1124 L323,1136"/></g></g>
+<g class="link" data-a="task_assignments" data-b="game_state" stroke="#2DA44E"><title>task_assignments.user_id → game_state.user_id</title><path d="M730,1438 L744,1436 Q750,1430 756,1430 L1174,1430 Q1180,1430 1180,1424 L1180,746 Q1180,740 1174,740 L1150,740"/><g class="mark"><path d="M742,1438 L730,1432 M742,1438 L730,1438 M742,1438 L730,1444 M746,1432 L746,1444"/><path d="M1158,734 L1158,746 M1163,734 L1163,746"/></g></g>
+<g class="link" data-a="raffle_tickets" data-b="users" stroke="#24292E"><title>raffle_tickets.user_id → users.id</title><path d="M1740,648 L1726,646 Q1720,640 1714,640 L1196,640 Q1190,640 1190,634 L1190,336 Q1190,330 1184,330 L1150,330"/><g class="mark"><path d="M1728,648 L1740,642 M1728,648 L1740,648 M1728,648 L1740,654 M1724,642 L1724,654"/><path d="M1158,324 L1158,336 M1163,324 L1163,336"/></g></g>
+<g class="link" data-a="game_state" data-b="cars" stroke="#8250DF"><title>game_state.car → cars.id</title><path d="M1150,900 L1164,900 Q1170,900 1170,906 L1170,1264 Q1170,1270 1176,1270 L1704,1270 Q1710,1270 1710,1276 L1710,1295 Q1710,1300 1715,1300 L1715,1300 Q1720,1300 1725,1305 L1740,1302"/><g class="mark"><path d="M1162,900 L1150,894 M1162,900 L1150,900 M1162,900 L1150,906 M1166,894 L1166,906"/><path d="M1732,1296 L1732,1308 M1727,1296 L1727,1308"/></g></g>
+<g class="link" data-a="colleague_meetings" data-b="game_state" stroke="#2DA44E"><title>colleague_meetings.user_id → game_state.user_id</title><path d="M730,1594 L744,1596 Q750,1590 750,1584 L750,1436 Q750,1430 756,1430 L1174,1430 Q1180,1430 1180,1424 L1180,746 Q1180,740 1174,740 L1150,740"/><g class="mark"><path d="M742,1594 L730,1588 M742,1594 L730,1594 M742,1594 L730,1600 M746,1588 L746,1600"/><path d="M1158,734 L1158,746 M1163,734 L1163,746"/></g></g>
+<g class="link" data-a="photo_requests" data-b="game_state" stroke="#2DA44E"><title>photo_requests.user_id → game_state.user_id</title><path d="M730,1750 L744,1750 Q750,1750 750,1744 L750,1436 Q750,1430 756,1430 L1174,1430 Q1180,1430 1180,1424 L1180,746 Q1180,740 1174,740 L1150,740"/><g class="mark"><path d="M742,1750 L730,1744 M742,1750 L730,1750 M742,1750 L730,1756 M746,1744 L746,1756"/><path d="M1158,734 L1158,746 M1163,734 L1163,746"/></g></g>
+<g class="link" data-a="task_assignments" data-b="users" stroke="#24292E"><title>task_assignments.colleague_id → users.id</title><path d="M730,1498 L744,1496 Q750,1490 756,1490 L864,1490 Q870,1490 870,1484 L870,336 Q870,330 876,330 L900,330"/><g class="mark"><path d="M742,1498 L730,1492 M742,1498 L730,1498 M742,1498 L730,1504 M746,1492 L746,1504"/><path d="M892,324 L892,336 M887,324 L887,336"/></g></g>
+<g class="link" data-a="game_state" data-b="offices" stroke="#1F6FEB"><title>game_state.presence_office → offices.id</title><path d="M1150,940 L1294,940 Q1300,940 1300,934 L1300,846 Q1300,840 1306,840 L2014,840 Q2020,840 2020,834 L2020,106 Q2020,100 2014,100 L1990,100"/><g class="mark"><path d="M1162,940 L1150,934 M1162,940 L1150,940 M1162,940 L1150,946 M1166,934 L1166,946"/><path d="M1998,94 L1998,106 M2003,94 L2003,106"/></g></g>
+<g class="link" data-a="colleague_meetings" data-b="users" stroke="#24292E"><title>colleague_meetings.colleague_id → users.id</title><path d="M730,1634 L744,1636 Q750,1630 756,1630 L864,1630 Q870,1630 870,1624 L870,336 Q870,330 876,330 L900,330"/><g class="mark"><path d="M742,1634 L730,1628 M742,1634 L730,1634 M742,1634 L730,1640 M746,1628 L746,1640"/><path d="M892,324 L892,336 M887,324 L887,336"/></g></g>
+<g class="link" data-a="photo_requests" data-b="users" stroke="#24292E"><title>photo_requests.partner_id → users.id</title><path d="M730,1810 L864,1810 Q870,1810 870,1804 L870,336 Q870,330 876,330 L900,330"/><g class="mark"><path d="M742,1810 L730,1804 M742,1810 L730,1810 M742,1810 L730,1816 M746,1804 L746,1816"/><path d="M892,324 L892,336 M887,324 L887,336"/></g></g>
+</g>
+<g class="table" data-name="users">
+<rect class="card" x="900" y="290" width="250" height="176" rx="6"/>
+<path d="M900,320 V296 Q900,290 906,290 H1144 Q1150,290 1150,296 V320 Z" fill="#24292E"/>
+<text class="title" x="910" y="310">users</text>
+<text class="badge" x="908" y="334" fill="#BF8700">PK</text>
+<text class="col key" x="940" y="334">id</text>
+<text class="type" x="1140" y="334" text-anchor="end">uuid</text>
+<rect x="901" y="340" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="940" y="354">username</text>
+<text class="type" x="1140" y="354" text-anchor="end">varchar(128)</text>
+<text class="col" x="940" y="374">display_name</text>
+<text class="type" x="1140" y="374" text-anchor="end">varchar(255)</text>
+<rect x="901" y="380" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="940" y="394">metadata</text>
+<text class="type" x="1140" y="394" text-anchor="end">jsonb</text>
+<text class="col" x="940" y="414">wallet</text>
+<text class="type" x="1140" y="414" text-anchor="end">jsonb</text>
+<rect x="901" y="420" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="940" y="434">disable_time</text>
+<text class="type" x="1140" y="434" text-anchor="end">timestamptz</text>
+<text class="col" x="940" y="454">create_time</text>
+<text class="type" x="1140" y="454" text-anchor="end">timestamptz</text>
+</g>
+<g class="table" data-name="wallet_ledger">
+<rect class="card" x="480" y="60" width="250" height="136" rx="6"/>
+<path d="M480,90 V66 Q480,60 486,60 H724 Q730,60 730,66 V90 Z" fill="#24292E"/>
+<text class="title" x="490" y="80">wallet_ledger</text>
+<text class="badge" x="488" y="104" fill="#BF8700">PK</text>
+<text class="col key" x="520" y="104">id</text>
+<text class="type" x="720" y="104" text-anchor="end">uuid</text>
+<rect x="481" y="110" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="488" y="124" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="124">user_id</text>
+<text class="type" x="720" y="124" text-anchor="end">uuid</text>
+<text class="col" x="520" y="144">changeset</text>
+<text class="type" x="720" y="144" text-anchor="end">jsonb</text>
+<rect x="481" y="150" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="520" y="164">metadata</text>
+<text class="type" x="720" y="164" text-anchor="end">jsonb</text>
+<text class="col" x="520" y="184">create_time</text>
+<text class="type" x="720" y="184" text-anchor="end">timestamptz</text>
+</g>
+<g class="table" data-name="account_metadata">
+<rect class="card embedded" x="1320" y="60" width="250" height="176" rx="6"/>
+<path d="M1320,90 V66 Q1320,60 1326,60 H1564 Q1570,60 1570,66 V90 Z" fill="#24292E"/>
+<text class="title" x="1330" y="80">account_metadata</text>
+<text class="badge" x="1328" y="104" fill="#BF8700">PK</text>
+<text class="badge" x="1344" y="104" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="104">user_id</text>
+<text class="type" x="1560" y="104" text-anchor="end">uuid</text>
+<rect x="1321" y="110" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1360" y="124">role</text>
+<text class="type" x="1560" y="124" text-anchor="end">varchar</text>
+<text class="badge" x="1328" y="144" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="144">office</text>
+<text class="type" x="1560" y="144" text-anchor="end">varchar</text>
+<rect x="1321" y="150" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="1328" y="164" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="164">department</text>
+<text class="type" x="1560" y="164" text-anchor="end">varchar</text>
+<text class="badge" x="1328" y="184" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="184">trip_office</text>
+<text class="type" x="1560" y="184" text-anchor="end">varchar</text>
+<rect x="1321" y="190" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="1328" y="204" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="204">trip_department</text>
+<text class="type" x="1560" y="204" text-anchor="end">varchar</text>
+<text class="col" x="1360" y="224">trip_until</text>
+<text class="type" x="1560" y="224" text-anchor="end">int</text>
+</g>
+<g class="table" data-name="offices">
+<rect class="card" x="1740" y="60" width="250" height="136" rx="6"/>
+<path d="M1740,90 V66 Q1740,60 1746,60 H1984 Q1990,60 1990,66 V90 Z" fill="#1F6FEB"/>
+<text class="title" x="1750" y="80">offices</text>
+<text class="badge" x="1748" y="104" fill="#BF8700">PK</text>
+<text class="col key" x="1780" y="104">id</text>
+<text class="type" x="1980" y="104" text-anchor="end">varchar</text>
+<rect x="1741" y="110" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1780" y="124">name</text>
+<text class="type" x="1980" y="124" text-anchor="end">varchar</text>
+<text class="col" x="1780" y="144">city</text>
+<text class="type" x="1980" y="144" text-anchor="end">varchar</text>
+<rect x="1741" y="150" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1780" y="164">networks</text>
+<text class="type" x="1980" y="164" text-anchor="end">text[]</text>
+<text class="col" x="1780" y="184">limits</text>
+<text class="type" x="1980" y="184" text-anchor="end">jsonb</text>
+</g>
+<g class="table" data-name="departments">
+<rect class="card" x="1740" y="236" width="250" height="96" rx="6"/>
+<path d="M1740,266 V242 Q1740,236 1746,236 H1984 Q1990,236 1990,242 V266 Z" fill="#1F6FEB"/>
+<text class="title" x="1750" y="256">departments</text>
+<text class="badge" x="1748" y="280" fill="#BF8700">PK</text>
+<text class="col key" x="1780" y="280">id</text>
+<text class="type" x="1980" y="280" text-anchor="end">varchar</text>
+<rect x="1741" y="286" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1780" y="300">name</text>
+<text class="type" x="1980" y="300" text-anchor="end">varchar</text>
+<text class="badge" x="1748" y="320" fill="#0969DA">FK</text>
+<text class="col key" x="1780" y="320">office</text>
+<text class="type" x="1980" y="320" text-anchor="end">varchar</text>
+</g>
+<g class="table" data-name="settings_limits">
+<rect class="card" x="60" y="766" width="250" height="176" rx="6"/>
+<path d="M60,796 V772 Q60,766 66,766 H304 Q310,766 310,772 V796 Z" fill="#1F6FEB"/>
+<text class="title" x="70" y="786">settings_limits</text>
+<text class="badge" x="68" y="810" fill="#BF8700">PK</text>
+<text class="col key" x="100" y="810">key</text>
+<text class="type" x="300" y="810" text-anchor="end">varchar</text>
+<rect x="61" y="816" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="100" y="830">task_cooldown_minutes</text>
+<text class="type" x="300" y="830" text-anchor="end">int</text>
+<text class="col" x="100" y="850">task_window_start</text>
+<text class="type" x="300" y="850" text-anchor="end">varchar</text>
+<rect x="61" y="856" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="100" y="870">task_window_end</text>
+<text class="type" x="300" y="870" text-anchor="end">varchar</text>
+<text class="col" x="100" y="890">play_limit_minutes</text>
+<text class="type" x="300" y="890" text-anchor="end">int</text>
+<rect x="61" y="896" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="100" y="910">exit_grace_minutes</text>
+<text class="type" x="300" y="910" text-anchor="end">int</text>
+<text class="col" x="100" y="930">rest_minutes</text>
+<text class="type" x="300" y="930" text-anchor="end">int</text>
+</g>
+<g class="table" data-name="game_state">
+<rect class="card" x="900" y="700" width="250" height="396" rx="6"/>
+<path d="M900,730 V706 Q900,700 906,700 H1144 Q1150,700 1150,706 V730 Z" fill="#2DA44E"/>
+<text class="title" x="910" y="720">game_state</text>
+<text class="badge" x="908" y="744" fill="#BF8700">PK</text>
+<text class="badge" x="924" y="744" fill="#0969DA">FK</text>
+<text class="col key" x="940" y="744">user_id</text>
+<text class="type" x="1140" y="744" text-anchor="end">uuid</text>
+<rect x="901" y="750" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="940" y="764">first_day</text>
+<text class="type" x="1140" y="764" text-anchor="end">int</text>
+<text class="col" x="940" y="784">last_login_day</text>
+<text class="type" x="1140" y="784" text-anchor="end">int</text>
+<rect x="901" y="790" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="940" y="804">processed_day</text>
+<text class="type" x="1140" y="804" text-anchor="end">int</text>
+<text class="col" x="940" y="824">best_streak</text>
+<text class="type" x="1140" y="824" text-anchor="end">int</text>
+<rect x="901" y="830" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="940" y="844">status</text>
+<text class="type" x="1140" y="844" text-anchor="end">varchar</text>
+<text class="col" x="940" y="864">avatar</text>
+<text class="type" x="1140" y="864" text-anchor="end">varchar</text>
+<rect x="901" y="870" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="940" y="884">has_custom_avatar</text>
+<text class="type" x="1140" y="884" text-anchor="end">bool</text>
+<text class="badge" x="908" y="904" fill="#0969DA">FK</text>
+<text class="col key" x="940" y="904">car</text>
+<text class="type" x="1140" y="904" text-anchor="end">varchar</text>
+<rect x="901" y="910" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="940" y="924">outfit</text>
+<text class="type" x="1140" y="924" text-anchor="end">jsonb</text>
+<text class="badge" x="908" y="944" fill="#0969DA">FK</text>
+<text class="col key" x="940" y="944">presence_office</text>
+<text class="type" x="1140" y="944" text-anchor="end">varchar</text>
+<rect x="901" y="950" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="940" y="964">used_presence_tokens</text>
+<text class="type" x="1140" y="964" text-anchor="end">text[]</text>
+<text class="col" x="940" y="984">coins_earned</text>
+<text class="type" x="1140" y="984" text-anchor="end">int</text>
+<rect x="901" y="990" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="940" y="1004">welcome_given</text>
+<text class="type" x="1140" y="1004" text-anchor="end">bool</text>
+<text class="col" x="940" y="1024">banned_at</text>
+<text class="type" x="1140" y="1024" text-anchor="end">bigint</text>
+<rect x="901" y="1030" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="940" y="1044">last_task_at</text>
+<text class="type" x="1140" y="1044" text-anchor="end">bigint</text>
+<text class="col" x="940" y="1064">play</text>
+<text class="type" x="1140" y="1064" text-anchor="end">jsonb</text>
+<rect x="901" y="1070" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="940" y="1084">morning_report</text>
+<text class="type" x="1140" y="1084" text-anchor="end">jsonb</text>
+</g>
+<g class="table" data-name="player_days">
+<rect class="card embedded" x="480" y="810" width="250" height="196" rx="6"/>
+<path d="M480,840 V816 Q480,810 486,810 H724 Q730,810 730,816 V840 Z" fill="#2DA44E"/>
+<text class="title" x="490" y="830">player_days</text>
+<text class="badge" x="488" y="854" fill="#BF8700">PK</text>
+<text class="badge" x="504" y="854" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="854">user_id</text>
+<text class="type" x="720" y="854" text-anchor="end">uuid</text>
+<rect x="481" y="860" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="488" y="874" fill="#BF8700">PK</text>
+<text class="col key" x="520" y="874">day</text>
+<text class="type" x="720" y="874" text-anchor="end">int</text>
+<text class="col" x="520" y="894">present</text>
+<text class="type" x="720" y="894" text-anchor="end">bool</text>
+<rect x="481" y="900" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="520" y="914">excused</text>
+<text class="type" x="720" y="914" text-anchor="end">bool</text>
+<text class="col" x="520" y="934">checkin_at</text>
+<text class="type" x="720" y="934" text-anchor="end">bigint</text>
+<rect x="481" y="940" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="520" y="954">checkout_at</text>
+<text class="type" x="720" y="954" text-anchor="end">bigint</text>
+<text class="col" x="520" y="974">earned</text>
+<text class="type" x="720" y="974" text-anchor="end">int</text>
+<rect x="481" y="980" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="520" y="994">play_seconds</text>
+<text class="type" x="720" y="994" text-anchor="end">int</text>
+</g>
+<g class="table" data-name="player_day_tasks">
+<rect class="card embedded" x="480" y="1046" width="250" height="116" rx="6"/>
+<path d="M480,1076 V1052 Q480,1046 486,1046 H724 Q730,1046 730,1052 V1076 Z" fill="#2DA44E"/>
+<text class="title" x="490" y="1066">player_day_tasks</text>
+<text class="badge" x="488" y="1090" fill="#BF8700">PK</text>
+<text class="badge" x="504" y="1090" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="1090">user_id</text>
+<text class="type" x="720" y="1090" text-anchor="end">uuid</text>
+<rect x="481" y="1096" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="488" y="1110" fill="#BF8700">PK</text>
+<text class="col key" x="520" y="1110">day</text>
+<text class="type" x="720" y="1110" text-anchor="end">int</text>
+<text class="badge" x="488" y="1130" fill="#BF8700">PK</text>
+<text class="badge" x="504" y="1130" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="1130">task_id</text>
+<text class="type" x="720" y="1130" text-anchor="end">varchar</text>
+<rect x="481" y="1136" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="520" y="1150">status</text>
+<text class="type" x="720" y="1150" text-anchor="end">varchar</text>
+</g>
+<g class="table" data-name="task_log">
+<rect class="card embedded" x="480" y="1202" width="250" height="156" rx="6"/>
+<path d="M480,1232 V1208 Q480,1202 486,1202 H724 Q730,1202 730,1208 V1232 Z" fill="#2DA44E"/>
+<text class="title" x="490" y="1222">task_log</text>
+<text class="badge" x="488" y="1246" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="1246">user_id</text>
+<text class="type" x="720" y="1246" text-anchor="end">uuid</text>
+<rect x="481" y="1252" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="520" y="1266">day</text>
+<text class="type" x="720" y="1266" text-anchor="end">int</text>
+<text class="badge" x="488" y="1286" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="1286">task_id</text>
+<text class="type" x="720" y="1286" text-anchor="end">varchar</text>
+<rect x="481" y="1292" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="520" y="1306">title</text>
+<text class="type" x="720" y="1306" text-anchor="end">varchar</text>
+<text class="col" x="520" y="1326">reward</text>
+<text class="type" x="720" y="1326" text-anchor="end">int</text>
+<rect x="481" y="1332" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="520" y="1346">t</text>
+<text class="type" x="720" y="1346" text-anchor="end">bigint</text>
+</g>
+<g class="table" data-name="task_assignments">
+<rect class="card embedded" x="480" y="1398" width="250" height="116" rx="6"/>
+<path d="M480,1428 V1404 Q480,1398 486,1398 H724 Q730,1398 730,1404 V1428 Z" fill="#2DA44E"/>
+<text class="title" x="490" y="1418">task_assignments</text>
+<text class="badge" x="488" y="1442" fill="#BF8700">PK</text>
+<text class="badge" x="504" y="1442" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="1442">user_id</text>
+<text class="type" x="720" y="1442" text-anchor="end">uuid</text>
+<rect x="481" y="1448" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="488" y="1462" fill="#BF8700">PK</text>
+<text class="col key" x="520" y="1462">day</text>
+<text class="type" x="720" y="1462" text-anchor="end">int</text>
+<text class="badge" x="488" y="1482" fill="#BF8700">PK</text>
+<text class="badge" x="504" y="1482" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="1482">task_id</text>
+<text class="type" x="720" y="1482" text-anchor="end">varchar</text>
+<rect x="481" y="1488" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="488" y="1502" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="1502">colleague_id</text>
+<text class="type" x="720" y="1502" text-anchor="end">uuid</text>
+</g>
+<g class="table" data-name="colleague_meetings">
+<rect class="card embedded" x="480" y="1554" width="250" height="96" rx="6"/>
+<path d="M480,1584 V1560 Q480,1554 486,1554 H724 Q730,1554 730,1560 V1584 Z" fill="#2DA44E"/>
+<text class="title" x="490" y="1574">colleague_meetings</text>
+<text class="badge" x="488" y="1598" fill="#BF8700">PK</text>
+<text class="badge" x="504" y="1598" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="1598">user_id</text>
+<text class="type" x="720" y="1598" text-anchor="end">uuid</text>
+<rect x="481" y="1604" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="488" y="1618" fill="#BF8700">PK</text>
+<text class="col key" x="520" y="1618">day</text>
+<text class="type" x="720" y="1618" text-anchor="end">int</text>
+<text class="badge" x="488" y="1638" fill="#BF8700">PK</text>
+<text class="badge" x="504" y="1638" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="1638">colleague_id</text>
+<text class="type" x="720" y="1638" text-anchor="end">uuid</text>
+</g>
+<g class="table" data-name="photo_requests">
+<rect class="card embedded" x="480" y="1690" width="250" height="216" rx="6"/>
+<path d="M480,1720 V1696 Q480,1690 486,1690 H724 Q730,1690 730,1696 V1720 Z" fill="#2DA44E"/>
+<text class="title" x="490" y="1710">photo_requests</text>
+<text class="badge" x="488" y="1734" fill="#BF8700">PK</text>
+<text class="col key" x="520" y="1734">id</text>
+<text class="type" x="720" y="1734" text-anchor="end">varchar</text>
+<rect x="481" y="1740" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="488" y="1754" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="1754">user_id</text>
+<text class="type" x="720" y="1754" text-anchor="end">uuid</text>
+<text class="col" x="520" y="1774">day</text>
+<text class="type" x="720" y="1774" text-anchor="end">int</text>
+<rect x="481" y="1780" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="488" y="1794" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="1794">task_id</text>
+<text class="type" x="720" y="1794" text-anchor="end">varchar</text>
+<text class="badge" x="488" y="1814" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="1814">partner_id</text>
+<text class="type" x="720" y="1814" text-anchor="end">uuid</text>
+<rect x="481" y="1820" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="520" y="1834">partner_inbox_id</text>
+<text class="type" x="720" y="1834" text-anchor="end">int</text>
+<text class="col" x="520" y="1854">state</text>
+<text class="type" x="720" y="1854" text-anchor="end">varchar</text>
+<rect x="481" y="1860" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="520" y="1874">reward</text>
+<text class="type" x="720" y="1874" text-anchor="end">int</text>
+<text class="col" x="520" y="1894">t</text>
+<text class="type" x="720" y="1894" text-anchor="end">bigint</text>
+</g>
+<g class="table" data-name="owned_items">
+<rect class="card embedded" x="1320" y="864" width="250" height="76" rx="6"/>
+<path d="M1320,894 V870 Q1320,864 1326,864 H1564 Q1570,864 1570,870 V894 Z" fill="#2DA44E"/>
+<text class="title" x="1330" y="884">owned_items</text>
+<text class="badge" x="1328" y="908" fill="#BF8700">PK</text>
+<text class="badge" x="1344" y="908" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="908">user_id</text>
+<text class="type" x="1560" y="908" text-anchor="end">uuid</text>
+<rect x="1321" y="914" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="1328" y="928" fill="#BF8700">PK</text>
+<text class="badge" x="1344" y="928" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="928">item_id</text>
+<text class="type" x="1560" y="928" text-anchor="end">varchar</text>
+</g>
+<g class="table" data-name="daily_purchases">
+<rect class="card embedded" x="1320" y="980" width="250" height="116" rx="6"/>
+<path d="M1320,1010 V986 Q1320,980 1326,980 H1564 Q1570,980 1570,986 V1010 Z" fill="#2DA44E"/>
+<text class="title" x="1330" y="1000">daily_purchases</text>
+<text class="badge" x="1328" y="1024" fill="#BF8700">PK</text>
+<text class="badge" x="1344" y="1024" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="1024">user_id</text>
+<text class="type" x="1560" y="1024" text-anchor="end">uuid</text>
+<rect x="1321" y="1030" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1360" y="1044">day</text>
+<text class="type" x="1560" y="1044" text-anchor="end">int</text>
+<text class="badge" x="1328" y="1064" fill="#BF8700">PK</text>
+<text class="col key" x="1360" y="1064">offer_id</text>
+<text class="type" x="1560" y="1064" text-anchor="end">varchar</text>
+<rect x="1321" y="1070" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="1328" y="1084" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="1084">item_id</text>
+<text class="type" x="1560" y="1084" text-anchor="end">varchar</text>
+</g>
+<g class="table" data-name="player_outfit">
+<rect class="card embedded" x="1320" y="1136" width="250" height="116" rx="6"/>
+<path d="M1320,1166 V1142 Q1320,1136 1326,1136 H1564 Q1570,1136 1570,1142 V1166 Z" fill="#2DA44E"/>
+<text class="title" x="1330" y="1156">player_outfit</text>
+<text class="badge" x="1328" y="1180" fill="#BF8700">PK</text>
+<text class="badge" x="1344" y="1180" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="1180">user_id</text>
+<text class="type" x="1560" y="1180" text-anchor="end">uuid</text>
+<rect x="1321" y="1186" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="1328" y="1200" fill="#BF8700">PK</text>
+<text class="col key" x="1360" y="1200">slot</text>
+<text class="type" x="1560" y="1200" text-anchor="end">varchar</text>
+<text class="badge" x="1328" y="1220" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="1220">item_id</text>
+<text class="type" x="1560" y="1220" text-anchor="end">varchar</text>
+<rect x="1321" y="1226" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1360" y="1240">color</text>
+<text class="type" x="1560" y="1240" text-anchor="end">varchar</text>
+</g>
+<g class="table" data-name="owned_cars">
+<rect class="card embedded" x="1320" y="1292" width="250" height="76" rx="6"/>
+<path d="M1320,1322 V1298 Q1320,1292 1326,1292 H1564 Q1570,1292 1570,1298 V1322 Z" fill="#2DA44E"/>
+<text class="title" x="1330" y="1312">owned_cars</text>
+<text class="badge" x="1328" y="1336" fill="#BF8700">PK</text>
+<text class="badge" x="1344" y="1336" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="1336">user_id</text>
+<text class="type" x="1560" y="1336" text-anchor="end">uuid</text>
+<rect x="1321" y="1342" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="1328" y="1356" fill="#BF8700">PK</text>
+<text class="badge" x="1344" y="1356" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="1356">car_id</text>
+<text class="type" x="1560" y="1356" text-anchor="end">varchar</text>
+</g>
+<g class="table" data-name="inbox">
+<rect class="card" x="480" y="664" width="250" height="76" rx="6"/>
+<path d="M480,694 V670 Q480,664 486,664 H724 Q730,664 730,670 V694 Z" fill="#0A7E8C"/>
+<text class="title" x="490" y="684">inbox</text>
+<text class="badge" x="488" y="708" fill="#BF8700">PK</text>
+<text class="badge" x="504" y="708" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="708">user_id</text>
+<text class="type" x="720" y="708" text-anchor="end">uuid</text>
+<rect x="481" y="714" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="520" y="728">next_id</text>
+<text class="type" x="720" y="728" text-anchor="end">int</text>
+</g>
+<g class="table" data-name="inbox_items">
+<rect class="card embedded" x="60" y="550" width="250" height="176" rx="6"/>
+<path d="M60,580 V556 Q60,550 66,550 H304 Q310,550 310,556 V580 Z" fill="#0A7E8C"/>
+<text class="title" x="70" y="570">inbox_items</text>
+<text class="badge" x="68" y="594" fill="#BF8700">PK</text>
+<text class="badge" x="84" y="594" fill="#0969DA">FK</text>
+<text class="col key" x="100" y="594">user_id</text>
+<text class="type" x="300" y="594" text-anchor="end">uuid</text>
+<rect x="61" y="600" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="68" y="614" fill="#BF8700">PK</text>
+<text class="col key" x="100" y="614">id</text>
+<text class="type" x="300" y="614" text-anchor="end">int</text>
+<text class="col" x="100" y="634">kind</text>
+<text class="type" x="300" y="634" text-anchor="end">varchar</text>
+<rect x="61" y="640" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="100" y="654">t</text>
+<text class="type" x="300" y="654" text-anchor="end">bigint</text>
+<text class="col" x="100" y="674">params</text>
+<text class="type" x="300" y="674" text-anchor="end">jsonb</text>
+<rect x="61" y="680" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="100" y="694">read</text>
+<text class="type" x="300" y="694" text-anchor="end">bool</text>
+<text class="col" x="100" y="714">state</text>
+<text class="type" x="300" y="714" text-anchor="end">varchar</text>
+</g>
+<g class="table" data-name="avatars">
+<rect class="card" x="480" y="548" width="250" height="76" rx="6"/>
+<path d="M480,578 V554 Q480,548 486,548 H724 Q730,548 730,554 V578 Z" fill="#0A7E8C"/>
+<text class="title" x="490" y="568">avatars</text>
+<text class="badge" x="488" y="592" fill="#BF8700">PK</text>
+<text class="badge" x="504" y="592" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="592">user_id</text>
+<text class="type" x="720" y="592" text-anchor="end">uuid</text>
+<rect x="481" y="598" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="520" y="612">png</text>
+<text class="type" x="720" y="612" text-anchor="end">text</text>
+</g>
+<g class="table" data-name="operations">
+<rect class="card" x="480" y="236" width="250" height="96" rx="6"/>
+<path d="M480,266 V242 Q480,236 486,236 H724 Q730,236 730,242 V266 Z" fill="#0A7E8C"/>
+<text class="title" x="490" y="256">operations</text>
+<text class="badge" x="488" y="280" fill="#BF8700">PK</text>
+<text class="badge" x="504" y="280" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="280">user_id</text>
+<text class="type" x="720" y="280" text-anchor="end">uuid</text>
+<rect x="481" y="286" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="488" y="300" fill="#BF8700">PK</text>
+<text class="col key" x="520" y="300">key</text>
+<text class="type" x="720" y="300" text-anchor="end">varchar(64)</text>
+<text class="col" x="520" y="320">t</text>
+<text class="type" x="720" y="320" text-anchor="end">bigint</text>
+</g>
+<g class="table" data-name="activity">
+<rect class="card" x="480" y="372" width="250" height="136" rx="6"/>
+<path d="M480,402 V378 Q480,372 486,372 H724 Q730,372 730,378 V402 Z" fill="#0A7E8C"/>
+<text class="title" x="490" y="392">activity</text>
+<text class="badge" x="488" y="416" fill="#BF8700">PK</text>
+<text class="badge" x="504" y="416" fill="#0969DA">FK</text>
+<text class="col key" x="520" y="416">user_id</text>
+<text class="type" x="720" y="416" text-anchor="end">uuid</text>
+<rect x="481" y="422" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="488" y="436" fill="#BF8700">PK</text>
+<text class="col key" x="520" y="436">key</text>
+<text class="type" x="720" y="436" text-anchor="end">varchar</text>
+<text class="col" x="520" y="456">t</text>
+<text class="type" x="720" y="456" text-anchor="end">bigint</text>
+<rect x="481" y="462" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="520" y="476">kind</text>
+<text class="type" x="720" y="476" text-anchor="end">varchar</text>
+<text class="col" x="520" y="496">params</text>
+<text class="type" x="720" y="496" text-anchor="end">jsonb</text>
+</g>
+<g class="table" data-name="office_presence">
+<rect class="card" x="1320" y="276" width="250" height="156" rx="6"/>
+<path d="M1320,306 V282 Q1320,276 1326,276 H1564 Q1570,276 1570,282 V306 Z" fill="#0A7E8C"/>
+<text class="title" x="1330" y="296">office_presence</text>
+<text class="badge" x="1328" y="320" fill="#BF8700">PK</text>
+<text class="badge" x="1344" y="320" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="320">user_id</text>
+<text class="type" x="1560" y="320" text-anchor="end">uuid</text>
+<rect x="1321" y="326" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1360" y="340">day</text>
+<text class="type" x="1560" y="340" text-anchor="end">int</text>
+<text class="col" x="1360" y="360">in</text>
+<text class="type" x="1560" y="360" text-anchor="end">bool</text>
+<rect x="1321" y="366" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1360" y="380">since</text>
+<text class="type" x="1560" y="380" text-anchor="end">bigint</text>
+<text class="col" x="1360" y="400">room</text>
+<text class="type" x="1560" y="400" text-anchor="end">varchar</text>
+<rect x="1321" y="406" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="1328" y="420" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="420">office</text>
+<text class="type" x="1560" y="420" text-anchor="end">varchar</text>
+</g>
+<g class="table" data-name="suspicious">
+<rect class="card" x="1320" y="472" width="250" height="156" rx="6"/>
+<path d="M1320,502 V478 Q1320,472 1326,472 H1564 Q1570,472 1570,478 V502 Z" fill="#CF222E"/>
+<text class="title" x="1330" y="492">suspicious</text>
+<text class="badge" x="1328" y="516" fill="#BF8700">PK</text>
+<text class="col key" x="1360" y="516">key</text>
+<text class="type" x="1560" y="516" text-anchor="end">varchar</text>
+<rect x="1321" y="522" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="1328" y="536" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="536">user_id</text>
+<text class="type" x="1560" y="536" text-anchor="end">uuid</text>
+<text class="col" x="1360" y="556">t</text>
+<text class="type" x="1560" y="556" text-anchor="end">bigint</text>
+<rect x="1321" y="562" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1360" y="576">task</text>
+<text class="type" x="1560" y="576" text-anchor="end">varchar</text>
+<text class="col" x="1360" y="596">reason</text>
+<text class="type" x="1560" y="596" text-anchor="end">varchar</text>
+<rect x="1321" y="602" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1360" y="616">ip</text>
+<text class="type" x="1560" y="616" text-anchor="end">varchar</text>
+</g>
+<g class="table" data-name="reward_requests">
+<rect class="card" x="1320" y="668" width="250" height="156" rx="6"/>
+<path d="M1320,698 V674 Q1320,668 1326,668 H1564 Q1570,668 1570,674 V698 Z" fill="#CF222E"/>
+<text class="title" x="1330" y="688">reward_requests</text>
+<text class="badge" x="1328" y="712" fill="#BF8700">PK</text>
+<text class="col key" x="1360" y="712">key</text>
+<text class="type" x="1560" y="712" text-anchor="end">varchar</text>
+<rect x="1321" y="718" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="1328" y="732" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="732">user_id</text>
+<text class="type" x="1560" y="732" text-anchor="end">uuid</text>
+<text class="badge" x="1328" y="752" fill="#0969DA">FK</text>
+<text class="col key" x="1360" y="752">item_id</text>
+<text class="type" x="1560" y="752" text-anchor="end">varchar</text>
+<rect x="1321" y="758" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1360" y="772">price</text>
+<text class="type" x="1560" y="772" text-anchor="end">int</text>
+<text class="col" x="1360" y="792">t</text>
+<text class="type" x="1560" y="792" text-anchor="end">bigint</text>
+<rect x="1321" y="798" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1360" y="812">status</text>
+<text class="type" x="1560" y="812" text-anchor="end">varchar</text>
+</g>
+<g class="table" data-name="raffles">
+<rect class="card" x="1740" y="372" width="250" height="176" rx="6"/>
+<path d="M1740,402 V378 Q1740,372 1746,372 H1984 Q1990,372 1990,378 V402 Z" fill="#BF8700"/>
+<text class="title" x="1750" y="392">raffles</text>
+<text class="badge" x="1748" y="416" fill="#BF8700">PK</text>
+<text class="col key" x="1780" y="416">id</text>
+<text class="type" x="1980" y="416" text-anchor="end">varchar</text>
+<rect x="1741" y="422" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="1748" y="436" fill="#0969DA">FK</text>
+<text class="col key" x="1780" y="436">office</text>
+<text class="type" x="1980" y="436" text-anchor="end">varchar</text>
+<text class="col" x="1780" y="456">draw_at</text>
+<text class="type" x="1980" y="456" text-anchor="end">bigint</text>
+<rect x="1741" y="462" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1780" y="476">seed</text>
+<text class="type" x="1980" y="476" text-anchor="end">varchar</text>
+<text class="col" x="1780" y="496">commitment</text>
+<text class="type" x="1980" y="496" text-anchor="end">varchar</text>
+<rect x="1741" y="502" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1780" y="516">drawn</text>
+<text class="type" x="1980" y="516" text-anchor="end">bool</text>
+<text class="badge" x="1748" y="536" fill="#0969DA">FK</text>
+<text class="col key" x="1780" y="536">winner</text>
+<text class="type" x="1980" y="536" text-anchor="end">uuid</text>
+</g>
+<g class="table" data-name="raffle_tickets">
+<rect class="card embedded" x="1740" y="588" width="250" height="76" rx="6"/>
+<path d="M1740,618 V594 Q1740,588 1746,588 H1984 Q1990,588 1990,594 V618 Z" fill="#BF8700"/>
+<text class="title" x="1750" y="608">raffle_tickets</text>
+<text class="badge" x="1748" y="632" fill="#BF8700">PK</text>
+<text class="badge" x="1764" y="632" fill="#0969DA">FK</text>
+<text class="col key" x="1780" y="632">raffle_id</text>
+<text class="type" x="1980" y="632" text-anchor="end">varchar</text>
+<rect x="1741" y="638" width="248" height="20" fill="#F6F8FA"/>
+<text class="badge" x="1748" y="652" fill="#BF8700">PK</text>
+<text class="badge" x="1764" y="652" fill="#0969DA">FK</text>
+<text class="col key" x="1780" y="652">user_id</text>
+<text class="type" x="1980" y="652" text-anchor="end">uuid</text>
+</g>
+<g class="table" data-name="tasks">
+<rect class="card" x="60" y="1090" width="250" height="296" rx="6"/>
+<path d="M60,1120 V1096 Q60,1090 66,1090 H304 Q310,1090 310,1096 V1120 Z" fill="#8250DF"/>
+<text class="title" x="70" y="1110">tasks</text>
+<text class="badge" x="68" y="1134" fill="#BF8700">PK</text>
+<text class="col key" x="100" y="1134">id</text>
+<text class="type" x="300" y="1134" text-anchor="end">varchar</text>
+<rect x="61" y="1140" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="100" y="1154">title</text>
+<text class="type" x="300" y="1154" text-anchor="end">varchar</text>
+<text class="col" x="100" y="1174">description</text>
+<text class="type" x="300" y="1174" text-anchor="end">text</text>
+<rect x="61" y="1180" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="100" y="1194">room</text>
+<text class="type" x="300" y="1194" text-anchor="end">varchar</text>
+<text class="col" x="100" y="1214">floor</text>
+<text class="type" x="300" y="1214" text-anchor="end">varchar</text>
+<rect x="61" y="1220" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="100" y="1234">spot</text>
+<text class="type" x="300" y="1234" text-anchor="end">int[]</text>
+<text class="col" x="100" y="1254">minigame</text>
+<text class="type" x="300" y="1254" text-anchor="end">varchar</text>
+<rect x="61" y="1260" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="100" y="1274">fallback</text>
+<text class="type" x="300" y="1274" text-anchor="end">varchar</text>
+<text class="col" x="100" y="1294">params</text>
+<text class="type" x="300" y="1294" text-anchor="end">jsonb</text>
+<rect x="61" y="1300" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="100" y="1314">assignment</text>
+<text class="type" x="300" y="1314" text-anchor="end">varchar</text>
+<text class="col" x="100" y="1334">reward</text>
+<text class="type" x="300" y="1334" text-anchor="end">int</text>
+<rect x="61" y="1340" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="100" y="1354">difficulty</text>
+<text class="type" x="300" y="1354" text-anchor="end">varchar</text>
+<text class="col" x="100" y="1374">skippable</text>
+<text class="type" x="300" y="1374" text-anchor="end">bool</text>
+</g>
+<g class="table" data-name="shop_items">
+<rect class="card" x="1740" y="910" width="250" height="156" rx="6"/>
+<path d="M1740,940 V916 Q1740,910 1746,910 H1984 Q1990,910 1990,916 V940 Z" fill="#8250DF"/>
+<text class="title" x="1750" y="930">shop_items</text>
+<text class="badge" x="1748" y="954" fill="#BF8700">PK</text>
+<text class="col key" x="1780" y="954">id</text>
+<text class="type" x="1980" y="954" text-anchor="end">varchar</text>
+<rect x="1741" y="960" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1780" y="974">name</text>
+<text class="type" x="1980" y="974" text-anchor="end">varchar</text>
+<text class="col" x="1780" y="994">description</text>
+<text class="type" x="1980" y="994" text-anchor="end">text</text>
+<rect x="1741" y="1000" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1780" y="1014">rarity</text>
+<text class="type" x="1980" y="1014" text-anchor="end">varchar</text>
+<text class="col" x="1780" y="1034">price</text>
+<text class="type" x="1980" y="1034" text-anchor="end">int</text>
+<rect x="1741" y="1040" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1780" y="1054">icon</text>
+<text class="type" x="1980" y="1054" text-anchor="end">int</text>
+</g>
+<g class="table" data-name="wardrobe_items">
+<rect class="card" x="1740" y="1106" width="250" height="116" rx="6"/>
+<path d="M1740,1136 V1112 Q1740,1106 1746,1106 H1984 Q1990,1106 1990,1112 V1136 Z" fill="#8250DF"/>
+<text class="title" x="1750" y="1126">wardrobe_items</text>
+<text class="badge" x="1748" y="1150" fill="#BF8700">PK</text>
+<text class="col key" x="1780" y="1150">id</text>
+<text class="type" x="1980" y="1150" text-anchor="end">varchar</text>
+<rect x="1741" y="1156" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1780" y="1170">slot</text>
+<text class="type" x="1980" y="1170" text-anchor="end">varchar</text>
+<text class="col" x="1780" y="1190">name</text>
+<text class="type" x="1980" y="1190" text-anchor="end">varchar</text>
+<rect x="1741" y="1196" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1780" y="1210">unlock</text>
+<text class="type" x="1980" y="1210" text-anchor="end">jsonb</text>
+</g>
+<g class="table" data-name="cars">
+<rect class="card" x="1740" y="1262" width="250" height="136" rx="6"/>
+<path d="M1740,1292 V1268 Q1740,1262 1746,1262 H1984 Q1990,1262 1990,1268 V1292 Z" fill="#8250DF"/>
+<text class="title" x="1750" y="1282">cars</text>
+<text class="badge" x="1748" y="1306" fill="#BF8700">PK</text>
+<text class="col key" x="1780" y="1306">id</text>
+<text class="type" x="1980" y="1306" text-anchor="end">varchar</text>
+<rect x="1741" y="1312" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1780" y="1326">name</text>
+<text class="type" x="1980" y="1326" text-anchor="end">varchar</text>
+<text class="col" x="1780" y="1346">description</text>
+<text class="type" x="1980" y="1346" text-anchor="end">text</text>
+<rect x="1741" y="1352" width="248" height="20" fill="#F6F8FA"/>
+<text class="col" x="1780" y="1366">price</text>
+<text class="type" x="1980" y="1366" text-anchor="end">int</text>
+<text class="col" x="1780" y="1386">speed_kmh</text>
+<text class="type" x="1980" y="1386" text-anchor="end">int</text>
+</g>
+</g>
+<script><![CDATA[
+const root = document.getElementById('diagram');
+const links = [...document.querySelectorAll('.link')];
+document.querySelectorAll('.table').forEach(t => {
+  const name = t.dataset.name;
+  t.addEventListener('mouseenter', () => {
+    root.classList.add('dim');
+    t.classList.add('on');
+    links.forEach(l => {
+      if (l.dataset.a === name || l.dataset.b === name) {
+        l.classList.add('on');
+        document.querySelector(`.table[data-name="${l.dataset.a}"]`).classList.add('on');
+        document.querySelector(`.table[data-name="${l.dataset.b}"]`).classList.add('on');
+      }
+    });
+  });
+  t.addEventListener('mouseleave', () => {
+    root.classList.remove('dim');
+    document.querySelectorAll('.on').forEach(e => e.classList.remove('on'));
+  });
+});
+]]></script>
+</svg>

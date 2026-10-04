@@ -136,6 +136,7 @@ func (tx *gameTx) enterOffice() error {
 	state.CheckinAt[key] = tx.now
 	delete(state.CheckoutAt, key)
 	state.PresenceOffice = tx.office()
+	state.Room = ""
 	state.BestStreak = max(state.BestStreak, streak(state.PresenceDays, state.ExcusedDays, tx.today, state.FirstDay))
 	tx.logActivity(tx.me, activityCheckIn, map[string]any{"office": state.PresenceOffice})
 	return tx.writePresence(true, "")
@@ -182,6 +183,15 @@ func rpcOfficeCheckIn(ctx context.Context, logger runtime.Logger, db *sql.DB, nk
 	})
 }
 
+// leaveOffice closes the interval; tasks wait for the next entry.
+// `how` is "code" for the exit code, "home" for the "Go home" button.
+func (tx *gameTx) leaveOffice(how string) error {
+	tx.me.state.CheckoutAt[dayKey(tx.today)] = tx.now
+	tx.me.state.Room = ""
+	tx.logActivity(tx.me, activityCheckOut, map[string]any{"how": how})
+	return tx.writePresence(false, "")
+}
+
 // rpcOfficeCheckOut: {"token"}. Closes the interval; tasks wait for the next entry.
 func rpcOfficeCheckOut(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	var request struct {
@@ -198,14 +208,24 @@ func rpcOfficeCheckOut(ctx context.Context, logger runtime.Logger, db *sql.DB, n
 		if !inOffice(tx.me.state, tx.today) {
 			return fail("not_in_office"), nil
 		}
-		tx.me.state.CheckoutAt[dayKey(tx.today)] = tx.now
-		tx.logActivity(tx.me, activityCheckOut, nil)
-		return okResult, tx.writePresence(false, "")
+		return okResult, tx.leaveOffice("code")
+	})
+}
+
+// rpcLeaveOffice: {}. The player goes home from the game ("Go home"): closes the interval without
+// the exit code. Leaving can only shorten the time in the office, so it needs no proof and works
+// outside the office network too (the player may press it already on the way home).
+func rpcLeaveOffice(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, _ string) (string, error) {
+	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
+		if !inOffice(tx.me.state, tx.today) {
+			return okResult, nil
+		}
+		return okResult, tx.leaveOffice("home")
 	})
 }
 
 // rpcEnterRoom: {"room_id"}. A static room code counts only inside the office interval. The room
-// is shown to colleagues as where the player was seen last.
+// is shown to colleagues as where the player was seen last, and the player can take its tasks.
 func rpcEnterRoom(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	var request struct {
 		RoomID string `json:"room_id"`
@@ -220,6 +240,7 @@ func rpcEnterRoom(ctx context.Context, logger runtime.Logger, db *sql.DB, nk run
 		if problem, err := tx.presenceError(); problem != "" || err != nil {
 			return fail(problem), err
 		}
+		tx.me.state.Room = request.RoomID
 		tx.logActivity(tx.me, activityRoom, map[string]any{"room": request.RoomID})
 		return okResult, tx.writePresence(true, request.RoomID)
 	})

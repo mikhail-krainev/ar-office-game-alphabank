@@ -8,7 +8,9 @@ import (
 	"github.com/heroiclabs/nakama-common/runtime"
 )
 
-// Daily office tasks: list, completion with a proof checked here, skipping.
+// Daily office tasks: list, taking a task in its room, completion with a proof checked here, skipping.
+// A task with a room is taken only right after the room code (presence.go: rpcEnterRoom), so the
+// player comes to the room first; the check-in needs no room.
 
 const (
 	presenceMinigame = "presence_qr"
@@ -24,6 +26,7 @@ var benignTaskErrors = map[string]bool{
 	"presence_required": true, "task_failed": true, "already_completed": true, "task_skipped": true,
 	"pending_confirmation": true, "no_colleague_available": true, "task_not_today": true,
 	"task_cooldown": true, "outside_task_window": true, "play_resting": true, "play_blocked": true,
+	"wrong_room": true,
 }
 
 type taskView struct {
@@ -45,6 +48,7 @@ type taskView struct {
 	Completed            bool           `json:"completed"`
 	Skipped              bool           `json:"skipped"`
 	Pending              bool           `json:"pending"`
+	Taken                bool           `json:"taken"`
 }
 
 type taskResult struct {
@@ -108,9 +112,59 @@ func rpcListTasks(ctx context.Context, logger runtime.Logger, db *sql.DB, nk run
 				Completed: contains(dayList(state.Completed, tx.today), task.ID),
 				Skipped:   contains(dayList(state.Skipped, tx.today), task.ID),
 				Pending:   contains(dayList(state.Pending, tx.today), task.ID),
+				Taken:     tx.isTaken(task),
 			})
 		}
 		return map[string]any{"tasks": tasks, "in_office": tx.inMyOffice(), "schedule": schedule}, nil
+	})
+}
+
+// isTaken: taken today in its room; the check-in and tasks without a room need no taking.
+func (tx *gameTx) isTaken(task *Task) bool {
+	return task.Minigame == presenceMinigame || task.Room == "" || contains(dayList(tx.me.state.Taken, tx.today), task.ID)
+}
+
+// rpcTakeTask: {"task_id"}. Takes an open task of today's pack; the last room code must be the
+// task's room. A taken task stays taken for the day, so the player may finish it in another room.
+func rpcTakeTask(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
+	var request struct {
+		TaskID string `json:"task_id"`
+	}
+	if err := decodePayload(payload, &request); err != nil {
+		return "", err
+	}
+	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
+		state := tx.me.state
+		task := tx.content.task(request.TaskID)
+		if problem, err := tx.playError(); problem != "" || err != nil {
+			return fail(problem), err
+		}
+		switch {
+		case task == nil:
+			return fail("unknown_task"), nil
+		case !tx.isTodaysTask(task):
+			return fail("task_not_today"), nil
+		case contains(dayList(state.Completed, tx.today), task.ID):
+			return fail("already_completed"), nil
+		case contains(dayList(state.Skipped, tx.today), task.ID):
+			return fail("task_skipped"), nil
+		case contains(dayList(state.Pending, tx.today), task.ID):
+			return fail("pending_confirmation"), nil
+		case tx.isTaken(task):
+			return okResult, nil
+		}
+		if problem, err := tx.presenceError(); problem != "" || err != nil {
+			return fail(problem), err
+		}
+		if problem, err := tx.taskTimeError(task); problem != "" || err != nil {
+			return fail(problem), err
+		}
+		if state.Room != task.Room {
+			return fail("wrong_room"), nil
+		}
+		addToDay(state.Taken, tx.today, task.ID)
+		tx.logActivity(tx.me, activityTaskTaken, map[string]any{"task": task.ID, "room": task.Room})
+		return okResult, nil
 	})
 }
 
@@ -271,6 +325,9 @@ func (tx *gameTx) taskError(task *Task, success bool, proof taskProof) (string, 
 	}
 	if problem, err := tx.taskTimeError(task); problem != "" || err != nil {
 		return problem, err
+	}
+	if !tx.isTaken(task) {
+		return "task_not_taken", nil
 	}
 	return tx.verifySocial(task, proof)
 }

@@ -151,7 +151,7 @@ func taskPack(tasks []Task, userID string, day int) map[string]bool {
 	}
 	ids := []string{}
 	for _, task := range tasks {
-		if task.Minigame != presenceMinigame {
+		if task.Minigame != presenceMinigame && !task.Hidden {
 			ids = append(ids, task.ID)
 		}
 	}

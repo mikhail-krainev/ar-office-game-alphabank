@@ -61,6 +61,8 @@ class TaskInfo:
 	var assignment: String = ""
 	## Done by the player, waiting for the colleague to confirm (joint photo).
 	var pending: bool = false
+	## Taken in its room after the room code; the check-in is always taken.
+	var taken: bool = false
 
 	## Completed, skipped or waiting for a colleague: nothing left to do today.
 	func is_closed() -> bool:

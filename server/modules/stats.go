@@ -87,9 +87,9 @@ func summarize(summary *playerSummary, state *PlayerState, today int) {
 	summary.Colleagues = len(met)
 }
 
-// playerNow: the time the game uses for this player (the dev clock shifts it in DEV_MODE).
+// playerNow: the time the game uses for this player (the test clock, and the dev clock in DEV_MODE).
 func playerNow(state *PlayerState) int64 {
-	now := time.Now().Unix()
+	now := gameNow()
 	if devMode {
 		now += int64(state.DevDayShift) * secondsPerDay
 	}

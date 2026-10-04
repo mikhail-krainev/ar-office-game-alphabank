@@ -1,30 +1,28 @@
 class_name WorldScene
 extends Node2D
-## Shared tap-to-move gameplay on a 3/4 map: player, camera, path line, tap marker and HUD.
-## A tap walks to the point; holding and dragging steers the player after the finger continuously.
-## Expects children WorldMap, PathLine, TapMarker, Entities/Player, GameCamera, Hud and CrtOverlay.
+## Shared gameplay on a 3/4 map: player, camera, tap marker and HUD. The player does not steer the
+## character: it lives by itself (the autopilot walks it around, scenes add their own activities in
+## _run_activity()), and taps on the map only reach scene objects such as task markers.
+## Expects children WorldMap, TapMarker, Entities/Player, GameCamera, Hud and CrtOverlay.
 
 const SNAP_RADIUS_CELLS: int = 2
 const CAMERA_MARGIN: float = 48.0
-const PATH_LINE_COLOR: Color = Color(0.94, 0.19, 0.14, 0.55)
-## Finger travel in viewport pixels that turns a tap into a drag.
-const DRAG_THRESHOLD: float = 12.0
-## Minimum time between path updates while dragging.
-const DRAG_REPATH_INTERVAL: float = 0.1
+## Pause between two activities of the character, in seconds.
+const AUTOPILOT_PAUSE_MIN: float = 2.0
+const AUTOPILOT_PAUSE_MAX: float = 6.0
+## A walk to a random spot ends within this many cells of the character.
+const WANDER_RADIUS_CELLS: int = 10
+const WANDER_TRIES: int = 12
 
 var _current_room_id: StringName = &""
-var _touch_down: bool = false
-var _dragging: bool = false
-var _touch_start: Vector2 = Vector2.ZERO
-var _touch_position: Vector2 = Vector2.ZERO
-var _drag_cell: Vector2i = WorldMap.INVALID_CELL
-var _repath_left: float = 0.0
+var _autopilot_left: float = 1.5
+## An activity coroutine is running.
+var _autopilot_busy: bool = false
 
 @onready var _map: WorldMap = $WorldMap
 @onready var _entities: Node2D = $Entities
 @onready var _player: Player = $Entities/Player
 @onready var _camera: GameCamera = $GameCamera
-@onready var _path_line: Line2D = $PathLine
 @onready var _marker: TapMarker = $TapMarker
 @onready var _hud: Hud = $Hud
 @onready var _crt: CanvasLayer = $CrtOverlay
@@ -36,31 +34,14 @@ func _setup_world(layout: MapLayout) -> void:
 	_player.arrived.connect(_on_player_arrived)
 	_camera.set_bounds(_map.get_bounds(), CAMERA_MARGIN)
 	_camera.snap_to_target()
-	_path_line.default_color = PATH_LINE_COLOR
 	_map.populate_props(_entities)
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	var touch: InputEventScreenTouch = event as InputEventScreenTouch
 	if touch != null and touch.index == 0:
-		if touch.pressed:
-			if not _is_ui_blocking():
-				_touch_down = true
-				_dragging = false
-				_touch_start = touch.position
-				_touch_position = touch.position
-				_on_tap(_screen_to_world(touch.position))
-				# The tap may have opened a panel; the rest of this touch belongs to it.
-				_touch_down = not _is_modal_open()
-		else:
-			_end_drag()
-		get_viewport().set_input_as_handled()
-		return
-	var drag: InputEventScreenDrag = event as InputEventScreenDrag
-	if drag != null and drag.index == 0 and _touch_down:
-		_touch_position = drag.position
-		if not _dragging and _touch_position.distance_to(_touch_start) >= DRAG_THRESHOLD:
-			_begin_drag()
+		if touch.pressed and not _is_ui_blocking():
+			_on_tap(_screen_to_world(touch.position))
 		get_viewport().set_input_as_handled()
 		return
 	var key: InputEventKey = event as InputEventKey
@@ -69,12 +50,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
-	_update_drag(delta)
-	_update_path_line()
+	_update_autopilot(delta)
 	_update_room()
 
 
-## Overridden by scenes with modal UI; input to the map is ignored while it returns true.
+## Overridden by scenes with modal UI; input to the map and the autopilot pause while it returns true.
 func _is_modal_open() -> bool:
 	return false
 
@@ -83,11 +63,12 @@ func _is_ui_blocking() -> bool:
 	return _is_modal_open() or get_viewport().gui_get_hovered_control() != null
 
 
-func _on_tap(world_position: Vector2) -> void:
-	_walk_to(world_position)
+## A tap on the map: scenes react to their objects (task markers); the character is not steered.
+func _on_tap(_world_position: Vector2) -> void:
+	pass
 
 
-## Overridden by scenes that queue an action on arrival (talk, use an object); a drag cancels it.
+## Overridden by scenes that queue an action on arrival.
 func _cancel_pending_actions() -> void:
 	pass
 
@@ -96,51 +77,58 @@ func _screen_to_world(screen_position: Vector2) -> Vector2:
 	return get_canvas_transform().affine_inverse() * screen_position
 
 
-func _begin_drag() -> void:
-	_dragging = true
-	_drag_cell = WorldMap.INVALID_CELL
-	_repath_left = 0.0
-	_cancel_pending_actions()
-	_marker.hide_marker()
-	_hud.hide_hint()
+# --- Autopilot -------------------------------------------------------------------
 
 
-func _end_drag() -> void:
-	_touch_down = false
-	_dragging = false
-	_drag_cell = WorldMap.INVALID_CELL
-
-
-## While the finger is held, the player keeps walking towards the point under it. The camera follows
-## the player, so a finger resting ahead of the character keeps it moving.
-func _update_drag(delta: float) -> void:
-	if not _dragging:
+func _update_autopilot(delta: float) -> void:
+	if _autopilot_busy or _is_modal_open() or _player.is_walking() or _player.is_talking():
 		return
+	_autopilot_left -= delta
+	if _autopilot_left > 0.0:
+		return
+	_autopilot_busy = true
+	await _run_activity()
+	_autopilot_busy = false
+	_autopilot_left = randf_range(AUTOPILOT_PAUSE_MIN, AUTOPILOT_PAUSE_MAX)
+
+
+## One thing the character does by itself. Scenes override it; the default is a short stroll.
+func _run_activity() -> void:
+	await _wander()
+
+
+## Walks to a random reachable spot nearby.
+func _wander() -> void:
+	var origin: Vector2i = _player_cell()
+	for i: int in WANDER_TRIES:
+		var offset: Vector2i = Vector2i(randi_range(-WANDER_RADIUS_CELLS, WANDER_RADIUS_CELLS), randi_range(-WANDER_RADIUS_CELLS, WANDER_RADIUS_CELLS))
+		if _map.is_walkable(origin + offset) and await _auto_walk(origin + offset):
+			return
+
+
+## Autopilot walk without the tap marker. Resolves once the character stops: true when it reached
+## `cell`, false when there is no path or the walk was interrupted (a task started, the scene ends).
+func _auto_walk(cell: Vector2i) -> bool:
 	if _is_modal_open():
-		_end_drag()
-		return
-	_repath_left -= delta
-	if _repath_left > 0.0:
-		return
-	var cell: Vector2i = _map.find_nearest_walkable(_screen_to_world(_touch_position), SNAP_RADIUS_CELLS)
-	if cell == WorldMap.INVALID_CELL:
-		return
-	if cell == _drag_cell and (_player.is_walking() or _player_cell() == cell):
-		return
+		return false
 	var path: PackedVector2Array = _map.find_path(_player.global_position, cell)
 	if path.is_empty():
-		return
-	_player.walk_path(path)
-	_drag_cell = cell
-	_repath_left = DRAG_REPATH_INTERVAL
-
-
-func _walk_to(world_position: Vector2) -> bool:
-	var target_cell: Vector2i = _map.find_nearest_walkable(world_position, SNAP_RADIUS_CELLS)
-	if target_cell == WorldMap.INVALID_CELL:
-		_show_blocked(world_position)
 		return false
-	return _walk_to_cell(target_cell, world_position)
+	_player.walk_path(path)
+	while is_inside_tree() and _player.is_walking():
+		await get_tree().process_frame
+	return is_inside_tree() and _player_cell() == cell and not _is_modal_open()
+
+
+## Waits `seconds` unless a modal opens; true when the wait ran out undisturbed.
+func _auto_wait(seconds: float) -> bool:
+	var left: float = seconds
+	while left > 0.0:
+		if not is_inside_tree() or _is_modal_open():
+			return false
+		await get_tree().process_frame
+		left -= get_process_delta_time()
+	return true
 
 
 func _walk_to_cell(cell: Vector2i, tapped_position: Vector2 = Vector2.INF) -> bool:
@@ -172,16 +160,6 @@ func _stop_player() -> void:
 
 func _on_player_arrived() -> void:
 	_marker.hide_marker()
-
-
-func _update_path_line() -> void:
-	var remaining: PackedVector2Array = _player.get_remaining_path()
-	if remaining.is_empty():
-		_path_line.clear_points()
-		return
-	var points: PackedVector2Array = PackedVector2Array([_player.global_position])
-	points.append_array(remaining)
-	_path_line.points = points
 
 
 func _update_room() -> void:

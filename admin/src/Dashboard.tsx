@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@heroiclabs/nakama-js";
-import { api, type Department, type Office, type User } from "./api";
+import { api, type Clock, type Department, type Office, type User } from "./api";
 import { errorText, isSessionError } from "./messages";
 import { CreateUserForm } from "./CreateUserForm";
 import { UsersTable } from "./UsersTable";
@@ -8,8 +8,9 @@ import { DepartmentsPanel } from "./DepartmentsPanel";
 import { StatsPanel } from "./StatsPanel";
 import { LimitsPanel } from "./LimitsPanel";
 import { OfficesPanel } from "./OfficesPanel";
+import { ClockPanel } from "./ClockPanel";
 
-type Section = "access" | "offices" | "stats" | "limits";
+type Section = "access" | "offices" | "stats" | "limits" | "clock";
 
 export interface DashboardActions {
   session: Session;
@@ -30,6 +31,7 @@ export function Dashboard({ session, onSessionLost }: { session: Session; onSess
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState("");
   const [section, setSection] = useState<Section>("access");
+  const [clock, setClock] = useState<Clock | null>(null);
 
   const fail = useCallback(
     (e: unknown) => {
@@ -44,11 +46,13 @@ export function Dashboard({ session, onSessionLost }: { session: Session; onSess
 
   const reload = useCallback(async () => {
     try {
-      const [nextOffices, nextDepartments, nextUsers] = await Promise.all([
+      const [nextOffices, nextDepartments, nextUsers, nextClock] = await Promise.all([
         api.listOffices(session),
         api.listDepartments(session),
         api.listUsers(session),
+        api.getClock(session),
       ]);
+      setClock(nextClock);
       setOffices(nextOffices);
       setDepartments(nextDepartments);
       setUsers(nextUsers);
@@ -121,6 +125,11 @@ export function Dashboard({ session, onSessionLost }: { session: Session; onSess
         <button role="tab" aria-selected={section === "limits"} className={section === "limits" ? "tab active" : "tab"} onClick={() => setSection("limits")}>
           Ограничения
         </button>
+        {clock?.enabled && (
+          <button role="tab" aria-selected={section === "clock"} className={section === "clock" ? "tab active" : "tab"} onClick={() => setSection("clock")}>
+            Время
+          </button>
+        )}
       </nav>
       {section === "access" && (
         <>
@@ -136,6 +145,7 @@ export function Dashboard({ session, onSessionLost }: { session: Session; onSess
       )}
       {section === "stats" && <StatsPanel actions={actions} />}
       {section === "limits" && <LimitsPanel actions={actions} />}
+      {section === "clock" && clock?.enabled && <ClockPanel actions={actions} clock={clock} onChange={setClock} />}
     </div>
   );
 }

@@ -43,6 +43,20 @@ func _ready() -> void:
 	_client = Nakama.create_client(config.server_key, config.host, config.port, config.scheme, TIMEOUT_SECONDS, NakamaLogger.LOG_LEVEL.ERROR)
 
 
+## True when the server answers at all, whatever the status: it is reachable only from the office
+## network, so false means the phone is not on the office Wi-Fi (or the server is down).
+func is_reachable() -> bool:
+	var request: HTTPRequest = HTTPRequest.new()
+	request.timeout = TIMEOUT_SECONDS
+	add_child(request)
+	if request.request("%s://%s:%d/healthcheck" % [config.scheme, config.host, config.port]) != OK:
+		request.queue_free()
+		return false
+	var response: Array = await request.request_completed
+	request.queue_free()
+	return int(response[0]) == HTTPRequest.RESULT_SUCCESS
+
+
 func is_signed_in() -> bool:
 	return _session != null and _session.is_valid() and not _session.is_expired()
 

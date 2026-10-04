@@ -7,7 +7,8 @@ extends Node
 ## tomorrow. A task minigame is never interrupted: when the limit comes during one, a small notice
 ## says the rest starts after it, and it does as soon as the minigame ends.
 ## Outside the office network the server refuses the game; then a screen asks to connect to the
-## office Wi-Fi and checks again by itself. The server decides everything; this only shows it.
+## office Wi-Fi and checks again by itself. The same screen waits before the sign-in while the server
+## cannot be reached at all. The server decides everything; this only shows it.
 
 ## Emitted when the player may play (again): after the rest or when nothing stops them.
 signal released
@@ -39,6 +40,9 @@ var _minigame_task: String = ""
 var _off_network: bool = false
 ## A heartbeat was asked for while one was running; send another right after it.
 var _beat_again: bool = false
+## wait_for_server() shows the office network screen before the sign-in.
+var _waiting_server: bool = false
+var _retry_requested: bool = false
 
 
 func _ready() -> void:
@@ -47,7 +51,7 @@ func _ready() -> void:
 	add_child(_overlay)
 	_overlay.rest_now_pressed.connect(_on_rest_now)
 	_overlay.resume_pressed.connect(_on_resume)
-	_overlay.retry_pressed.connect(check_now)
+	_overlay.retry_pressed.connect(_on_retry)
 	Backend.office_network_required.connect(_on_network_lost)
 
 
@@ -64,6 +68,22 @@ func wait_until_allowed() -> void:
 		or _state == BackendModels.PlayStatus.State.BLOCKED
 	):
 		await released
+
+
+## No answer from the server: it is reachable only from the office network. Shows the office network
+## screen until the server answers ("Check again" or a check every NETWORK_POLL_SECONDS).
+func wait_for_server() -> void:
+	_waiting_server = true
+	_overlay.hide_warning()
+	_overlay.show_network()
+	while not await Backend.server.is_reachable():
+		_retry_requested = false
+		var waited: float = 0.0
+		while waited < NETWORK_POLL_SECONDS and not _retry_requested:
+			await get_tree().process_frame
+			waited += get_process_delta_time()
+	_waiting_server = false
+	_overlay.hide_screen()
 
 
 ## Asks the server right away, e.g. after a dev RPC changed the play-time state.
@@ -103,6 +123,8 @@ func task_lock_text() -> String:
 
 
 func _process(delta: float) -> void:
+	if _waiting_server:
+		return
 	if not Backend.is_account_loaded():
 		_reset()
 		return
@@ -216,6 +238,13 @@ func _on_network_lost() -> void:
 		_overlay.hide_deferred_notice()
 		_overlay.show_network()
 	_beat_left = NETWORK_POLL_SECONDS
+
+
+func _on_retry() -> void:
+	if _waiting_server:
+		_retry_requested = true
+	elif Backend.is_account_loaded():
+		check_now()
 
 
 func _on_rest_now() -> void:

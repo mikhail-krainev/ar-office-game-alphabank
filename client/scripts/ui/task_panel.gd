@@ -1,7 +1,8 @@
 class_name TaskPanel
 extends CanvasLayer
 ## Daily task list: the check-in and the player's pack for today. Every open task has a marker on
-## the map; "Go" walks there and starts it on arrival. Hard tasks show a difficulty tag with the
+## the map; "Take" takes it in its room (after the room code), "Start" opens its minigame right away
+## (the player does it in the real office). Hard tasks show a difficulty tag with the
 ## reward multiplier; skippable ones have a "Skip" button. During the break between tasks and
 ## outside the task hours (Backend.task_schedule) the tasks are locked, with the reason on top.
 
@@ -15,11 +16,10 @@ var _panel: PanelContainer
 var _subtitle: Label
 var _notice: Label
 var _tasks: Array[BackendModels.TaskInfo] = []
-var _player_cell: Vector2i
 var _profile: BackendModels.Profile
 ## Lock text the list was built with; the list is rebuilt when it changes (the countdown ticks).
 var _lock_text: String = ""
-var _scroll: ScrollContainer
+var _scroll: TouchScroll
 var _list: VBoxContainer
 
 
@@ -63,8 +63,7 @@ func _ready() -> void:
 	close.pressed.connect(close_panel)
 	header.add_child(close)
 
-	_scroll = ScrollContainer.new()
-	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll = TouchScroll.new()
 	column.add_child(_scroll)
 	_list = VBoxContainer.new()
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -76,9 +75,8 @@ func is_open() -> bool:
 	return visible
 
 
-func open(tasks: Array[BackendModels.TaskInfo], player_cell: Vector2i, profile: BackendModels.Profile) -> void:
+func open(tasks: Array[BackendModels.TaskInfo], profile: BackendModels.Profile) -> void:
 	_tasks = tasks
-	_player_cell = player_cell
 	_profile = profile
 	_rebuild()
 	visible = true
@@ -109,12 +107,14 @@ func _rebuild() -> void:
 	_lock_text = lock_text()
 	_notice.custom_minimum_size = Vector2(width - 70.0, 0)
 	_notice.text = _pack_text()
+	if _tasks.any(func(task: BackendModels.TaskInfo) -> bool: return not task.is_check_in()):
+		_notice.text += "\n" + tr("TASKS_ROOM_RULE")
 	if not _lock_text.is_empty():
 		_notice.text += "\n" + _lock_text
 	for child: Node in _list.get_children():
 		child.queue_free()
 	for task: BackendModels.TaskInfo in _tasks:
-		_list.add_child(_make_row(task, task.spot == _player_cell, width - 24.0))
+		_list.add_child(_make_row(task, width - 24.0))
 
 
 func _pack_text() -> String:
@@ -131,7 +131,7 @@ func close_panel() -> void:
 	visible = false
 
 
-func _make_row(task: BackendModels.TaskInfo, at_spot: bool, width: float) -> Control:
+func _make_row(task: BackendModels.TaskInfo, width: float) -> Control:
 	var card: PanelContainer = PanelContainer.new()
 	card.add_theme_stylebox_override("panel", UiStyle.panel(UiStyle.SHADE, 5, 7))
 	var column: VBoxContainer = VBoxContainer.new()
@@ -170,7 +170,7 @@ func _make_row(task: BackendModels.TaskInfo, at_spot: bool, width: float) -> Con
 	var footer: HBoxContainer = HBoxContainer.new()
 	footer.add_theme_constant_override("separation", 6)
 	column.add_child(footer)
-	var place: String = tr(_room_key(task.room))
+	var place: String = tr(room_key(task.room))
 	if task.floor_id != OfficeFloors.current:
 		place += " · " + tr("FLOOR_SHORT") % OfficeFloors.NUMBERS.get(task.floor_id, 0)
 	var room: Label = UiStyle.make_label("▸ " + place, 9, UiStyle.RED)
@@ -202,14 +202,15 @@ func _make_row(task: BackendModels.TaskInfo, at_spot: bool, width: float) -> Con
 		button = UiStyle.make_button(tr("TASK_LOCKED_WINDOW") % schedule.window_start, false, 10)
 		button.disabled = true
 	else:
-		button = UiStyle.make_button(tr("TASK_START") if at_spot else tr("TASK_GO"), true, 12)
+		var taken: bool = task.taken or task.is_check_in()
+		button = UiStyle.make_button(tr("TASK_START") if taken else tr("TASK_TAKE"), true, 12)
 		button.pressed.connect(func() -> void: go_requested.emit(task))
 	button.custom_minimum_size = Vector2(78, 30)
 	footer.add_child(button)
 	return card
 
 
-func _room_key(room_id: StringName) -> String:
+static func room_key(room_id: StringName) -> String:
 	var room: MapLayout.Room = OfficeFloors.find_room(room_id)
 	return room.name_key if room != null else String(room_id)
 

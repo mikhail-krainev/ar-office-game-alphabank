@@ -15,7 +15,7 @@ var content_width: float = 300.0
 var _panel: PanelContainer
 var _title: Label
 var _subtitle: Label
-var _scroll: ScrollContainer
+var _scroll: TouchScroll
 var _header: HBoxContainer
 
 
@@ -59,8 +59,7 @@ func _init(title_key: String = "") -> void:
 	close.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	close.pressed.connect(close_panel)
 	_header.add_child(close)
-	_scroll = ScrollContainer.new()
-	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll = TouchScroll.new()
 	column.add_child(_scroll)
 	content = VBoxContainer.new()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL

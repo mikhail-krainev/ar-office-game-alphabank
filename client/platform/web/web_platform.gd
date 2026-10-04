@@ -1,5 +1,6 @@
 extends PlatformBackend
-## Web implementation. Accelerometer (DeviceMotion) and microphone come from the Godot core.
+## Web implementation. The Godot core reads neither the accelerometer nor the microphone in the
+## browser, so both come from camera_bridge.js too: DeviceMotion and getUserMedia audio samples.
 ## Camera, QR (getUserMedia + jsQR), faces, pose and objects (MediaPipe), ArUco markers (js-aruco2),
 ## speech (Web Speech API) and the step counter run in camera_bridge.js; only results come back: a
 ## small RGB preview, QR text, face boxes, pose landmarks, marker ids, object labels, recognized text,
@@ -94,12 +95,14 @@ func has_feature(feature: PlatformBackend.Feature) -> bool:
 		Feature.CAMERA, Feature.QR_SCAN, Feature.FACE_DETECTION, Feature.POSE_DETECTION, Feature.MARKER_DETECTION, Feature.OBJECT_RECOGNITION:
 			return bool(JavaScriptBridge.eval("window.alfaCamera.supported()", true)) and _camera_permission() != "denied"
 		Feature.SPEECH_RECOGNITION:
-			return bool(JavaScriptBridge.eval("window.alfaSpeech.supported()", true)) and _microphone_permission() != "denied"
+			# A refusal is asked again in request_access(): the player may have changed their mind.
+			return bool(JavaScriptBridge.eval("window.alfaSpeech.supported()", true))
 		Feature.NOTIFICATIONS:
 			return str(JavaScriptBridge.eval("window.alfaOffice.permission()", true)) != "unsupported"
 		Feature.PHOTO_LIBRARY:
 			return true
-	# The microphone comes from the Godot core.
+		Feature.MICROPHONE:
+			return str(JavaScriptBridge.eval("window.alfaMic.status()", true)) != "unsupported"
 	return super(feature)
 
 
@@ -110,7 +113,7 @@ func request_access(features: Array[PlatformBackend.Feature]) -> bool:
 		return false
 	if features.any(func(feature: Feature) -> bool: return feature in CAMERA_FEATURES) and not await _request_camera():
 		return false
-	if features.has(Feature.SPEECH_RECOGNITION) and not await _request_microphone():
+	if (features.has(Feature.SPEECH_RECOGNITION) or features.has(Feature.MICROPHONE)) and not await _request_microphone():
 		return false
 	if not features.has(Feature.NOTIFICATIONS):
 		return true
@@ -141,16 +144,63 @@ func stop_camera() -> void:
 	_camera_callback_refs.clear()
 
 
+func show_camera_view(rect: Rect2) -> bool:
+	if not bool(ProjectSettings.get_setting("display/window/per_pixel_transparency/allowed", false)):
+		return false
+	var camera: JavaScriptObject = JavaScriptBridge.get_interface("alfaCamera")
+	if camera == null:
+		return false
+	camera.call("setView", rect.position.x, rect.position.y, rect.size.x, rect.size.y)
+	return true
+
+
 func start_speech(locale: String) -> void:
 	_speech_callbacks = _make_callbacks({"result": _on_speech_result, "error": _on_speech_error}, _speech_callback_refs)
 	var speech: JavaScriptObject = JavaScriptBridge.get_interface("alfaSpeech")
 	speech.call("start", locale, _speech_callbacks)
 
 
+func prepare_speech(locale: String) -> void:
+	_speech_callbacks = _make_callbacks({"result": _on_speech_result, "error": _on_speech_error}, _speech_callback_refs)
+	var speech: JavaScriptObject = JavaScriptBridge.get_interface("alfaSpeech")
+	speech.call("arm", locale, _speech_callbacks)
+
+
 func stop_speech() -> void:
 	JavaScriptBridge.eval("window.alfaSpeech.stop()", true)
 	_speech_callbacks = null
 	_speech_callback_refs.clear()
+
+
+func access_problem() -> String:
+	var problem: String = str(JavaScriptBridge.eval("window.alfaSpeech.microphoneProblem()", true))
+	return "" if problem.is_empty() else "microphone_" + problem
+
+
+func get_acceleration() -> Vector3:
+	var parts: PackedStringArray = str(JavaScriptBridge.eval("window.alfaMotion.acceleration()", true)).split(",")
+	if parts.size() != 3:
+		return Vector3.ZERO
+	return Vector3(parts[0].to_float(), parts[1].to_float(), parts[2].to_float())
+
+
+func start_microphone() -> void:
+	JavaScriptBridge.eval("window.alfaMic.start()", true)
+
+
+func stop_microphone() -> void:
+	JavaScriptBridge.eval("window.alfaMic.stop()", true)
+
+
+func get_microphone_sample_rate() -> float:
+	return float(JavaScriptBridge.eval("window.alfaMic.sampleRate()", true))
+
+
+func read_microphone(max_frames: int) -> PackedFloat32Array:
+	var bytes: Variant = JavaScriptBridge.eval("window.alfaMic.take(%d)" % max_frames, true)
+	if not bytes is PackedByteArray:
+		return PackedFloat32Array()
+	return (bytes as PackedByteArray).to_float32_array()
 
 
 func start_step_counter() -> void:

@@ -26,7 +26,6 @@ const DESKTOP_SCRIPT: String = "res://platform/desktop/desktop_platform.gd"
 var _has_safe_rect_override: bool = false
 var _safe_rect_override: Rect2 = Rect2()
 var _backend: PlatformBackend
-var _microphone: MicrophoneCapture
 
 
 func _ready() -> void:
@@ -44,8 +43,6 @@ func _ready() -> void:
 	_backend.speech_recognized.connect(speech_recognized.emit)
 	_backend.speech_failed.connect(speech_failed.emit)
 	_backend.notification_shown.connect(notification_shown.emit)
-	_microphone = MicrophoneCapture.new()
-	add_child(_microphone)
 
 
 func _create_backend() -> PlatformBackend:
@@ -82,6 +79,11 @@ func request_access(features: Array[PlatformBackend.Feature]) -> bool:
 
 
 ## Accelerometer in m/s^2 with gravity, Godot axes (x right, y up, z out of the screen).
+## Why the last request_access() was refused, see PlatformBackend.access_problem().
+func access_problem() -> String:
+	return _backend.access_problem()
+
+
 func get_acceleration() -> Vector3:
 	return _backend.get_acceleration()
 
@@ -107,28 +109,41 @@ func stop_camera() -> void:
 	_backend.stop_camera()
 
 
+## Shows the camera at full quality over `rect` in window pixels, above everything under it and below
+## the game drawn on top of it (the game must leave the rect transparent). False when not supported:
+## then draw camera_frame. An empty rect hides the view.
+func show_camera_view(rect: Rect2) -> bool:
+	return _backend.show_camera_view(rect)
+
+
 # --- Audio -----------------------------------------------------------------------
 
 
 func start_microphone() -> void:
-	_microphone.start()
+	_backend.start_microphone()
 
 
 func stop_microphone() -> void:
-	_microphone.stop()
+	_backend.stop_microphone()
 
 
 func get_microphone_sample_rate() -> float:
-	return _microphone.get_sample_rate()
+	return _backend.get_microphone_sample_rate()
 
 
 ## Mono samples captured since the previous call.
 func read_microphone(max_frames: int) -> PackedFloat32Array:
-	return _microphone.read(max_frames)
+	return _backend.read_microphone(max_frames)
 
 
 func start_speech(locale: String = "ru-RU") -> void:
 	_backend.start_speech(locale)
+
+
+## Call while a "Speak" button is on screen: in the browser the tap on it starts recognition at once
+## (Safari allows it only inside the tap), and start_speech() from its handler takes it over.
+func prepare_speech(locale: String = "ru-RU") -> void:
+	_backend.prepare_speech(locale)
 
 
 func stop_speech() -> void:

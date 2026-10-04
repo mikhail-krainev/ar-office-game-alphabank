@@ -1,0 +1,469 @@
+// Логическая модель данных Office Game.
+//
+// Физически в PostgreSQL лежит схема Nakama: игровые данные хранятся в таблице `storage`
+// (collection, key, user_id, value jsonb, version) и в `users.metadata`. Здесь каждая коллекция
+// storage показана отдельной таблицей, а вложенные JSON-структуры (словари по дням, массивы) —
+// дочерними таблицами с пометкой «вложено в …». Справочники контента читаются из
+// server/content/*.json при старте сервера и в БД не пишутся.
+//
+// Системные объекты принадлежат пользователю 00000000-0000-0000-0000-000000000000.
+// День `day` — номер офисного дня (int), в JSON — строковый ключ словаря.
+//
+// Рендер: https://dbdiagram.io (вставить файл целиком).
+
+Project office_game {
+  database_type: 'PostgreSQL'
+  Note: 'Nakama + Go-модуль. Источник истины: server/modules/*.go'
+}
+
+// ─── Ядро Nakama ──────────────────────────────────────────────────────────
+
+Table users [headercolor: #24292E] {
+  id uuid [pk]
+  username varchar(128) [unique, not null, note: 'логин, создаёт только админ']
+  display_name varchar(255)
+  metadata jsonb [note: 'см. account_metadata']
+  wallet jsonb [note: '{"coins": N} — баланс']
+  disable_time timestamptz [note: 'выход из всех сессий']
+  create_time timestamptz
+  Note: 'Таблица Nakama. Аккаунт игрока или админа.'
+}
+
+Table wallet_ledger [headercolor: #24292E] {
+  id uuid [pk]
+  user_id uuid [not null]
+  changeset jsonb [note: '{"coins": +/-N}']
+  metadata jsonb [note: '{"reason", "ref"}: task, shop_purchase, car, raffle_ticket, fine, welcome…']
+  create_time timestamptz
+  Note: 'Таблица Nakama. Каждое изменение баланса (WalletUpdate в MultiUpdate).'
+}
+
+Table account_metadata [headercolor: #24292E] {
+  user_id uuid [pk]
+  role varchar [note: 'admin | player']
+  office varchar [note: 'домашний офис; пусто — офис по умолчанию']
+  department varchar
+  trip_office varchar [note: 'командировка, может отсутствовать']
+  trip_department varchar
+  trip_until int [note: 'последний день командировки включительно']
+  Note: 'Вложено в users.metadata. Пишет только сервер (access.go).'
+}
+
+// ─── Организация (системные объекты) ──────────────────────────────────────
+
+Table offices [headercolor: #1F6FEB] {
+  id varchar [pk, note: 'storage key']
+  name varchar [not null]
+  city varchar
+  networks "text[]" [note: 'внешние IP/CIDR сети офиса']
+  limits jsonb [note: 'Limits офиса; null — limits из settings / game_rules.json']
+  Note: 'storage: collection=offices, user=system. Игровая зона.'
+}
+
+Table departments [headercolor: #1F6FEB] {
+  id varchar [pk, note: 'storage key']
+  name varchar [not null]
+  office varchar [not null]
+  Note: 'storage: collection=departments, user=system'
+}
+
+Table settings_limits [headercolor: #1F6FEB] {
+  key varchar [pk, note: '"limits"']
+  task_cooldown_minutes int
+  task_window_start varchar [note: 'HH:MM']
+  task_window_end varchar [note: 'HH:MM']
+  play_limit_minutes int
+  exit_grace_minutes int
+  rest_minutes int
+  Note: 'storage: collection=settings, key=limits, user=system. Общие ограничения рабочего времени.'
+}
+
+// ─── Данные игрока ────────────────────────────────────────────────────────
+
+Table game_state [headercolor: #2DA44E] {
+  user_id uuid [pk, note: 'storage: game/state']
+  first_day int
+  last_login_day int
+  processed_day int
+  best_streak int
+  status varchar
+  avatar varchar [note: 'шаблон или "custom"']
+  has_custom_avatar bool
+  car varchar [note: 'выбранная машина']
+  outfit jsonb [note: 'см. player_outfit; цвета *_color — #RRGGBB']
+  presence_office varchar [note: 'офис последнего входа']
+  used_presence_tokens "text[]" [note: 'антиповтор QR']
+  coins_earned int
+  welcome_given bool
+  banned_at bigint [note: 'unix; 0 — не заблокирован']
+  last_task_at bigint [note: 'начало паузы между заданиями']
+  play jsonb [note: 'PlaySession: seconds, warned_at, rest_until, blocked_day, minigame…']
+  morning_report jsonb [note: '{fined, lost_streak}']
+  Note: 'storage: collection=game, key=state. Пишет только сервер, версия защищает от гонок.'
+}
+
+Table player_days [headercolor: #2DA44E] {
+  user_id uuid
+  day int
+  present bool [note: 'presence_days']
+  excused bool [note: 'excused_days']
+  checkin_at bigint
+  checkout_at bigint
+  earned int
+  play_seconds int
+  Indexes {
+    (user_id, day) [pk]
+  }
+  Note: 'Вложено в game_state: словари по дням.'
+}
+
+Table player_day_tasks [headercolor: #2DA44E] {
+  user_id uuid
+  day int
+  task_id varchar
+  status varchar [note: 'completed | skipped | pending']
+  Indexes {
+    (user_id, day, task_id) [pk]
+  }
+  Note: 'Вложено в game_state: completed / skipped / pending.'
+}
+
+Table task_log [headercolor: #2DA44E] {
+  user_id uuid
+  day int
+  task_id varchar
+  title varchar
+  reward int
+  t bigint [note: 'unix времени награды']
+  Note: 'Вложено в game_state.task_log.'
+}
+
+Table task_assignments [headercolor: #2DA44E] {
+  user_id uuid
+  day int
+  task_id varchar
+  colleague_id uuid [note: 'коллега из офиса, где игрок сегодня']
+  Indexes {
+    (user_id, day, task_id) [pk]
+  }
+  Note: 'Вложено в game_state.assignments.'
+}
+
+Table colleague_meetings [headercolor: #2DA44E] {
+  user_id uuid
+  day int
+  colleague_id uuid
+  Indexes {
+    (user_id, day, colleague_id) [pk]
+  }
+  Note: 'Вложено в game_state.met.'
+}
+
+Table photo_requests [headercolor: #2DA44E] {
+  id varchar [pk]
+  user_id uuid [note: 'автор запроса']
+  day int
+  task_id varchar
+  partner_id uuid
+  partner_inbox_id int
+  state varchar [note: 'pending | confirmed | declined | expired']
+  reward int
+  t bigint
+  Note: 'Вложено в game_state.photo_requests. Совместное фото, подтверждает партнёр.'
+}
+
+Table owned_items [headercolor: #2DA44E] {
+  user_id uuid
+  item_id varchar
+  Indexes {
+    (user_id, item_id) [pk]
+  }
+  Note: 'Вложено в game_state.owned_items.'
+}
+
+Table daily_purchases [headercolor: #2DA44E] {
+  user_id uuid
+  day int
+  offer_id varchar [note: '"<day>-<item_id>", хранится только он']
+  item_id varchar [note: 'выводится из offer_id']
+  Indexes {
+    (user_id, offer_id) [pk]
+  }
+  Note: 'Вложено в game_state.purchases. Предложение дня магазина.'
+}
+
+Table player_outfit [headercolor: #2DA44E] {
+  user_id uuid
+  slot varchar [note: 'слот гардероба']
+  item_id varchar
+  color varchar [note: 'hair/top/pants/shoes: #RRGGBB, иначе null']
+  Indexes {
+    (user_id, slot) [pk]
+  }
+  Note: 'Вложено в game_state.outfit: слот -> предмет и слот_color -> цвет.'
+}
+
+Table owned_cars [headercolor: #2DA44E] {
+  user_id uuid
+  car_id varchar
+  Indexes {
+    (user_id, car_id) [pk]
+  }
+  Note: 'Вложено в game_state.cars.'
+}
+
+Table inbox [headercolor: #0A7E8C] {
+  user_id uuid [pk, note: 'storage: game/inbox']
+  next_id int
+  Note: 'storage: collection=game, key=inbox. До 100 последних сообщений.'
+}
+
+Table inbox_items [headercolor: #0A7E8C] {
+  user_id uuid
+  id int
+  kind varchar
+  t bigint
+  params jsonb
+  read bool
+  state varchar [note: 'pending | confirmed | declined | expired']
+  Indexes {
+    (user_id, id) [pk]
+  }
+  Note: 'Вложено в inbox.items.'
+}
+
+Table avatars [headercolor: #0A7E8C] {
+  user_id uuid [pk]
+  png text [note: 'base64']
+  Note: 'storage: collection=avatar, read=public. Свой аватар игрока.'
+}
+
+Table operations [headercolor: #0A7E8C] {
+  user_id uuid
+  key varchar(64) [note: 'ключ операции от клиента']
+  t bigint
+  Indexes {
+    (user_id, key) [pk]
+  }
+  Note: 'storage: collection=operations. Идемпотентность RPC, меняющих баланс.'
+}
+
+Table activity [headercolor: #0A7E8C] {
+  user_id uuid
+  key varchar [note: '<unix>-<random>, сортировка по времени']
+  t bigint
+  kind varchar [note: 'login, check_in, check_out, room, task_done, met, play_rest…']
+  params jsonb
+  Indexes {
+    (user_id, key) [pk]
+  }
+  Note: 'storage: collection=activity. Аудит для админки.'
+}
+
+Table office_presence [headercolor: #0A7E8C] {
+  user_id uuid [pk, note: 'storage key, user=system']
+  day int
+  in bool
+  since bigint
+  room varchar
+  office varchar
+  Note: 'storage: collection=office_presence. Кто сейчас в офисе и в какой комнате.'
+}
+
+// ─── Антифрод и модерация ─────────────────────────────────────────────────
+
+Table suspicious [headercolor: #CF222E] {
+  key varchar [pk]
+  user_id uuid
+  t bigint
+  task varchar
+  reason varchar
+  ip varchar
+  Note: 'storage: collection=suspicious, user=system. Журнал подозрительных действий.'
+}
+
+Table reward_requests [headercolor: #CF222E] {
+  key varchar [pk]
+  user_id uuid
+  item_id varchar
+  price int
+  t bigint
+  status varchar [note: 'pending']
+  Note: 'storage: collection=reward_requests, user=system. Дорогие награды (epic, legendary) ждут подтверждения.'
+}
+
+// ─── Розыгрыш парковки ────────────────────────────────────────────────────
+
+Table raffles [headercolor: #BF8700] {
+  id varchar [pk, note: 'parking-<office>-YYYY-MM']
+  office varchar [note: 'домашний офис, часть ключа']
+  draw_at bigint
+  seed varchar [note: 'раскрывается после розыгрыша']
+  commitment varchar [note: 'хеш seed, commit-reveal']
+  drawn bool
+  winner uuid
+  Note: 'storage: collection=raffles, user=system. Ежемесячно, последняя пятница.'
+}
+
+Table raffle_tickets [headercolor: #BF8700] {
+  raffle_id varchar
+  user_id uuid
+  Indexes {
+    (raffle_id, user_id) [pk]
+  }
+  Note: 'Вложено в raffles.tickets.'
+}
+
+// ─── Контент (server/content/*.json) ──────────────────────────────────────
+
+Table tasks [headercolor: #8250DF] {
+  id varchar [pk]
+  title varchar
+  description text
+  room varchar
+  floor varchar
+  spot "int[]"
+  minigame varchar
+  fallback varchar
+  params jsonb
+  assignment varchar [note: 'тип назначения коллеги']
+  reward int
+  difficulty varchar
+  skippable bool
+  Note: 'tasks.json'
+}
+
+Table shop_items [headercolor: #8250DF] {
+  id varchar [pk]
+  name varchar
+  description text
+  rarity varchar [note: 'common | rare | epic | legendary']
+  price int
+  icon int
+  Note: 'shop_catalog.json'
+}
+
+Table wardrobe_items [headercolor: #8250DF] {
+  id varchar [pk]
+  slot varchar
+  name varchar
+  unlock jsonb [note: '{type, item, days}']
+  Note: 'wardrobe.json'
+}
+
+Table cars [headercolor: #8250DF] {
+  id varchar [pk]
+  name varchar
+  description text
+  price int
+  speed_kmh int
+  Note: 'cars.json'
+}
+
+// ─── Группы ───────────────────────────────────────────────────────────────
+
+TableGroup nakama_core {
+  users
+  wallet_ledger
+  account_metadata
+}
+
+TableGroup organization {
+  offices
+  departments
+  settings_limits
+}
+
+TableGroup player_progress {
+  game_state
+  player_days
+  player_day_tasks
+  task_log
+  task_assignments
+  colleague_meetings
+  photo_requests
+  owned_items
+  daily_purchases
+  owned_cars
+  player_outfit
+}
+
+TableGroup player_records {
+  inbox
+  inbox_items
+  avatars
+  operations
+  activity
+  office_presence
+}
+
+TableGroup moderation {
+  suspicious
+  reward_requests
+}
+
+TableGroup parking_raffle {
+  raffles
+  raffle_tickets
+}
+
+TableGroup content {
+  tasks
+  shop_items
+  wardrobe_items
+  cars
+}
+
+// ─── Связи ────────────────────────────────────────────────────────────────
+
+Ref: wallet_ledger.user_id > users.id
+Ref: account_metadata.user_id - users.id
+Ref: account_metadata.office > offices.id
+Ref: account_metadata.department > departments.id
+Ref: account_metadata.trip_office > offices.id
+Ref: account_metadata.trip_department > departments.id
+
+Ref: departments.office > offices.id
+
+Ref: game_state.user_id - users.id
+Ref: game_state.car > cars.id
+Ref: game_state.presence_office > offices.id
+
+Ref: player_days.user_id > game_state.user_id
+Ref: player_day_tasks.user_id > game_state.user_id
+Ref: player_day_tasks.task_id > tasks.id
+Ref: task_log.user_id > game_state.user_id
+Ref: task_log.task_id > tasks.id
+Ref: task_assignments.user_id > game_state.user_id
+Ref: task_assignments.task_id > tasks.id
+Ref: task_assignments.colleague_id > users.id
+Ref: colleague_meetings.user_id > game_state.user_id
+Ref: colleague_meetings.colleague_id > users.id
+Ref: photo_requests.user_id > game_state.user_id
+Ref: photo_requests.partner_id > users.id
+Ref: photo_requests.task_id > tasks.id
+Ref: owned_items.user_id > game_state.user_id
+Ref: owned_items.item_id > shop_items.id
+Ref: daily_purchases.user_id > game_state.user_id
+Ref: daily_purchases.item_id > shop_items.id
+Ref: player_outfit.user_id > game_state.user_id
+Ref: player_outfit.item_id > wardrobe_items.id
+Ref: owned_cars.user_id > game_state.user_id
+Ref: owned_cars.car_id > cars.id
+
+Ref: inbox.user_id - users.id
+Ref: inbox_items.user_id > inbox.user_id
+Ref: avatars.user_id - users.id
+Ref: operations.user_id > users.id
+Ref: activity.user_id > users.id
+Ref: office_presence.user_id - users.id
+Ref: office_presence.office > offices.id
+
+Ref: suspicious.user_id > users.id
+Ref: reward_requests.user_id > users.id
+Ref: reward_requests.item_id > shop_items.id
+
+Ref: raffles.office > offices.id
+Ref: raffles.winner > users.id
+Ref: raffle_tickets.raffle_id > raffles.id
+Ref: raffle_tickets.user_id > users.id

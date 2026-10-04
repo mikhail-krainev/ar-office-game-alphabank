@@ -1,9 +1,10 @@
 class_name CarryCoffeeMinigame
 extends Minigame
-## "Carry the coffee": scan the kitchen code, walk to the meeting room holding the phone flat like a
-## tray, scan the meeting room code. Tilting or jerking the phone spills coffee.
+## "Carry the coffee": scan the kitchen code, get the phone flat during a short countdown, walk to the
+## meeting room holding it like a tray, press "I'm there" and scan the meeting room code. Tilting or
+## jerking the phone spills coffee only while carrying: the countdown and the final scan do not count.
 
-enum Phase { START_SCAN, CARRY, FINISH_SCAN, DONE }
+enum Phase { START_SCAN, COUNTDOWN, CARRY, FINISH_SCAN, DONE }
 
 const DEFAULT_START_ROOM: String = "kitchen"
 const DEFAULT_FINISH_ROOM: String = "meeting"
@@ -14,6 +15,8 @@ const COFFEE: Color = Color("#6b3d26")
 const CREMA: Color = Color("#c08a55")
 const SURFACE_SHIFT: float = 22.0
 const MAX_DROPS: int = 24
+## Seconds after the kitchen scan to get the phone flat before the coffee starts to count.
+const COUNTDOWN_SECONDS: float = 5.0
 
 var _phase: Phase = Phase.START_SCAN
 var _meter: SpillMeter = SpillMeter.new()
@@ -21,10 +24,12 @@ var _time_left: float = DEFAULT_TIME_LIMIT
 var _start_room: String = DEFAULT_START_ROOM
 var _finish_room: String = DEFAULT_FINISH_ROOM
 var _drops: Array[Vector3] = []
+var _countdown_left: float = 0.0
 
 var _status: Label
 var _hint: Label
 var _arrived: Button
+var _countdown: Label
 
 
 func _ready() -> void:
@@ -40,9 +45,12 @@ func _ready() -> void:
 	_arrived.pressed.connect(_scan_finish)
 	_arrived.visible = false
 	add_child(_arrived)
+	_countdown = add_big_label(CUP_CENTER.y - 22.0, 36, UiStyle.RED)
+	_countdown.visible = false
 	await _scan_room(_start_room, tr("MG_CARRY_START") % tr(_room_key(_start_room)))
-	_phase = Phase.CARRY
-	_arrived.visible = true
+	_phase = Phase.COUNTDOWN
+	_countdown_left = COUNTDOWN_SECONDS
+	_countdown.visible = true
 
 
 func _scan_room(room_id: String, prompt: String) -> void:
@@ -57,6 +65,7 @@ func _scan_room(room_id: String, prompt: String) -> void:
 func _scan_finish() -> void:
 	if _phase != Phase.CARRY:
 		return
+	# The carry is over: the level is final, the phone can be turned to scan the door code.
 	_phase = Phase.FINISH_SCAN
 	_arrived.visible = false
 	await _scan_room(_finish_room, tr("MG_CARRY_FINISH") % tr(_room_key(_finish_room)))
@@ -70,7 +79,14 @@ func _scan_finish() -> void:
 
 func _process(delta: float) -> void:
 	super(delta)
-	if _phase == Phase.CARRY or _phase == Phase.FINISH_SCAN:
+	if _phase == Phase.COUNTDOWN:
+		_countdown_left -= delta
+		_countdown.text = str(ceili(_countdown_left))
+		if _countdown_left <= 0.0:
+			_countdown.visible = false
+			_phase = Phase.CARRY
+			_arrived.visible = true
+	if _phase == Phase.CARRY:
 		_meter.update(PlatformServices.get_acceleration(), delta)
 		_time_left -= delta
 		if _meter.spilled_this_update and _drops.size() < MAX_DROPS:
@@ -83,7 +99,10 @@ func _process(delta: float) -> void:
 		_drops[i].z -= delta
 		if _drops[i].z <= 0.0:
 			_drops.remove_at(i)
-	_status.text = "%s   %s" % [tr("MG_CARRY_LEVEL") % roundi(_meter.level * 100.0), tr("MG_TIME") % ceili(maxf(_time_left, 0.0))]
+	if _phase == Phase.COUNTDOWN:
+		_status.text = tr("MG_CARRY_GET_READY")
+	else:
+		_status.text = "%s   %s" % [tr("MG_CARRY_LEVEL") % roundi(_meter.level * 100.0), tr("MG_TIME") % ceili(maxf(_time_left, 0.0))]
 	queue_redraw()
 
 

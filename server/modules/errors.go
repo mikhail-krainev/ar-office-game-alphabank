@@ -9,12 +9,13 @@ import (
 
 // gRPC status codes used by runtime.NewError; Nakama maps them to HTTP statuses.
 const (
-	codeInvalidArgument  = 3
-	codeNotFound         = 5
-	codeAlreadyExists    = 6
-	codePermissionDenied = 7
-	codeInternal         = 13
-	codeUnauthenticated  = 16
+	codeInvalidArgument    = 3
+	codeNotFound           = 5
+	codeFailedPrecondition = 9
+	codeAlreadyExists      = 6
+	codePermissionDenied   = 7
+	codeInternal           = 13
+	codeUnauthenticated    = 16
 )
 
 // Error messages are stable keys: the game client and the admin panel translate them.

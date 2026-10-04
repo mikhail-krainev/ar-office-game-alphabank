@@ -37,6 +37,7 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
       PRESENCE_SECRET: ${PRESENCE_SECRET:?set PRESENCE_SECRET in .env}
       DEV_MODE: ${DEV_MODE:-false}
+      TEST_CLOCK: ${TEST_CLOCK:-false}
       OFFICE_NETWORKS: ${OFFICE_NETWORKS:-}
     # Secrets come from the environment, never from local.yml.
     entrypoint:
@@ -55,10 +56,13 @@ services:
         --runtime.env "ADMIN_PASSWORD=$$ADMIN_PASSWORD"
         --runtime.env "PRESENCE_SECRET=$$PRESENCE_SECRET"
         --runtime.env "DEV_MODE=$$DEV_MODE"
+        --runtime.env "TEST_CLOCK=$$TEST_CLOCK"
         --runtime.env "OFFICE_NETWORKS=$$OFFICE_NETWORKS"
+    # NAKAMA_BIND=127.0.0.1 hides the ports from the network: Nakama trusts X-Forwarded-For, so with
+    # the office network check clients must reach it only through Caddy (./run-lan.sh --office-net).
     ports:
-      - "7350:7350"
-      - "7351:7351"
+      - "${NAKAMA_BIND:-0.0.0.0}:7350:7350"
+      - "${NAKAMA_BIND:-0.0.0.0}:7351:7351"
     healthcheck:
       test: ["CMD", "/nakama/nakama", "healthcheck"]
       interval: 5s
@@ -78,10 +82,12 @@ services:
       - ./certs/public:/srv/ca:ro
       - ../build/web:/srv/web:ro
       - ../admin/dist:/srv/admin:ro
+      - ../tools/office-screen:/srv/office-screen:ro
     ports:
       - "8443:8443"
       - "7443:7443"
       - "5443:5443"
+      - "6443:6443"
       - "8080:8080"
 
 volumes:

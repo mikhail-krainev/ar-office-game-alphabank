@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/netip"
 	"strings"
-	"time"
 
 	"github.com/heroiclabs/nakama-common/runtime"
 )
@@ -90,6 +89,8 @@ var anywhereRpcs = map[string]bool{
 	"get_avatar": true,
 	// The office screen calls it with the server's HTTP key.
 	"kiosk_codes": true,
+	// "Go home" only closes the office interval, maybe already on the way home.
+	"leave_office": true,
 }
 
 var errOfficeNetwork = runtime.NewError("office_network_required", codePermissionDenied)
@@ -125,7 +126,7 @@ func callerInOfficeNetwork(ctx context.Context, nk runtime.NakamaModule) (bool, 
 		// Game RPCs refuse other accounts themselves (not_player).
 		return true, nil
 	}
-	officeID, _ := metadata.placement(dayOf(time.Now().Unix(), gameContent.officeOffset()))
+	officeID, _ := metadata.placement(dayOf(gameNow(), gameContent.officeOffset()))
 	office, err := readOffice(ctx, nk, officeID)
 	if err != nil || office == nil {
 		return false, err

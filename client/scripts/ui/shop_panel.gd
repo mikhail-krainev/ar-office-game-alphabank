@@ -21,7 +21,7 @@ var _panel: PanelContainer
 var _title: Label
 var _refresh_label: Label
 var _tab_buttons: Array[Button] = []
-var _scroll: ScrollContainer
+var _scroll: TouchScroll
 var _content: VBoxContainer
 var _toast: Label
 var _toast_left: float = 0.0
@@ -90,8 +90,7 @@ func _ready() -> void:
 		tabs.add_child(button)
 		_tab_buttons.append(button)
 
-	_scroll = ScrollContainer.new()
-	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll = TouchScroll.new()
 	column.add_child(_scroll)
 	_content = VBoxContainer.new()
 	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL

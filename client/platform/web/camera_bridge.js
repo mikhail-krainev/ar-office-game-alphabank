@@ -50,6 +50,8 @@ window.alfaCamera = window.alfaCamera || (function () {
 		stream: null, video: null, mode: 'preview', front: false, timer: 0, callbacks: null,
 		lastQrAt: 0, lastFacesAt: 0, lastPoseAt: 0, lastMarkersAt: 0, lastLabelsAt: 0, lastQrText: '', lastQrTextAt: 0,
 		preview: document.createElement('canvas'), scan: document.createElement('canvas'),
+		// Where the game wants the full-quality preview, in canvas pixels; null hides it.
+		viewRect: null,
 		jsQR: null, landmarker: null, pose: null, aruco: null, detector: null, classifier: null,
 		loading: {}, cameraPermission: 'unknown',
 	};
@@ -167,8 +169,39 @@ window.alfaCamera = window.alfaCamera || (function () {
 	function openStream(front) {
 		return navigator.mediaDevices.getUserMedia({
 			audio: false,
-			video: { facingMode: front ? 'user' : 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
+			video: { facingMode: front ? 'user' : 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
 		});
+	}
+
+	var HIDDEN_VIDEO = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+
+	// The game draws in a low-resolution pixel viewport, so the camera preview is the <video> element
+	// itself, placed under the transparent game canvas where the game leaves a hole for it.
+	function placeVideo() {
+		var video = state.video;
+		if (!video) { return; }
+		var canvas = document.getElementById('canvas') || document.querySelector('canvas');
+		var rect = state.viewRect;
+		if (!rect || !canvas || !canvas.width) {
+			video.style.cssText = HIDDEN_VIDEO;
+			return;
+		}
+		var bounds = canvas.getBoundingClientRect();
+		var sx = bounds.width / canvas.width;
+		var sy = bounds.height / canvas.height;
+		canvas.style.position = 'relative';
+		canvas.style.zIndex = '1';
+		canvas.style.background = 'transparent';
+		video.style.cssText = 'position:fixed;z-index:0;pointer-events:none;object-fit:cover;background:#000;'
+			+ 'left:' + (bounds.left + rect[0] * sx) + 'px;top:' + (bounds.top + rect[1] * sy) + 'px;'
+			+ 'width:' + (rect[2] * sx) + 'px;height:' + (rect[3] * sy) + 'px;'
+			+ (state.front ? 'transform:scaleX(-1);' : '');
+	}
+
+	// x, y, width, height in canvas pixels; width 0 hides the preview.
+	function setView(x, y, width, height) {
+		state.viewRect = width > 0 && height > 0 ? [x, y, width, height] : null;
+		placeVideo();
 	}
 
 	// Draws the current video frame into `canvas` scaled to `longSide`, mirrored for the front camera.
@@ -344,10 +377,11 @@ window.alfaCamera = window.alfaCamera || (function () {
 			// iOS plays inline video only when muted and playsinline.
 			video.setAttribute('playsinline', '');
 			video.muted = true;
-			video.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;';
+			video.style.cssText = HIDDEN_VIDEO;
 			document.body.appendChild(video);
 			video.srcObject = stream;
 			state.video = video;
+			placeVideo();
 			return video.play();
 		}).then(function () {
 			state.timer = setInterval(tick, FRAME_INTERVAL_MS);
@@ -381,6 +415,7 @@ window.alfaCamera = window.alfaCamera || (function () {
 	return {
 		start: start,
 		stop: stop,
+		setView: setView,
 		supported: supported,
 		requestPermission: requestPermission,
 		permission: function () { return state.cameraPermission; },
@@ -394,11 +429,23 @@ window.alfaCamera = window.alfaCamera || (function () {
 window.alfaMotion = window.alfaMotion || (function () {
 	'use strict';
 
-	var STEP_THRESHOLD = 1.2;
-	var STEP_MIN_INTERVAL_MS = 300;
-	var SMOOTHING = 0.2;
+	// Steps: peaks of the acceleration magnitude around its slow average (gravity). Works with the phone
+	// in the hand or in a pocket; accelerationIncludingGravity is used because some phones report no
+	// acceleration without gravity.
+	var STEP_THRESHOLD = 0.9;
+	var STEP_RESET = 0.2;
+	var STEP_MIN_INTERVAL_MS = 280;
+	var GRAVITY_SMOOTHING = 0.05;
+	var SMOOTHING = 0.35;
 
-	var state = { permission: 'unknown', steps: 0, counting: false, filtered: 0, above: false, lastStepAt: 0 };
+	var state = {
+		permission: 'unknown', steps: 0, counting: false, filtered: 0, above: false, lastStepAt: 0, slow: 9.81,
+		// Last acceleration with gravity in m/s^2, Android axes: z is +9.8 with the phone flat face up.
+		gravity: [0, 0, 0],
+	};
+	// Safari reports accelerationIncludingGravity with the opposite sign.
+	var IOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+		|| (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 	function needsPermission() {
 		return typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function';
@@ -420,25 +467,21 @@ window.alfaMotion = window.alfaMotion || (function () {
 		document.addEventListener('click', ask, true);
 	}
 
-	// Peak detection on the low-pass filtered magnitude of the acceleration without gravity.
 	function onMotion(event) {
+		var g = event.accelerationIncludingGravity;
+		if (!g || g.x === null) { return; }
+		var sign = IOS ? -1 : 1;
+		state.gravity = [sign * g.x, sign * g.y, sign * g.z];
 		if (!state.counting) { return; }
-		var a = event.acceleration;
-		if (!a || a.x === null) {
-			a = event.accelerationIncludingGravity;
-			if (!a || a.x === null) { return; }
-		}
-		var magnitude = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
-		if (event.acceleration === null || event.acceleration.x === null) {
-			magnitude = Math.abs(magnitude - 9.81);
-		}
-		state.filtered += SMOOTHING * (magnitude - state.filtered);
+		var magnitude = Math.sqrt(g.x * g.x + g.y * g.y + g.z * g.z);
+		state.slow += GRAVITY_SMOOTHING * (magnitude - state.slow);
+		state.filtered += SMOOTHING * (magnitude - state.slow - state.filtered);
 		var now = performance.now();
 		if (!state.above && state.filtered > STEP_THRESHOLD && now - state.lastStepAt > STEP_MIN_INTERVAL_MS) {
 			state.above = true;
 			state.lastStepAt = now;
 			state.steps += 1;
-		} else if (state.above && state.filtered < STEP_THRESHOLD * 0.5) {
+		} else if (state.above && state.filtered < STEP_RESET) {
 			state.above = false;
 		}
 	}
@@ -448,9 +491,133 @@ window.alfaMotion = window.alfaMotion || (function () {
 
 	return {
 		permission: function () { return state.permission; },
-		startSteps: function () { state.steps = 0; state.filtered = 0; state.above = false; state.counting = true; },
+		startSteps: function () {
+			state.steps = 0;
+			state.filtered = 0;
+			state.above = false;
+			state.slow = 9.81;
+			state.counting = true;
+		},
 		stopSteps: function () { state.counting = false; },
 		steps: function () { return state.steps; },
+		acceleration: function () { return state.gravity.join(','); },
+	};
+})();
+
+// Microphone: raw samples for the tuner. Godot's own microphone input does not work in the web
+// export, so the samples come from getUserMedia through a ScriptProcessor and Godot drains them.
+window.alfaMic = window.alfaMic || (function () {
+	'use strict';
+
+	var MAX_QUEUED = 48000;
+	var state = {
+		context: null, stream: null, source: null, processor: null, queue: [], queued: 0, status: 'idle', session: null,
+	};
+
+	function resumeOnGesture() {
+		var resume = function () {
+			document.removeEventListener('touchend', resume, true);
+			document.removeEventListener('click', resume, true);
+			if (state.context && state.context.state === 'suspended') { state.context.resume(); }
+		};
+		document.addEventListener('touchend', resume, true);
+		document.addEventListener('click', resume, true);
+	}
+
+	// The audio context is created after the stream, at the microphone's own sample rate: Safari
+	// resamples a microphone into a context of another rate wrongly (the voice comes out shifted by
+	// about a semitone, e.g. 48 kHz microphone into a 44.1 kHz context while the game plays audio).
+	function start() {
+		stop();
+		if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+			state.status = 'unsupported';
+			return;
+		}
+		state.status = 'pending';
+		var session = {};
+		state.session = session;
+		navigator.mediaDevices.getUserMedia({
+			audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+			video: false,
+		}).then(function (stream) {
+			if (state.session !== session) {
+				stream.getTracks().forEach(function (track) { track.stop(); });
+				return;
+			}
+			var track = stream.getAudioTracks()[0];
+			var settings = track && track.getSettings ? track.getSettings() : {};
+			var Context = window.AudioContext || window.webkitAudioContext;
+			var context;
+			try {
+				context = settings.sampleRate ? new Context({ sampleRate: settings.sampleRate }) : new Context();
+			} catch (error) {
+				context = new Context();
+			}
+			state.context = context;
+			state.stream = stream;
+			state.source = context.createMediaStreamSource(stream);
+			state.processor = context.createScriptProcessor(2048, 1, 1);
+			state.processor.onaudioprocess = function (event) {
+				var samples = new Float32Array(event.inputBuffer.getChannelData(0));
+				state.queue.push(samples);
+				state.queued += samples.length;
+				while (state.queued > MAX_QUEUED) { state.queued -= state.queue.shift().length; }
+			};
+			state.source.connect(state.processor);
+			// The processor runs only while connected to the output; it writes silence.
+			state.processor.connect(context.destination);
+			state.status = 'granted';
+			if (context.state === 'suspended') {
+				context.resume();
+				resumeOnGesture();
+			}
+		}).catch(function (error) {
+			if (state.session === session) {
+				state.status = error && error.name === 'NotAllowedError' ? 'denied' : 'unavailable';
+			}
+		});
+	}
+
+	function stop() {
+		if (state.processor) { state.processor.disconnect(); state.processor.onaudioprocess = null; }
+		if (state.source) { state.source.disconnect(); }
+		if (state.stream) { state.stream.getTracks().forEach(function (track) { track.stop(); }); }
+		if (state.context) { state.context.close(); }
+		state.session = null;
+		state.context = null;
+		state.stream = null;
+		state.source = null;
+		state.processor = null;
+		state.queue = [];
+		state.queued = 0;
+	}
+
+	// Samples captured since the last call, at most maxFrames, as the bytes of a Float32Array.
+	function take(maxFrames) {
+		var count = Math.min(state.queued, maxFrames);
+		var result = new Float32Array(count);
+		var filled = 0;
+		while (filled < count) {
+			var chunk = state.queue[0];
+			var part = Math.min(chunk.length, count - filled);
+			result.set(chunk.subarray(0, part), filled);
+			filled += part;
+			if (part === chunk.length) {
+				state.queue.shift();
+			} else {
+				state.queue[0] = chunk.subarray(part);
+			}
+		}
+		state.queued -= count;
+		return new Uint8Array(result.buffer);
+	}
+
+	return {
+		start: start,
+		stop: stop,
+		take: take,
+		status: function () { return state.status; },
+		sampleRate: function () { return state.context ? state.context.sampleRate : 0; },
 	};
 })();
 
@@ -466,7 +633,15 @@ window.alfaSpeech = window.alfaSpeech || (function () {
 		'no-speech': 'no-speech', 'network': 'network', 'language-not-supported': 'unsupported',
 	};
 
-	var state = { recognition: null, microphonePermission: 'unknown' };
+	// Safari starts recognition only inside a tap, and Godot handles taps a frame later, outside the
+	// DOM event. So the game arms the recognizer first (arm), the next tap on the page starts it, and
+	// the start call that follows from the game within GESTURE_GRACE_MS takes it over.
+	var GESTURE_GRACE_MS = 1500;
+
+	var state = {
+		recognition: null, session: null, armed: null, startedAt: 0, microphonePermission: 'unknown',
+		microphoneProblem: '',
+	};
 
 	function supported() {
 		return !!Recognition && window.isSecureContext;
@@ -474,13 +649,24 @@ window.alfaSpeech = window.alfaSpeech || (function () {
 
 	// callbacks: {result(text, isFinal), error(code)}.
 	function start(locale, callbacks) {
+		if (state.recognition && state.session && performance.now() - state.startedAt < GESTURE_GRACE_MS) {
+			state.session.callbacks = callbacks;
+			state.session.claimed = true;
+			return;
+		}
+		begin(locale, callbacks, true);
+	}
+
+	function begin(locale, callbacks, claimed) {
 		stop();
 		if (!supported()) {
 			callbacks.error('unsupported');
 			return;
 		}
 		var recognition = new Recognition();
-		var session = { finalSent: false, lastText: '', error: '' };
+		var session = {
+			finalSent: false, lastText: '', error: '', callbacks: callbacks, claimed: claimed, locale: locale,
+		};
 		recognition.lang = locale;
 		recognition.interimResults = true;
 		recognition.continuous = false;
@@ -495,59 +681,106 @@ window.alfaSpeech = window.alfaSpeech || (function () {
 			var isFinal = event.results.length > 0 && event.results[event.results.length - 1].isFinal;
 			session.lastText = text;
 			session.finalSent = session.finalSent || isFinal;
-			callbacks.result(text, isFinal);
+			session.callbacks.result(text, isFinal);
 		};
 		recognition.onerror = function (event) { session.error = event.error || 'error'; };
 		// Some browsers end without a final result: the last interim text is used instead.
 		recognition.onend = function () {
 			if (recognition !== state.recognition) { return; }
 			state.recognition = null;
+			state.session = null;
+			if (!session.claimed) {
+				// A tap elsewhere started it and the game never asked: wait for the next tap.
+				arm(session.locale, session.callbacks);
+				return;
+			}
 			if (session.finalSent) { return; }
 			if (session.lastText) {
-				callbacks.result(session.lastText, true);
+				session.callbacks.result(session.lastText, true);
 			} else {
-				callbacks.error(ERRORS[session.error] || session.error || 'no-speech');
+				session.callbacks.error(ERRORS[session.error] || session.error || 'no-speech');
 			}
 		};
 		state.recognition = recognition;
+		state.session = session;
+		state.startedAt = performance.now();
 		try {
 			recognition.start();
 		} catch (error) {
 			state.recognition = null;
+			state.session = null;
 			callbacks.error('unavailable');
 		}
 	}
 
+	function arm(locale, callbacks) {
+		state.armed = supported() ? { locale: locale, callbacks: callbacks } : null;
+	}
+
+	function onGesture() {
+		var armed = state.armed;
+		if (!armed || state.recognition) { return; }
+		state.armed = null;
+		begin(armed.locale, armed.callbacks, false);
+	}
+
 	function stop() {
+		state.armed = null;
 		var recognition = state.recognition;
 		state.recognition = null;
+		state.session = null;
 		if (recognition) {
 			try { recognition.abort(); } catch (error) {}
 		}
 	}
 
-	// Asks for the microphone once so the prompt appears before the minigame starts.
+	document.addEventListener('touchend', onGesture, true);
+	document.addEventListener('mouseup', onGesture, true);
+
+	// Asks for the microphone so the prompt appears before the minigame starts. A refusal is not
+	// remembered here: the next minigame asks again, the browser itself keeps a permanent "Block".
+	// After a refusal `microphoneProblem` tells why: 'site' when the page is blocked in the browser's
+	// site settings, 'system' when the browser app itself has no microphone access in the phone settings
+	// (the refusal comes without a prompt and the site permission is not 'denied'), plus the error name.
 	function requestPermission() {
-		if (state.microphonePermission !== 'unknown') { return; }
+		if (state.microphonePermission === 'pending') { return; }
 		if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
 			state.microphonePermission = 'granted';
 			return;
 		}
 		state.microphonePermission = 'pending';
+		state.microphoneProblem = '';
 		navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function (stream) {
 			stream.getTracks().forEach(function (track) { track.stop(); });
 			state.microphonePermission = 'granted';
 		}).catch(function (error) {
-			// Only a refusal blocks the game; other errors are left to the recognizer to report.
-			state.microphonePermission = error && error.name === 'NotAllowedError' ? 'denied' : 'granted';
+			var name = error && error.name ? error.name : 'Error';
+			if (name !== 'NotAllowedError' && name !== 'SecurityError') {
+				// Other errors are left to the recognizer to report.
+				state.microphonePermission = 'granted';
+				return;
+			}
+			sitePermission().then(function (site) {
+				state.microphoneProblem = (site === 'denied' ? 'site' : 'system') + ':' + name;
+				state.microphonePermission = 'denied';
+			});
 		});
+	}
+
+	function sitePermission() {
+		if (!navigator.permissions || !navigator.permissions.query) { return Promise.resolve('unknown'); }
+		return navigator.permissions.query({ name: 'microphone' }).then(function (status) {
+			return status.state;
+		}).catch(function () { return 'unknown'; });
 	}
 
 	return {
 		supported: supported,
 		start: start,
+		arm: arm,
 		stop: stop,
 		requestPermission: requestPermission,
 		permission: function () { return state.microphonePermission; },
+		microphoneProblem: function () { return state.microphoneProblem; },
 	};
 })();

@@ -2,6 +2,7 @@
 #   8443  web build of the game (build/web)
 #   7443  Nakama API (the game and the admin panel call it from HTTPS pages)
 #   5443  admin panel (admin/dist)
+#   6443  office screen for a laptop (tools/office-screen) and the Nakama API on the same origin
 #   8080  plain HTTP page with the CA certificate for phones
 {
 	auto_https off
@@ -24,6 +25,14 @@
 	tls /certs/server.crt /certs/server.key
 	root * /srv/admin
 	try_files {path} /index.html
+	file_server
+}
+
+:6443 {
+	tls /certs/server.crt /certs/server.key
+	reverse_proxy /v2/* nakama:7350
+	root * /srv/office-screen
+	header Cache-Control "no-cache"
 	file_server
 }
 

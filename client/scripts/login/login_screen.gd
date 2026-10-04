@@ -2,7 +2,8 @@ extends Control
 ## First screen of the game. With a saved session (it lives a week) the player goes straight in;
 ## otherwise they sign in with the username and password the admin issued. There is no sign-up:
 ## wrong credentials send the player to the admin. A player who must rest or is locked for the day
-## by the play-time limit (PlayTime) waits on that screen first.
+## by the play-time limit (PlayTime) waits on that screen first. Without an answer from the server
+## (it is reachable only from the office Wi-Fi) the office network screen comes first.
 
 const NEXT_SCENE: String = "res://scenes/intro/morning_intro.tscn"
 const BACKGROUND: Color = Color("#1d1d1f")
@@ -43,14 +44,16 @@ func _ready() -> void:
 ## Saved session first; the form appears only when the player has to sign in.
 func _enter() -> void:
 	_set_busy(true, tr("LOGIN_CONNECTING"))
+	if not await Backend.server.is_reachable():
+		await PlayTime.wait_for_server()
 	if Backend.server.restore():
 		var error: String = await Backend.load_account()
 		if error.is_empty():
 			_go_next()
 			return
 		if error == ServerSession.ERROR_NETWORK:
-			_show_error(error)
-			_set_busy(false)
+			await PlayTime.wait_for_server()
+			await _enter()
 			return
 		await Backend.server.sign_out()
 	_set_busy(false, tr("LOGIN_HINT"))
@@ -120,6 +123,10 @@ func _on_submit() -> void:
 			_go_next()
 			return
 		await Backend.server.sign_out()
+	if error == ServerSession.ERROR_NETWORK:
+		await PlayTime.wait_for_server()
+		_set_busy(false, tr("LOGIN_HINT"))
+		return
 	_password.clear()
 	_set_busy(false)
 	_show_error(error)

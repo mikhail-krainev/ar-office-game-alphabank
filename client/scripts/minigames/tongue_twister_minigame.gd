@@ -49,6 +49,7 @@ func _ready() -> void:
 	PlatformServices.speech_recognized.connect(_on_speech)
 	PlatformServices.speech_failed.connect(_on_speech_failed)
 	_update_labels()
+	PlatformServices.prepare_speech("ru-RU")
 
 
 func _exit_tree() -> void:
@@ -109,6 +110,8 @@ func _stop_listening() -> void:
 	PlatformServices.stop_speech()
 	_speak.disabled = is_done()
 	_speak.text = tr("MG_TWISTER_SPEAK")
+	if not is_done():
+		PlatformServices.prepare_speech("ru-RU")
 
 
 func _update_labels() -> void:

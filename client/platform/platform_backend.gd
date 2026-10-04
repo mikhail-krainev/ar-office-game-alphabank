@@ -56,8 +56,33 @@ func request_access(_features: Array[Feature]) -> bool:
 	return true
 
 
+## Why the last request_access() was refused, for the message to the player: "" (unknown),
+## "microphone_site" (blocked for this site in the browser) or "microphone_system" (the browser app
+## has no microphone access in the phone settings). Web only adds ":<error name>" for diagnostics.
+func access_problem() -> String:
+	return ""
+
+
 func get_acceleration() -> Vector3:
 	return Input.get_accelerometer()
+
+
+## Raw microphone samples. The base class uses the Godot core (MicrophoneCapture); the web replaces it.
+func start_microphone() -> void:
+	_core_microphone().start()
+
+
+func stop_microphone() -> void:
+	_core_microphone().stop()
+
+
+func get_microphone_sample_rate() -> float:
+	return _core_microphone().get_sample_rate()
+
+
+## Mono samples captured since the previous call, at most `max_frames`.
+func read_microphone(max_frames: int) -> PackedFloat32Array:
+	return _core_microphone().read(max_frames)
 
 
 func start_step_counter() -> void:
@@ -76,8 +101,19 @@ func stop_camera() -> void:
 	pass
 
 
+## Shows the camera at full quality over `rect` (window pixels) outside the game viewport. Returns
+## false when the platform cannot, then the game draws camera_frame itself. An empty rect hides it.
+func show_camera_view(_rect: Rect2) -> bool:
+	return false
+
+
 func start_speech(_locale: String) -> void:
 	speech_failed.emit("unsupported")
+
+
+## Lets the next tap start recognition where the browser allows it only inside a tap.
+func prepare_speech(_locale: String) -> void:
+	pass
 
 
 func stop_speech() -> void:
@@ -110,6 +146,15 @@ func pick_image() -> Image:
 		PackedStringArray(["*.png, *.jpg, *.jpeg, *.webp ; Images"]), on_selected
 	)
 	return await _image_picked
+
+
+func _core_microphone() -> MicrophoneCapture:
+	var capture: MicrophoneCapture = get_node_or_null(^"Microphone") as MicrophoneCapture
+	if capture == null:
+		capture = MicrophoneCapture.new()
+		capture.name = "Microphone"
+		add_child(capture)
+	return capture
 
 
 static func load_image_file(path: String) -> Image:

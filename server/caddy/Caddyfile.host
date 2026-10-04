@@ -1,0 +1,47 @@
+# HTTPS in the local network with Caddy running on the Mac itself, not in Docker: ./run-lan.sh --office-net.
+# Docker Desktop on macOS replaces the phones' addresses with its gateway (172.x), so the office
+# network check (OFFICE_NETWORKS) cannot work behind the Caddy container. Caddy on the host sees the
+# real address of each phone in the Wi-Fi network and overwrites X-Forwarded-For with it, and Nakama
+# takes the client address from that header. OFFICE_GAME_ROOT is the repository root.
+#   8443  web build of the game (build/web)
+#   7443  Nakama API (the game and the admin panel call it from HTTPS pages)
+#   5443  admin panel (admin/dist)
+#   6443  office screen for a laptop (tools/office-screen) and the Nakama API on the same origin
+#   8080  plain HTTP page with the CA certificate for phones
+{
+	auto_https off
+	# The admin endpoint stays on localhost:2019: caddy stop needs it.
+}
+
+:8443 {
+	tls "{$OFFICE_GAME_ROOT}/server/certs/server.crt" "{$OFFICE_GAME_ROOT}/server/certs/server.key"
+	root * "{$OFFICE_GAME_ROOT}/build/web"
+	header Cache-Control "no-cache"
+	file_server
+}
+
+:7443 {
+	tls "{$OFFICE_GAME_ROOT}/server/certs/server.crt" "{$OFFICE_GAME_ROOT}/server/certs/server.key"
+	reverse_proxy 127.0.0.1:7350
+}
+
+:5443 {
+	tls "{$OFFICE_GAME_ROOT}/server/certs/server.crt" "{$OFFICE_GAME_ROOT}/server/certs/server.key"
+	root * "{$OFFICE_GAME_ROOT}/admin/dist"
+	try_files {path} /index.html
+	file_server
+}
+
+:6443 {
+	tls "{$OFFICE_GAME_ROOT}/server/certs/server.crt" "{$OFFICE_GAME_ROOT}/server/certs/server.key"
+	reverse_proxy /v2/* 127.0.0.1:7350
+	root * "{$OFFICE_GAME_ROOT}/tools/office-screen"
+	header Cache-Control "no-cache"
+	file_server
+}
+
+:8080 {
+	root * "{$OFFICE_GAME_ROOT}/server/certs/public"
+	header /office-game-ca.cer Content-Type application/x-x509-ca-cert
+	file_server
+}

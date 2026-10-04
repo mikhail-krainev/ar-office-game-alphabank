@@ -7,18 +7,13 @@
 [ext_resource type="Script" path="res://scripts/world/game_camera.gd" id="5_camera"]
 [ext_resource type="Script" path="res://scripts/ui/hud.gd" id="6_hud"]
 [ext_resource type="PackedScene" path="res://scenes/fx/crt_overlay.tscn" id="7_crt"]
-[ext_resource type="Script" path="res://scripts/npc/dialogue_box.gd" id="8_dialogue"]
 [ext_resource type="Script" path="res://scripts/ui/shop_panel.gd" id="9_shop"]
 [ext_resource type="Script" path="res://scripts/ui/wardrobe_panel.gd" id="10_wardrobe"]
-[ext_resource type="Script" path="res://scripts/ui/choice_prompt.gd" id="11_choice"]
 
 [node name="Home" type="Node2D"]
 script = ExtResource("1_home")
 
 [node name="WorldMap" parent="." instance=ExtResource("2_map")]
-
-[node name="PathLine" type="Line2D" parent="."]
-width = 1.0
 
 [node name="TapMarker" type="Node2D" parent="."]
 script = ExtResource("4_marker")
@@ -40,12 +35,6 @@ script = ExtResource("9_shop")
 
 [node name="WardrobePanel" type="CanvasLayer" parent="."]
 script = ExtResource("10_wardrobe")
-
-[node name="DialogueBox" type="CanvasLayer" parent="."]
-script = ExtResource("8_dialogue")
-
-[node name="ChoicePrompt" type="CanvasLayer" parent="."]
-script = ExtResource("11_choice")
 
 [node name="Fade" type="CanvasLayer" parent="."]
 layer = 60

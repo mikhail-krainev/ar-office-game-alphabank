@@ -114,3 +114,13 @@ func TestValidateLimits(t *testing.T) {
 		t.Error("a zero cooldown turns the cooldown off and is allowed")
 	}
 }
+
+func TestHiddenTasksNeverGetIntoPacks(t *testing.T) {
+	tasks := packTasks(11)
+	tasks[1].Hidden = true
+	for day := monday; day < monday+5; day++ {
+		if taskPack(tasks, "player", day)[tasks[1].ID] {
+			t.Fatalf("hidden task %s is in the pack of day %d", tasks[1].ID, day)
+		}
+	}
+}

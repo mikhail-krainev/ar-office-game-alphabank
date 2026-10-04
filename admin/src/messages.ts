@@ -4,6 +4,7 @@ const MESSAGES: Record<string, string> = {
   unauthenticated: "Сессия истекла. Войдите снова.",
   network: "Сервер недоступен. Проверьте, что Nakama запущена.",
   not_admin: "Этот аккаунт не администратор.",
+  test_clock_disabled: "Тестовые часы выключены: поставьте TEST_CLOCK=true в server/.env и перезапустите сервер.",
   "Invalid credentials.": "Неверный логин или пароль.",
   "User account not found.": "Неверный логин или пароль.",
   "User account banned.": "Аккаунт заблокирован.",

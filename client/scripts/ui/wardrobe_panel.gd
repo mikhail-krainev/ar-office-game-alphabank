@@ -86,8 +86,7 @@ func _ready() -> void:
 	_colors.add_theme_constant_override("v_separation", 4)
 	column.add_child(_colors)
 
-	var scroll: ScrollContainer = ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var scroll: TouchScroll = TouchScroll.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(scroll)
 	_grid = GridContainer.new()

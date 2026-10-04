@@ -149,7 +149,7 @@ func _pick_minigame(task: BackendModels.TaskInfo) -> String:
 	if not PlatformServices.has_features(features):
 		reason = tr("MG_NO_SENSORS")
 	elif not await PlatformServices.request_access(features):
-		reason = tr("MG_NO_PERMISSION")
+		reason = _permission_text(features)
 	if reason.is_empty():
 		return task.minigame
 	if task.fallback_minigame.is_empty():
@@ -157,6 +157,28 @@ func _pick_minigame(task: BackendModels.TaskInfo) -> String:
 	_notice.text = reason + " " + tr("MG_FALLBACK")
 	_notice.visible = true
 	return task.fallback_minigame
+
+
+## What to ask the player to allow. For the microphone the platform may know where it is blocked.
+static func _permission_text(features: Array[PlatformBackend.Feature]) -> String:
+	var key: String = _permission_key(features)
+	if key != "MG_NO_MIC_PERMISSION":
+		return TranslationServer.translate(key)
+	var problem: PackedStringArray = PlatformServices.access_problem().split(":")
+	if problem[0] == "microphone_system":
+		key = "MG_NO_MIC_SYSTEM"
+	var text: String = TranslationServer.translate(key)
+	return text + (" (%s)" % problem[1] if problem.size() > 1 else "")
+
+
+## What to ask the player to allow, by the sensors the minigame needs.
+static func _permission_key(features: Array[PlatformBackend.Feature]) -> String:
+	if features.has(PlatformBackend.Feature.MICROPHONE) or features.has(PlatformBackend.Feature.SPEECH_RECOGNITION):
+		return "MG_NO_MIC_PERMISSION"
+	for feature: PlatformBackend.Feature in features:
+		if feature not in [PlatformBackend.Feature.ACCELEROMETER, PlatformBackend.Feature.PEDOMETER]:
+			return "MG_NO_CAMERA_PERMISSION"
+	return "MG_NO_PERMISSION"
 
 
 func show_reward(amount: int) -> void:
