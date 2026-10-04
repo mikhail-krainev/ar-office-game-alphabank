@@ -8,14 +8,14 @@ func test_defaults_come_from_project_settings() -> void:
 
 
 func test_web_build_uses_the_page_host_with_the_configured_port() -> void:
-	var config: ServerConfig = ServerConfig.from_environment(PackedStringArray(), "http://192.168.1.20")
-	assert_str(config.host).is_equal("192.168.1.20")
+	var config: ServerConfig = ServerConfig.from_environment(PackedStringArray(), "http://10.20.30.20")
+	assert_str(config.host).is_equal("10.20.30.20")
 	assert_int(config.port).is_equal(int(ProjectSettings.get_setting("office_game/server/port")))
 
 
 func test_https_page_uses_the_tls_proxy() -> void:
-	var config: ServerConfig = ServerConfig.from_environment(PackedStringArray(), "https://192.168.1.20")
-	assert_str(config.describe()).is_equal("https://192.168.1.20:%d" % int(ProjectSettings.get_setting("office_game/server/tls_port")))
+	var config: ServerConfig = ServerConfig.from_environment(PackedStringArray(), "https://10.20.30.20")
+	assert_str(config.describe()).is_equal("https://10.20.30.20:%d" % int(ProjectSettings.get_setting("office_game/server/tls_port")))
 
 
 func test_server_argument_wins_over_the_page_host() -> void:

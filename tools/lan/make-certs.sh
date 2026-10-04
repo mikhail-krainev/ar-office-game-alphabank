@@ -3,7 +3,7 @@
 # Safari gives a page the camera only over HTTPS, and an HTTPS page may call only HTTPS, so Caddy
 # (server/docker-compose.yml, profile "lan") serves the game, the admin panel and Nakama with it.
 #
-#   tools/lan/make-certs.sh 192.168.1.102
+#   tools/lan/make-certs.sh 10.20.30.40
 #
 # The CA is made once and kept in server/certs (ignored by git). Phones trust it after installing
 # server/certs/public/office-game-ca.cer (served at http://<ip>:8080). The Mac's own trust store is

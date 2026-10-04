@@ -32,7 +32,7 @@ func TestInOfficeNetwork(t *testing.T) {
 		"198.51.100.8":        false,
 		"2001:db8:10:5::1":    true,
 		"2001:db8:11::1":      false,
-		"192.168.1.10":        false,
+		"10.20.30.10":        false,
 		"":                    false,
 		"not an address":      false,
 		"203.0.113.45:54321":  false,
@@ -42,7 +42,7 @@ func TestInOfficeNetwork(t *testing.T) {
 			t.Errorf("inOfficeNetwork(%q) = %v, want %v", ip, got, want)
 		}
 	}
-	if !inOfficeNetwork(nil, "192.168.1.10") {
+	if !inOfficeNetwork(nil, "10.20.30.10") {
 		t.Error("an empty list turns the check off")
 	}
 }

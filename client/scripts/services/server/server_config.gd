@@ -2,7 +2,7 @@ class_name ServerConfig
 extends RefCounted
 ## Where the Nakama server is. Defaults come from the project settings (office_game/server/*).
 ## The game always needs the server. Overrides, strongest first:
-##   --server=http://192.168.1.5:7350  another server;
+##   --server=http://10.20.30.5:7350  another server;
 ##   web build                       the host the page was opened from; over HTTPS the TLS proxy port
 ##                                   (office_game/server/tls_port, Caddy in front of Nakama).
 

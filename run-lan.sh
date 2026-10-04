@@ -4,7 +4,7 @@
 # Nakama + PostgreSQL + Caddy in Docker.
 #
 #   ./run-lan.sh                 address of en0 (Wi-Fi)
-#   ./run-lan.sh 192.168.1.102   another address
+#   ./run-lan.sh 10.20.30.40   another address
 #   ./run-lan.sh --skip-build    reuse build/web and admin/dist
 #   ./run-lan.sh --office-net    Caddy on the Mac (brew install caddy) instead of Docker, so the server
 #                                sees the phones' addresses and checks the office network: the Wi-Fi

@@ -6,7 +6,7 @@
 .EXAMPLE
     .\run.ps1 -Device iphone_17_pro -ScreenDpi 109
 .EXAMPLE
-    .\run.ps1 -Server http://192.168.1.5:7350
+    .\run.ps1 -Server http://10.20.30.5:7350
 .EXAMPLE
     .\run.ps1 -OfficeScreen -Office office_1a2b3c4d
 .NOTES
@@ -22,7 +22,7 @@ param(
     [switch]$OfficeScreen,
     # Office of the screen (id from the admin panel); the default office when omitted.
     [string]$Office = '',
-    # Another Nakama server, e.g. http://192.168.1.5:7350.
+    # Another Nakama server, e.g. http://10.20.30.5:7350.
     [string]$Server = ''
 )
 

@@ -6,7 +6,7 @@
 #   ./run.sh --device iphone_17_pro --screen-dpi 127
 #   ./run.sh --office-screen          reception screen with the rotating entry and exit QR codes
 #   ./run.sh --office-screen --office office_1a2b3c4d   the screen of another office (id from the admin panel)
-#   ./run.sh --server http://192.168.1.5:7350
+#   ./run.sh --server http://10.20.30.5:7350
 #
 # The game always needs the Nakama server (server/, `docker compose up`), 127.0.0.1:7350 by default.
 # The office screen gets its codes with the server's HTTP key, read from server/.env.
