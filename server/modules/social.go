@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"hash/fnv"
 	"math/big"
+	"time"
 
 	"github.com/heroiclabs/nakama-common/runtime"
 )
@@ -177,20 +178,35 @@ func rpcAssignColleague(ctx context.Context, logger runtime.Logger, db *sql.DB, 
 	})
 }
 
-// rpcLookupColleague: {"user_id"}. Public card of the player behind a scanned profile code. A
-// player of another office is not found: they cannot take part in this player's tasks.
+// rpcLookupColleague: {"code"} -> {"found", "colleague", "error"}. Public card of the player behind
+// a scanned "My QR" code (colleague_code.go). Only a live code counts, and the scan is remembered for
+// today's tasks. A player of another office is not found: they cannot take part in this player's tasks.
 func rpcLookupColleague(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	var request struct {
-		UserID string `json:"user_id"`
+		Code string `json:"code"`
 	}
 	if err := decodePayload(payload, &request); err != nil {
 		return "", err
 	}
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
-		card, err := tx.lookup(request.UserID)
-		if err != nil || card == nil || card.Office != tx.office() {
-			return map[string]any{"found": false}, err
+		userID, problem := verifyColleagueCode(presenceSecret, request.Code, time.Now().Unix())
+		if problem == "colleague_invalid" {
+			tx.logSuspicious("colleague_code", problem)
 		}
+		if problem != "" {
+			return map[string]any{"found": false, "error": problem}, nil
+		}
+		card, err := tx.lookup(userID)
+		if err != nil {
+			return nil, err
+		}
+		if card == nil || userID == tx.me.userID {
+			return map[string]any{"found": false, "error": "colleague_invalid"}, nil
+		}
+		if card.Office != tx.office() {
+			return map[string]any{"found": false, "error": "colleague_other_office"}, nil
+		}
+		tx.rememberScan(userID)
 		return map[string]any{"found": true, "colleague": card}, nil
 	})
 }
@@ -225,10 +241,12 @@ func (tx *gameTx) verifySocial(task *Task, proof taskProof) (string, error) {
 		if task.Assignment != "" && proof.ColleagueID != assigned {
 			return "colleague_not_assigned", nil
 		}
-		_, problem, err := tx.verifyColleague(proof.ColleagueID, task.Assignment != "present_colleague")
+		_, problem, err := tx.verifyMetColleague(proof.ColleagueID, task.Assignment != "present_colleague")
 		return problem, err
 	case bingoMinigame:
 		return tx.verifyBingo(task, proof)
+	case factsMinigame:
+		return tx.verifyFacts(task, proof)
 	}
 	return "", nil
 }
@@ -269,7 +287,7 @@ func (tx *gameTx) verifyBingo(task *Task, proof taskProof) (string, error) {
 		if seen[id] {
 			return "colleague_already_used", nil
 		}
-		card, problem, err := tx.verifyColleague(id, true)
+		card, problem, err := tx.verifyMetColleague(id, true)
 		if err != nil || problem != "" {
 			return problem, err
 		}
@@ -303,6 +321,19 @@ func (tx *gameTx) verifyColleague(userID string, otherDepartment bool) (*colleag
 		return nil, "colleague_not_present", nil
 	case contains(dayList(tx.me.state.Met, tx.today), userID):
 		return nil, "colleague_already_used", nil
+	}
+	return card, "", nil
+}
+
+// verifyMetColleague: verifyColleague plus the proof of the meeting, a live "My QR" of the colleague
+// scanned from their phone today (colleague_code.go).
+func (tx *gameTx) verifyMetColleague(userID string, otherDepartment bool) (*colleagueView, string, error) {
+	card, problem, err := tx.verifyColleague(userID, otherDepartment)
+	if problem != "" || err != nil {
+		return card, problem, err
+	}
+	if !tx.wasScanned(userID) {
+		return nil, "colleague_not_scanned", nil
 	}
 	return card, "", nil
 }
@@ -424,8 +455,13 @@ func (tx *gameTx) resolvePhotoRequest(requesterID, requestID string, confirmed b
 	return nil
 }
 
-// expirePhotoRequests ends unanswered requests at the end of their day, on both sides.
+// answerKinds are inbox items waiting for the player's answer: a joint photo, a colleague's facts.
+var answerKinds = map[string]bool{"photo_request": true, factsQuizKind: true}
+
+// expirePhotoRequests ends unanswered photo requests and facts quizzes at the end of their day, on
+// both sides.
 func (tx *gameTx) expirePhotoRequests() error {
+	tx.expireFactsQuizzes()
 	state := tx.me.state
 	for i := range state.PhotoRequests {
 		photo := &state.PhotoRequests[i]
@@ -440,7 +476,7 @@ func (tx *gameTx) expirePhotoRequests() error {
 	}
 	for i := range inbox.Items {
 		item := &inbox.Items[i]
-		if item.Kind == "photo_request" && item.State == "pending" {
+		if answerKinds[item.Kind] && item.State == "pending" {
 			if day, ok := item.Params["day"].(float64); ok && int(day) != tx.today {
 				item.State = "expired"
 				tx.me.inboxDirty = true
@@ -478,7 +514,7 @@ func rpcGetInbox(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runt
 	})
 }
 
-// rpcMarkInboxRead: everything except unanswered photo requests.
+// rpcMarkInboxRead: everything except unanswered requests.
 func rpcMarkInboxRead(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, _ string) (string, error) {
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
 		inbox, err := tx.inboxOf(tx.me)
@@ -487,7 +523,7 @@ func rpcMarkInboxRead(ctx context.Context, logger runtime.Logger, db *sql.DB, nk
 		}
 		for i := range inbox.Items {
 			item := &inbox.Items[i]
-			if (item.Kind != "photo_request" || item.State != "pending") && !item.Read {
+			if (!answerKinds[item.Kind] || item.State != "pending") && !item.Read {
 				item.Read = true
 				tx.me.inboxDirty = true
 			}

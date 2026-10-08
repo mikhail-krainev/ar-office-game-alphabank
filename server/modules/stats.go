@@ -292,7 +292,7 @@ func rpcAdminPlayerStats(ctx context.Context, logger runtime.Logger, db *sql.DB,
 		names.user(photo.Partner)
 	}
 	for _, entry := range ledger {
-		if entry.Reason == "photo_partner_bonus" {
+		if entry.Reason == "photo_partner_bonus" || entry.Reason == "facts_partner_bonus" {
 			names.user(entry.Ref)
 		}
 	}

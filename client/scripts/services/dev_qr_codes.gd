@@ -24,7 +24,7 @@ static func refresh() -> void:
 		if player is Dictionary:
 			var card: Dictionary = player
 			var label: String = str(card.get("name", "?")) + ("*" if bool(card.get("present", false)) else "")
-			result.append([label, QrPayload.user(str(card.get("user_id", "")))])
+			result.append([label, QrPayload.user(str(card.get("code", "")))])
 	result.append(["expired", QrPayload.presence("hq.1.00000000000000000000")])
 	result.append(["wifi", "WIFI:S:Guest;T:WPA;P:example;;"])
 	_entries = result
@@ -34,10 +34,11 @@ static func suggestions() -> Array[Array]:
 	return _entries
 
 
-## Text of the entry at `index` with office codes refreshed first, so a pressed code is never stale.
+## Text of the entry at `index` with rotating codes refreshed first, so a pressed code is never stale:
+## the office codes rotate every 30 s, the players' "My QR" every 10 s.
 static func fresh_text(index: int) -> String:
 	var label: String = str(_entries[index][0]) if index < _entries.size() else ""
-	if label.begins_with("office"):
+	if not label.begins_with("room") and label not in ["expired", "wifi"]:
 		await refresh()
 	for entry: Array in _entries:
 		if str(entry[0]) == label:

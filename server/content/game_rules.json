@@ -1,5 +1,5 @@
 {
-	"_comment": "Game rules of the server module. office: office id on the presence codes and its time zone (days, streaks and fines follow office time). attendance.fine_tiers: the n-th workday missed in a row costs `percent` of the balance, rounded up, never below zero; the first missed day only breaks the streak. photo.partner_bonus: coins the colleague gets for confirming a joint photo. raffle: parking draw on the last Friday of every month. notifications.fun_windows: office-time windows for light-hearted nudges, outside working hours. limits: defaults of the working-time limits until the admin saves their own in the panel (task cooldown, hours when tasks count, continuous play before the warning, time to leave after it, rest). avatar_templates: ready-made profile pictures (client AvatarCatalog.TEMPLATES).",
+	"_comment": "Game rules of the server module. office: office id on the presence codes and its time zone (days, streaks and fines follow office time). attendance.fine_tiers: the n-th workday missed in a row costs `percent` of the balance, rounded up, never below zero; the first missed day only breaks the streak. photo.partner_bonus: coins the colleague gets for confirming a joint photo. facts.partner_bonus: coins the colleague gets for guessing the player's facts in Three truths, two lies. raffle: parking draw on the last Friday of every month. notifications.fun_windows: office-time windows for light-hearted nudges, outside working hours. limits: defaults of the working-time limits until the admin saves their own in the panel (task cooldown, hours when tasks count, continuous play before the warning, time to leave after it, rest). avatar_templates: ready-made profile pictures (client AvatarCatalog.TEMPLATES).",
 	"office": {
 		"id": "hq",
 		"utc_offset_minutes": 300
@@ -45,6 +45,9 @@
 	},
 	"photo": {
 		"partner_bonus": 10
+	},
+	"facts": {
+		"partner_bonus": 5
 	},
 	"raffle": {
 		"prize_name": "Место на тёплом паркинге",

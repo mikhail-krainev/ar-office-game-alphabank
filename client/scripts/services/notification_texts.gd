@@ -20,6 +20,10 @@ static func inbox_text(item: BackendModels.InboxItem) -> String:
 			return _tr("INBOX_PHOTO_CONFIRMED") % [str(p.get("name", "")), int(p.get("reward", 0))]
 		"photo_declined":
 			return _tr("INBOX_PHOTO_DECLINED") % str(p.get("name", ""))
+		"facts_quiz":
+			return _tr("INBOX_FACTS_QUIZ") % str(p.get("name", ""))
+		"facts_answered":
+			return _tr("INBOX_FACTS_ANSWERED") % [str(p.get("name", "")), int(p.get("correct", 0)), FactsForm.FACTS_COUNT]
 		"raffle_win":
 			return _tr("INBOX_RAFFLE_WIN") % str(p.get("prize", ""))
 		"raffle_lost":

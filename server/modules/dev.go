@@ -91,7 +91,8 @@ func rpcDevPresenceCodes(ctx context.Context, _ runtime.Logger, _ *sql.DB, nk ru
 	return encodeResponse(currentKioskCodes(office, time.Now().Unix()))
 }
 
-// rpcDevListPlayers: every other player with their office status, for the emulator's profile codes.
+// rpcDevListPlayers: every other player with their office status and current "My QR" code, for
+// the emulator's profile codes.
 func rpcDevListPlayers(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, _ string) (string, error) {
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
 		rows, err := db.QueryContext(ctx, `SELECT id FROM users WHERE id <> $1 AND id <> $2 AND disable_time = '1970-01-01 00:00:00 UTC'`, systemUserID, tx.me.userID)
@@ -114,9 +115,14 @@ func rpcDevListPlayers(ctx context.Context, logger runtime.Logger, db *sql.DB, n
 		if err != nil {
 			return nil, err
 		}
-		cards := []colleagueView{}
+		step := colleagueCodeStep(time.Now().Unix())
+		cards := []map[string]any{}
 		for _, player := range players {
-			cards = append(cards, tx.colleagueView(player, presence))
+			view := tx.colleagueView(player, presence)
+			cards = append(cards, map[string]any{
+				"user_id": view.UserID, "name": view.Name, "present": view.Present,
+				"code": colleagueCode(presenceSecret, view.UserID, step),
+			})
 		}
 		return map[string]any{"players": cards}, nil
 	})

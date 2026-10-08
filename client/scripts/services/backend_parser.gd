@@ -274,6 +274,36 @@ static func play_status(data: Dictionary, error: String) -> BackendModels.PlaySt
 	return status
 
 
+static func facts_state(data: Dictionary, error: String) -> BackendModels.FactsState:
+	var result: BackendModels.FactsState = BackendModels.FactsState.new()
+	result.ok = error.is_empty()
+	result.error = error
+	for entry: Dictionary in _dictionaries(data.get("facts")):
+		result.facts.append(BackendModels.Fact.new(str(entry.get("text", "")), bool(entry.get("true", false))))
+	result.written_today = bool(data.get("today", false))
+	result.needed = bool(data.get("needed", false))
+	return result
+
+
+static func facts_answer(data: Dictionary, error: String) -> BackendModels.FactsAnswer:
+	var result: BackendModels.FactsAnswer = BackendModels.FactsAnswer.new()
+	result.ok = error.is_empty() and bool(data.get("ok", false))
+	result.error = error if not error.is_empty() else str(data.get("error", ""))
+	result.correct = int(data.get("correct", 0))
+	result.truths = bools(data.get("truths"))
+	return result
+
+
+## Booleans of a JSON array; other values are left out.
+static func bools(value: Variant) -> Array[bool]:
+	var result: Array[bool] = []
+	if value is Array:
+		for entry: Variant in value:
+			if entry is bool:
+				result.append(entry)
+	return result
+
+
 static func _dictionaries(value: Variant) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	if value is Array:

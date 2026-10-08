@@ -322,7 +322,7 @@ interface JournalRow {
 }
 
 const PRESENCE_KINDS = new Set(["login", "check_in", "check_out", "room", "play_warning", "play_rest", "play_blocked"]);
-const TASK_REASONS = new Set(["task_reward", "photo_partner_bonus"]);
+const TASK_REASONS = new Set(["task_reward", "photo_partner_bonus", "facts_partner_bonus"]);
 
 function activityRow(event: ActivityEvent, name: (id: string) => string): JournalRow {
   const params = event.params ?? {};
@@ -357,6 +357,12 @@ function activityRow(event: ActivityEvent, name: (id: string) => string): Journa
     }
     case "photo_answer":
       detail = `${name(text("from"))} · ${params.confirm ? "подтвердил" : "отклонил"}`;
+      break;
+    case "facts_sent":
+      detail = `${name(text("task"))} · ${name(text("partner"))}`;
+      break;
+    case "facts_answer":
+      detail = `${name(text("from"))} · угадал ${String(params.correct ?? 0)} из 5`;
       break;
     case "play_warning":
       detail = `играл без перерыва ${formatMinutes(Number(params.minutes ?? 0))}`;

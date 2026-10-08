@@ -179,13 +179,11 @@ func _minigame_tour(office: Node) -> void:
 	var desktop: Node = PlatformServices.get_node("Backend")
 	var panel: MinigamePanel = office.get("_minigame_panel")
 	var setups: Dictionary[String, Callable] = {
-		"carry_coffee": func() -> void: desktop.set("tilt", Vector2(14, -8)),
 		"find_object": func() -> void: desktop.set("label_id", OfficeObjects.all_labels()[0]),
 		"squats": func() -> void: desktop.set("squat_depth", 0.8),
 		"selfie": func() -> void:
 			desktop.set("face_count", 2)
 			desktop.set("smiling", false),
-		"scavenger_hunt": func() -> void: desktop.set("marker_id", 2),
 		"stairs": func() -> void: desktop.call("add_steps", 47),
 	}
 	var index: int = 0

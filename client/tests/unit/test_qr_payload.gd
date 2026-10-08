@@ -30,3 +30,11 @@ func test_rejects_foreign_and_malformed_codes() -> void:
 		"alfaoffice://room/кухня",
 	]:
 		assert_bool(QrPayload.parse(text).is_valid()).override_failure_message(text).is_false()
+
+
+func test_user_code_keeps_the_signed_value_and_names_the_user() -> void:
+	var code: String = "0b6e4c1e-5a0f-4c51-9d64-2f1e8a7b3c90.179000000.a1b2c3d4e5f60718293a"
+	var payload: QrPayload = QrPayload.parse(QrPayload.user(code))
+	assert_int(payload.kind).is_equal(QrPayload.Kind.USER)
+	assert_str(payload.value).is_equal(code)
+	assert_str(QrPayload.user_id_of(payload.value)).is_equal("0b6e4c1e-5a0f-4c51-9d64-2f1e8a7b3c90")

@@ -148,22 +148,12 @@ MG_NO_CAMERA_PERMISSION,"Нет доступа к камере. Разреши �
 MG_FALLBACK,Играем в упрощённую версию.,Playing the simplified version.
 MG_UNAVAILABLE,Задание недоступно на этом устройстве,This task isn't available on this device
 MG_PRESENCE_HINT,Отсканируй QR-код на экране у ресепшна,Scan the QR code on the reception screen
-MG_CARRY_HINT,"Держи телефон ровно, как поднос, и неси кофе: %s",Hold the phone flat like a tray and carry the coffee to: %s
-MG_CARRY_START,Кофе на кухне. Отсканируй QR у двери: %s,The coffee is in the kitchen. Scan the door code: %s
-MG_CARRY_FINISH,Отсканируй QR у двери: %s,Scan the door code: %s
-MG_CARRY_WRONG_ROOM,Не та комната. Нужна: %s,Wrong room. Go to: %s
-MG_CARRY_ARRIVED,Я НА МЕСТЕ,I'M THERE
-MG_CARRY_LEVEL,Кофе: %d%%,Coffee: %d%%
-MG_CARRY_GET_READY,"Возьми телефон ровно, как поднос",Hold the phone flat like a tray
 MG_STAIRS_HINT,"Пройди %d шагов по офису или по лестнице. Шаги считает телефон: держи его в руке или в кармане","Walk %d steps around the office or up the stairs. The phone counts them: keep it in your hand or pocket"
 MG_FOUND,Найдено: %d/%d,Found: %d/%d
 MG_SQUATS_HINT,"Поставь телефон так, чтобы были видны ноги. Сделай %d приседаний",Place the phone so your legs are visible. Do %d squats
 MG_SQUATS_NO_BODY,Не вижу ног,Can't see your legs
 MG_SQUATS_DOWN,Вниз!,Down!
 MG_SQUATS_UP,Вверх!,Up!
-MG_SING_HINT,"Спой ноту и держи, пока полоска не заполнится",Sing the note and hold it until the bar fills
-MG_SING_SILENCE,тишина,silence
-MG_SING_HEARD,Слышу: %s,I hear: %s
 MG_TWISTER_HINT,Нажми и произнеси скороговорку вслух,Press and say the tongue twister aloud
 MG_TWISTER_SPEAK,ГОВОРИТЬ,SPEAK
 MG_TWISTER_LISTENING,СЛУШАЮ...,LISTENING...
@@ -171,22 +161,6 @@ MG_TWISTER_GOOD,Чисто! Следующая,Clean! Next one
 MG_TWISTER_AGAIN,"Не разобрал, ещё раз","Didn't catch that, try again"
 MG_TWISTER_ERROR,Распознавание не сработало: %s,Recognition failed: %s
 MG_SELFIE_HINT,Встаньте вдвоём перед фронтальной камерой и улыбнитесь,Stand together in front of the selfie camera and smile
-MG_HUNT_HINT,Найди метки на предметах и наведи на них камеру,Find the markers on objects and point the camera at them
-MG_HUNT_COOLER,Кулер,Water cooler
-MG_HUNT_PLANT,Растение,Plant
-MG_HUNT_LOGO,Логотип,Logo
-NOTE_C,ДО,C
-NOTE_CS,ДО#,C#
-NOTE_D,РЕ,D
-NOTE_DS,РЕ#,D#
-NOTE_E,МИ,E
-NOTE_F,ФА,F
-NOTE_FS,ФА#,F#
-NOTE_G,СОЛЬ,G
-NOTE_GS,СОЛЬ#,G#
-NOTE_A,ЛЯ,A
-NOTE_AS,ЛЯ#,A#
-NOTE_B,СИ,B
 ERROR_PRESENCE_REQUIRED,Сначала отсканируй код ВХОД на экране у ресепшна,Scan the IN code on the reception screen first
 ERROR_OFFICE_NETWORK_REQUIRED,Подключись к Wi-Fi офиса: игра работает только в его сети,Connect to the office Wi-Fi: the game works only on its network
 ERROR_PRESENCE_TOKEN_INVALID,QR-код устарел или недействителен,The QR code has expired or is invalid
@@ -214,6 +188,21 @@ OBJ_PAPERS,Бумаги,Papers
 OBJ_GLASSES,Очки,Glasses
 OBJ_BAG,Сумка,Bag
 OBJ_BOTTLE,Бутылка,Bottle
+OBJ_SOFA,Диван,Sofa
+OBJ_DESK,Стол,Desk
+OBJ_MOUSE,Компьютерная мышь,Computer mouse
+OBJ_PEN,Ручка,Pen
+OBJ_SCISSORS,Ножницы,Scissors
+OBJ_PRINTER,Принтер,Printer
+OBJ_SWITCH,Выключатель,Light switch
+OBJ_TRASH_CAN,Мусорное ведро,Trash can
+OBJ_FRIDGE,Холодильник,Fridge
+OBJ_MICROWAVE,Микроволновка,Microwave
+OBJ_COFFEE_MACHINE,Кофемашина,Coffee machine
+OBJ_SINK,Раковина,Sink
+OBJ_DISHES,Тарелка или миска,Plate or bowl
+OBJ_CUTLERY,Ложка или вилка,Spoon or fork
+OBJ_PAPER_TOWEL,Бумажные полотенца,Paper towels
 ROOM_PA_OPEN_SPACE,Опенспейс аналитиков,Analysts' open space
 ROOM_PA_DATA_LAB,Дата-лаб,Data lab
 ROOM_PA_CORRIDOR,Коридор,Corridor
@@ -233,7 +222,7 @@ DEPT_ADMIN,Административный отдел,Administration
 DEPT_DESIGN,Дизайн,Design
 DEPT_PRODUCT_ANALYTICS,Продуктовая аналитика,Product analytics
 MY_QR_TITLE,Мой QR,My QR
-MY_QR_HINT,Покажи код коллеге: он нужен в заданиях на знакомство,Show this code to a colleague: it is used in the meet-a-colleague tasks
+MY_QR_HINT,"Покажи код коллеге с экрана телефона: он меняется каждые 10 секунд, скриншот не подойдёт","Show this code to a colleague on your phone screen: it changes every 10 seconds, a screenshot won't work"
 PROFILE_STATUS_EMPTY,Статуса пока нет,No status yet
 PROFILE_STATUS_EDIT,Изменить статус,Edit status
 PROFILE_STATUS_PLACEHOLDER,Что у вас нового?,What's new?
@@ -419,3 +408,36 @@ TASK_ROOM_WRONG_CODE,Это другой код. Нужен QR-код комна
 QR_ROOM_TASKS,Заданий в этой комнате: %d. Открой список и возьми,Tasks in this room: %d. Open the list to take one
 ERROR_WRONG_ROOM,Сначала отсканируй QR-код комнаты задания,Scan the QR code of the task's room first
 ERROR_TASK_NOT_TAKEN,Сначала возьми задание в его комнате,Take the task in its room first
+FACTS_TITLE,"Три правды, две лжи","Three truths, two lies"
+FACTS_HINT,"Сегодня в заданиях есть «Три правды, две лжи». Напиши пять фактов о себе: три правдивых и два ложных. Коллега попробует угадать, где правда","Today's tasks include ""Three truths, two lies"". Write five facts about yourself: three true and two false. A colleague will try to guess which are true"
+FACTS_PLACEHOLDER,Факт №%d,Fact #%d
+FACTS_TRUE,ПРАВДА,TRUE
+FACTS_LIE,ЛОЖЬ,LIE
+FACTS_COUNTER,Правда: %d из %d · ложь: %d из %d,True: %d of %d · lies: %d of %d
+FACTS_SAVE,Сохранить факты,Save the facts
+FACTS_EMPTY,Заполни все пять фактов,Fill in all five facts
+FACTS_WRONG_COUNT,Нужно ровно три правды и две лжи,Exactly three truths and two lies are needed
+MG_FACTS_LOADING,Загружаю факты…,Loading the facts…
+MG_FACTS_WRITE,Напиши пять фактов о себе: три правдивых и два ложных,Write five facts about yourself: three true and two false
+MG_FACTS_FIND,"Найди этого коллегу. Когда встретитесь, отправь ему факты: он угадает у себя в игре, где правда","Find this colleague. When you meet, send them the facts: they guess the true ones in their game"
+MG_FACTS_SEND,Мы встретились: отправить факты,We've met: send the facts
+MG_FACTS_EDIT,Изменить факты,Edit the facts
+MG_FACTS_WAIT,"Факты отправлены: %s. Коллега отмечает правду во «Входящих», потом показывает свой QR. Отсканируй его","The facts are sent to %s. The colleague marks the true ones in the inbox, then shows their QR. Scan it"
+MG_FACTS_ANSWERED,"%s уже ответил(а), сканируй QR","%s has answered, scan the QR"
+INBOX_FACTS_QUIZ,"%s загадал(а) «Три правды, две лжи». Отметь, какие три факта правдивые","%s made you a ""Three truths, two lies"" quiz. Mark which three facts are true"
+INBOX_FACTS_ANSWERED,"%s угадал(а) %d из %d твоих фактов. Отсканируй «Мой QR» коллеги, чтобы засчитать задание","%s guessed %d of your %d facts. Scan the colleague's ""My QR"" to complete the task"
+INBOX_FACTS_GUESS,Отметь три правдивых факта,Mark the three true facts
+INBOX_FACTS_ANSWER,Ответить,Answer
+INBOX_FACTS_SCORE,Угадано: %d из %d,Guessed: %d of %d
+INBOX_FACTS_SHOW_QR,"Покажи этот код коллеге: он отсканирует его, и задание засчитается",Show this code to your colleague: they scan it to complete the task
+INBOX_STATE_ANSWERED,Отвечено,Answered
+ERROR_FACTS_INVALID,Нужно пять фактов до 100 символов: три правды и две лжи,Five facts of up to 100 characters are needed: three truths and two lies
+ERROR_FACTS_LOCKED,"Факты уже у коллеги, сегодня их не изменить","The colleague already has the facts, they can't be changed today"
+ERROR_FACTS_MISSING,Сначала напиши факты о себе,Write the facts about yourself first
+ERROR_FACTS_NOT_SENT,Сначала отправь факты коллеге,Send the facts to the colleague first
+ERROR_FACTS_NOT_ANSWERED,Коллега ещё не ответил. Попроси его открыть «Входящие» в игре,The colleague hasn't answered yet. Ask them to open the inbox in the game
+ERROR_GUESSES_INVALID,Отметь ровно три правдивых факта,Mark exactly three true facts
+MY_QR_LOADING,Получаю код…,Getting the code…
+MY_QR_REFRESH,Новый код через %d с,New code in %d s
+ERROR_COLLEAGUE_CODE_EXPIRED,Код устарел. Отсканируй его прямо с телефона коллеги,The code has expired. Scan it right from the colleague's phone
+ERROR_COLLEAGUE_NOT_SCANNED,Сначала отсканируй «Мой QR» коллеги с его телефона,"Scan the colleague's ""My QR"" from their phone first"

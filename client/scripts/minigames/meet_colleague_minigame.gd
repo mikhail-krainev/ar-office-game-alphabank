@@ -89,14 +89,14 @@ func _scan() -> void:
 	_stage = Stage.SCAN
 	var colleague: BackendModels.Colleague = context.get("colleague")
 	while not is_done():
-		var payload: QrPayload = await scan_qr(tr("MG_MEET_SCAN"), QrPayload.Kind.USER)
-		if colleague != null and payload.value != colleague.user_id:
+		var scanned: BackendModels.ColleagueResult = await scan_colleague(tr("MG_MEET_SCAN"))
+		if not scanned.ok:
+			_message.text = colleague_error_text(scanned)
+			continue
+		if colleague != null and scanned.colleague.user_id != colleague.user_id:
 			_message.text = tr("MG_MEET_WRONG_PERSON") % colleague.name
 			continue
-		if payload.value == Backend.get_user_id():
-			_message.text = tr("MG_MEET_OWN_CODE")
-			continue
-		proof["colleague_id"] = payload.value
+		proof["colleague_id"] = scanned.colleague.user_id
 		set_score(1.0)
 		finish(true)
 

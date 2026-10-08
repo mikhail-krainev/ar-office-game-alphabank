@@ -4,7 +4,8 @@ extends RefCounted
 ##   alfaoffice://room/<room_id>        static code at a room door; counts only inside the office
 ##   alfaoffice://presence/<token>      rotating entry code on the office screen, proof of presence
 ##   alfaoffice://checkout/<token>      rotating exit code on the office screen
-##   alfaoffice://user/<user_id>        profile code shown on a colleague's phone
+##   alfaoffice://user/<code>           "My QR" on a colleague's phone: "<user id>.<step>.<signature>",
+##                                      rotates every 10 s, only the server can make and check it
 ## Wi-Fi join codes are infrastructure and are not parsed by the game.
 
 enum Kind { UNKNOWN, ROOM, PRESENCE, USER, CHECKOUT }
@@ -42,8 +43,14 @@ static func room(room_id: String) -> String:
 	return make(Kind.ROOM, room_id)
 
 
-static func user(user_id: String) -> String:
-	return make(Kind.USER, user_id)
+static func user(code: String) -> String:
+	return make(Kind.USER, code)
+
+
+## User id inside a "My QR" code, for early feedback such as "that's your own code". Only the server
+## can tell whether the code is genuine and fresh.
+static func user_id_of(code: String) -> String:
+	return code.get_slice(".", 0)
 
 
 static func presence(token: String) -> String:

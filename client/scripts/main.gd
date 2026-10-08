@@ -8,6 +8,8 @@ extends WorldScene
 ## "QR" scans a room door code (the character walks to that room, on any floor), the office screen
 ## code (starts the check-in) or a colleague's profile code.
 ## On arrival from the commute the entry code scan opens by itself until the player checks in.
+## Right after the check-in the game asks for the facts of "Three truths, two lies" when that task is
+## in today's pack.
 
 ## NPCs can be talked to from this many cells away, e.g. across the reception desk.
 const TALK_REACH_CELLS: int = 2
@@ -38,6 +40,7 @@ var _home_button: Button
 var _pending_room: StringName = &""
 var _corner: PlayerCorner
 var _task_list: TaskList
+var _facts_panel: FactsPanel
 
 @onready var _task_panel: TaskPanel = $TaskPanel
 @onready var _shop_panel: ShopPanel = $ShopPanel
@@ -66,6 +69,8 @@ func _ready() -> void:
 	_hud.add_action(tr("HUD_SCAN"), false).pressed.connect(_scan_code)
 	_hud.add_action(tr("HUD_SHOP"), false).pressed.connect(_open_shop)
 	_corner = PlayerCorner.attach(self, _hud)
+	_facts_panel = FactsPanel.new()
+	add_child(_facts_panel)
 	_task_list = TaskList.new()
 	_task_list.task_pressed.connect(_on_task_list_pressed)
 	_hud.add_corner_panel(_task_list)
@@ -95,6 +100,7 @@ func _is_modal_open() -> bool:
 	return (
 		_busy or _leaving or _task_panel.is_open() or _shop_panel.is_open()
 		or _minigame_panel.is_open() or _choice.is_open() or (_corner != null and _corner.is_open())
+		or (_facts_panel != null and _facts_panel.is_open())
 	)
 
 
@@ -330,6 +336,16 @@ func _run_task(task: BackendModels.TaskInfo) -> void:
 	else:
 		_hud.flash_message(tr("ERROR_" + result.error.to_upper()))
 	await _refresh_tasks()
+	if result.ok and task.is_check_in():
+		await _ask_facts()
+
+
+## After the check-in: the facts for "Three truths, two lies" when today's pack has the task and
+## they are not written yet today.
+func _ask_facts() -> void:
+	var state: BackendModels.FactsState = await Backend.social.get_facts()
+	if state.ok and state.needed and not state.written_today and not _is_modal_open():
+		_facts_panel.open(state)
 
 
 ## Asks for confirmation, then lets the server close the task for today without a reward.

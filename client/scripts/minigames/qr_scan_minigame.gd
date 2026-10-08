@@ -1,7 +1,7 @@
 class_name QrScanMinigame
 extends Minigame
 ## Not a task: the "QR" action from the HUD. Reads any game code and hands it to the caller.
-## "My QR" shows the player's own profile code for a colleague's selfie task.
+## "My QR" shows the player's own rotating code (MyQrView) for a colleague's meet-a-colleague task.
 
 const PROOF_KEY: String = "qr"
 const PROFILE_QR_SCALE: int = 5
@@ -35,7 +35,6 @@ func _toggle_profile() -> void:
 		_profile_card.queue_free()
 		_profile_card = null
 		return
-	var user_id: String = Backend.profile.user_id if Backend.profile != null else ""
 	_profile_card = ColorRect.new()
 	(_profile_card as ColorRect).color = UiStyle.PAPER
 	_profile_card.size = Vector2(AREA_SIZE.x, STATUS_Y - 20)
@@ -46,10 +45,6 @@ func _toggle_profile() -> void:
 	hint.size = Vector2(AREA_SIZE.x - 16.0, 30)
 	hint.position = Vector2(8, 4)
 	_profile_card.add_child(hint)
-	var matrix: QrEncoder.QrMatrix = QrEncoder.encode(QrPayload.user(user_id))
-	var code: TextureRect = TextureRect.new()
-	code.texture = ImageTexture.create_from_image(matrix.to_image(PROFILE_QR_SCALE, 2))
-	code.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	var code: MyQrView = MyQrView.new(PROFILE_QR_SCALE, AREA_SIZE.x)
 	code.position = Vector2(0, 40)
-	code.size = Vector2(AREA_SIZE.x, _profile_card.size.y - 44)
 	_profile_card.add_child(code)

@@ -88,9 +88,16 @@ type PlayerState struct {
 	// Room of the last room code inside the office interval; "" right after the entry and the exit.
 	Room          string         `json:"room,omitempty"`
 	PhotoRequests []PhotoRequest `json:"photo_requests"`
-	MorningReport MorningReport  `json:"morning_report"`
-	CoinsEarned   int            `json:"coins_earned"`
-	WelcomeGiven  bool           `json:"welcome_given"`
+	// "Three truths, two lies" (facts.go): the last facts, the day they were written, the guesses.
+	Facts        []Fact      `json:"facts,omitempty"`
+	FactsDay     int         `json:"facts_day,omitempty"`
+	FactsQuizzes []FactsQuiz `json:"facts_quizzes,omitempty"`
+	// Colleagues whose live "My QR" the player scanned on ScannedDay (colleague_code.go).
+	ScannedDay    int           `json:"scanned_day,omitempty"`
+	Scanned       []string      `json:"scanned,omitempty"`
+	MorningReport MorningReport `json:"morning_report"`
+	CoinsEarned   int           `json:"coins_earned"`
+	WelcomeGiven  bool          `json:"welcome_given"`
 	// Unix time the admin banned the player; 0 when not banned (users.go: rpcAdminSetBanned).
 	BannedAt int64 `json:"banned_at,omitempty"`
 	// Unix time of the last task that started the cooldown (limits.go).

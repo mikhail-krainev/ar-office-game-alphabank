@@ -26,7 +26,7 @@ var benignTaskErrors = map[string]bool{
 	"presence_required": true, "task_failed": true, "already_completed": true, "task_skipped": true,
 	"pending_confirmation": true, "no_colleague_available": true, "task_not_today": true,
 	"task_cooldown": true, "outside_task_window": true, "play_resting": true, "play_blocked": true,
-	"wrong_room": true,
+	"wrong_room": true, "facts_not_answered": true,
 }
 
 type taskView struct {
@@ -256,6 +256,10 @@ func rpcCompleteTask(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 				return nil, err
 			}
 		}
+		if task.Minigame == factsMinigame {
+			// The colleague's guess, not the client, decides the score.
+			proof.Score = tx.factsQuizScore(task)
+		}
 		score := min(max(proof.Score, 0), 1)
 		reward := int(math.Round(float64(taskReward(task, tx.multiplier())) * (1 + tx.content.Rules.Economy.MaxScoreBonus*score)))
 		reward = min(reward, capLeft(tx.me.state, tx.today, &tx.content.Rules))
@@ -335,7 +339,7 @@ func (tx *gameTx) taskError(task *Task, success bool, proof taskProof) (string, 
 // rememberMet: colleagues met in a completed task; each can be met in one task a day.
 func (tx *gameTx) rememberMet(task *Task, proof taskProof) {
 	switch task.Minigame {
-	case meetMinigame:
+	case meetMinigame, factsMinigame:
 		addToDay(tx.me.state.Met, tx.today, proof.ColleagueID)
 		tx.logActivity(tx.me, activityMet, map[string]any{"task": task.ID, "colleagues": []string{proof.ColleagueID}})
 	case bingoMinigame:

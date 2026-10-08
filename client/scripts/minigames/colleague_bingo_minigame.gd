@@ -1,7 +1,7 @@
 class_name ColleagueBingoMinigame
 extends Minigame
 ## "Networking bingo": meet `count` colleagues from `count` different departments (not your own) and
-## scan the profile code each of them shows in "My QR". The card fills as people are met; the
+## scan the rotating code each of them shows in "My QR" on their phone. The card fills as people are met; the
 ## server rechecks the departments and that everyone is in the office today.
 
 const DEFAULT_COUNT: int = 3
@@ -66,13 +66,12 @@ func _scan() -> void:
 	if _scanning or is_done():
 		return
 	_scanning = true
-	var payload: QrPayload = await scan_qr(tr("MG_BINGO_SCAN") % (_met.size() + 1), QrPayload.Kind.USER)
-	var colleague: BackendModels.Colleague = await Backend.social.lookup_colleague(payload.value)
+	var scanned: BackendModels.ColleagueResult = await scan_colleague(tr("MG_BINGO_SCAN") % (_met.size() + 1))
 	_scanning = false
-	_message.text = _problem(payload.value, colleague)
+	_message.text = colleague_error_text(scanned) if not scanned.ok else _problem(scanned.colleague)
 	if not _message.text.is_empty():
 		return
-	_met.append(colleague)
+	_met.append(scanned.colleague)
 	_render_slots()
 	if _met.size() >= _count:
 		var ids: Array[String] = []
@@ -84,13 +83,9 @@ func _scan() -> void:
 
 
 ## Early feedback for the player; the server makes the real decision.
-func _problem(user_id: String, colleague: BackendModels.Colleague) -> String:
+func _problem(colleague: BackendModels.Colleague) -> String:
 	var key: String = ""
-	if user_id == Backend.get_user_id():
-		key = "MG_MEET_OWN_CODE"
-	elif colleague == null:
-		key = "ERROR_COLLEAGUE_INVALID"
-	elif Backend.profile != null and colleague.department == Backend.profile.department:
+	if Backend.profile != null and colleague.department == Backend.profile.department:
 		key = "ERROR_SAME_DEPARTMENT"
 	elif _met.any(func(met: BackendModels.Colleague) -> bool: return met.user_id == colleague.user_id):
 		key = "MG_BINGO_ALREADY"

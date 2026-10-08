@@ -79,6 +79,9 @@ type Rules struct {
 	Photo struct {
 		PartnerBonus int `json:"partner_bonus"`
 	} `json:"photo"`
+	Facts struct {
+		PartnerBonus int `json:"partner_bonus"`
+	} `json:"facts"`
 	Raffle struct {
 		PrizeName        string `json:"prize_name"`
 		PrizeDescription string `json:"prize_description"`

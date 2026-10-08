@@ -24,6 +24,8 @@ const (
 	activityTaskSkipped = "task_skipped"
 	activityMet         = "met"
 	activityPhotoAnswer = "photo_answer"
+	activityFactsSent   = "facts_sent"
+	activityFactsAnswer = "facts_answer"
 	activityPlayWarning = "play_warning"
 	activityPlayRest    = "play_rest"
 	activityPlayBlocked = "play_blocked"

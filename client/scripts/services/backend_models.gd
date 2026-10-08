@@ -190,6 +190,53 @@ class ColleagueResult:
 	var colleague: Colleague
 
 
+## One statement about the player in "Three truths, two lies".
+class Fact:
+	extends RefCounted
+
+	var text: String = ""
+	var is_true: bool = false
+
+	func _init(p_text: String = "", p_is_true: bool = false) -> void:
+		text = p_text
+		is_true = p_is_true
+
+	func to_dict() -> Dictionary:
+		return {"text": text, "true": is_true}
+
+
+class FactsState:
+	extends RefCounted
+
+	var ok: bool = false
+	var error: String = ""
+	## The last facts the player wrote, maybe on an earlier day: a draft to edit.
+	var facts: Array[Fact] = []
+	## The facts were written today, so they can go to a colleague.
+	var written_today: bool = false
+	## Today's pack has an open facts task.
+	var needed: bool = false
+
+
+class FactsSent:
+	extends RefCounted
+
+	var ok: bool = false
+	var error: String = ""
+	## The colleague has already sent their guess.
+	var answered: bool = false
+
+
+## The colleague's guess about someone's facts, checked by the server.
+class FactsAnswer:
+	extends RefCounted
+
+	var ok: bool = false
+	var error: String = ""
+	var correct: int = 0
+	var truths: Array[bool] = []
+
+
 ## One day of the attendance calendar.
 class DayRecord:
 	extends RefCounted
@@ -218,17 +265,22 @@ class ProfilePage:
 class InboxItem:
 	extends RefCounted
 
-	## penalty | streak_reset | photo_request | photo_confirmed | photo_declined | raffle_win | raffle_lost
+	## penalty | streak_reset | photo_request | photo_confirmed | photo_declined | facts_quiz |
+	## facts_answered | raffle_win | raffle_lost
 	var id: int = 0
 	var kind: String = ""
 	var created_at: int = 0
 	var params: Dictionary = {}
 	var read: bool = false
 	## For photo_request: pending | confirmed | declined | expired.
+	## For facts_quiz: pending | answered | expired.
 	var state: String = ""
 
 	func needs_answer() -> bool:
-		return kind == "photo_request" and state == "pending"
+		return (kind == "photo_request" or kind == "facts_quiz") and state == "pending"
+
+	func is_facts_quiz() -> bool:
+		return kind == "facts_quiz"
 
 
 class RaffleEntrant:

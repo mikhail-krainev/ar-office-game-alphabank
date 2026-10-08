@@ -17,16 +17,14 @@ const QR_WRONG_COOLDOWN: float = 1.5
 ## Sensors each physical minigame needs. Games not listed work everywhere.
 const REQUIRED_FEATURES: Dictionary[String, Array] = {
 	"presence_qr": [PlatformBackend.Feature.QR_SCAN],
-	"carry_coffee": [PlatformBackend.Feature.ACCELEROMETER, PlatformBackend.Feature.QR_SCAN],
 	"stairs": [PlatformBackend.Feature.PEDOMETER],
 	"find_object": [PlatformBackend.Feature.OBJECT_RECOGNITION],
 	"squats": [PlatformBackend.Feature.POSE_DETECTION],
-	"sing_note": [PlatformBackend.Feature.MICROPHONE],
 	"tongue_twister": [PlatformBackend.Feature.SPEECH_RECOGNITION],
 	"selfie": [PlatformBackend.Feature.FACE_DETECTION],
-	"scavenger_hunt": [PlatformBackend.Feature.MARKER_DETECTION],
 	"meet_colleague": [PlatformBackend.Feature.QR_SCAN],
 	"colleague_bingo": [PlatformBackend.Feature.QR_SCAN],
+	"two_truths": [PlatformBackend.Feature.QR_SCAN],
 }
 
 var task: BackendModels.TaskInfo
@@ -147,6 +145,23 @@ func scan_qr(prompt: String, kind: QrPayload.Kind) -> QrPayload:
 	return payload
 
 
+## Scans a colleague's "My QR" and asks the server who it is. The result carries the error key when
+## the code is the player's own ("own_code"), expired or unknown; colleague_error_text() words it.
+func scan_colleague(prompt: String) -> BackendModels.ColleagueResult:
+	var payload: QrPayload = await scan_qr(prompt, QrPayload.Kind.USER)
+	if QrPayload.user_id_of(payload.value) == Backend.get_user_id():
+		var own: BackendModels.ColleagueResult = BackendModels.ColleagueResult.new()
+		own.error = "own_code"
+		return own
+	return await Backend.social.lookup_colleague(payload.value)
+
+
+static func colleague_error_text(result: BackendModels.ColleagueResult) -> String:
+	if result.error == "own_code":
+		return TranslationServer.translate("MG_MEET_OWN_CODE")
+	return TranslationServer.translate("ERROR_" + result.error.to_upper())
+
+
 func _on_qr_detected(text: String) -> void:
 	if _qr_overlay == null or _qr_cooldown > 0.0:
 		return
@@ -198,26 +213,22 @@ static func create(kind: String) -> Minigame:
 	match kind:
 		"presence_qr":
 			return PresenceQrMinigame.new()
-		"carry_coffee":
-			return CarryCoffeeMinigame.new()
 		"stairs":
 			return StairsMinigame.new()
 		"find_object":
 			return FindObjectMinigame.new()
 		"squats":
 			return SquatsMinigame.new()
-		"sing_note":
-			return SingNoteMinigame.new()
 		"tongue_twister":
 			return TongueTwisterMinigame.new()
 		"selfie":
 			return SelfieMinigame.new()
-		"scavenger_hunt":
-			return ScavengerHuntMinigame.new()
 		"meet_colleague":
 			return MeetColleagueMinigame.new()
 		"colleague_bingo":
 			return ColleagueBingoMinigame.new()
+		"two_truths":
+			return TwoTruthsMinigame.new()
 		# Screen-only fallbacks from the first prototype.
 		"coffee":
 			return CoffeeMinigame.new()
