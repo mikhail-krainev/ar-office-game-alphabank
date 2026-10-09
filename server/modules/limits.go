@@ -28,6 +28,8 @@ const (
 	maxGraceMinutes     = 60
 	minRestMinutes      = 1
 	maxRestMinutes      = 240
+	minAwayMinutes      = 1
+	maxAwayMinutes      = 240
 )
 
 var clockPattern = regexp.MustCompile(`^([01][0-9]|2[0-3]):[0-5][0-9]$`)
@@ -46,6 +48,9 @@ type Limits struct {
 	ExitGraceMinutes int `json:"exit_grace_minutes"`
 	// Rest after leaving in time; the game opens again when it ends.
 	RestMinutes int `json:"rest_minutes"`
+	// Minutes without a heartbeat from the office network after which the player counts as gone
+	// out (visits.go). 0 in limits saved before it existed: the default applies.
+	AwayMinutes int `json:"away_minutes"`
 }
 
 // clockMinutes: "08:30" -> 510. Only strict "HH:MM" is accepted.
@@ -66,7 +71,8 @@ func validateLimits(limits Limits) error {
 		!startOK || !endOK || start >= end,
 		limits.PlayLimitMinutes < minPlayLimitMinutes || limits.PlayLimitMinutes > maxPlayLimitMinutes,
 		limits.ExitGraceMinutes < minGraceMinutes || limits.ExitGraceMinutes > maxGraceMinutes,
-		limits.RestMinutes < minRestMinutes || limits.RestMinutes > maxRestMinutes:
+		limits.RestMinutes < minRestMinutes || limits.RestMinutes > maxRestMinutes,
+		limits.AwayMinutes < minAwayMinutes || limits.AwayMinutes > maxAwayMinutes:
 		return errInvalidLimits
 	}
 	return nil

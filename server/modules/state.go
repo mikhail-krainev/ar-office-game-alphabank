@@ -107,6 +107,9 @@ type PlayerState struct {
 	// Continuous play (play.go) and play seconds per day.
 	Play        PlaySession    `json:"play"`
 	PlaySeconds map[string]int `json:"play_seconds"`
+	// Visits per day between the entry code and the end of the day (the exit code or "Go home" in
+	// CheckoutAt), by the office Wi-Fi (visits.go).
+	Visits map[string][]OfficeVisit `json:"visits,omitempty"`
 }
 
 func (s *PlayerState) normalize() {
@@ -121,6 +124,9 @@ func (s *PlayerState) normalize() {
 	}
 	if s.CheckoutAt == nil {
 		s.CheckoutAt = map[string]int64{}
+	}
+	if s.Visits == nil {
+		s.Visits = map[string][]OfficeVisit{}
 	}
 	for _, m := range []*map[string][]string{&s.Completed, &s.Skipped, &s.Pending, &s.Taken, &s.Met, &s.Purchases} {
 		if *m == nil {

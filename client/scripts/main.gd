@@ -434,7 +434,8 @@ func _hint_room_tasks(room_id: StringName) -> void:
 
 
 ## The entry code was scanned outside the task. The first entry of the day is the check-in task
-## (it pays a reward): walk to it and start it. Later entries, e.g. after lunch, only reopen the office.
+## (it pays a reward): walk to it and start it. The code counts once a day: steps out and back in
+## follow the office Wi-Fi, so the server refuses it later (except in another office on a trip).
 func _start_check_in(token: String) -> void:
 	for task: BackendModels.TaskInfo in _tasks:
 		if task.minigame == CHECK_IN_MINIGAME and not task.is_closed():

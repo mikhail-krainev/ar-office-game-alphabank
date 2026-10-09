@@ -93,6 +93,12 @@ var anywhereRpcs = map[string]bool{
 	"leave_office": true,
 }
 
+// Game RPCs that check the office network themselves instead of through officeOnly. A heartbeat
+// from outside the network still closes the office visit (visits.go) before it is refused.
+var selfCheckedRpcs = map[string]bool{
+	"play_heartbeat": true,
+}
+
 var errOfficeNetwork = runtime.NewError("office_network_required", codePermissionDenied)
 
 // gameRpc: an RPC of the game itself, which needs the office network (not admin, account or dev).

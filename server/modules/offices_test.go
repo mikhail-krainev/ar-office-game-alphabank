@@ -149,4 +149,9 @@ func TestOfficeLimits(t *testing.T) {
 	if (&Office{Limits: &own}).limits() != own {
 		t.Error("an office follows its own limits")
 	}
+	old := own
+	old.AwayMinutes = 0
+	if (&Office{Limits: &old}).limits() != own {
+		t.Error("limits saved before away_minutes keep their values and get the default away minutes")
+	}
 }

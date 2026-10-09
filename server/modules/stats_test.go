@@ -26,7 +26,7 @@ func TestStatsSummaryAndDays(t *testing.T) {
 	expectInt(t, "colleagues", int64(summary.Colleagues), 2)
 
 	names := newNameBook(&Content{Tasks: []Task{{ID: "carry_coffee", Title: "Донести кофе"}}})
-	list := statsDays(state, today, names)
+	list := statsDays(state, playerSummary{Today: today}, names)
 	// Newest first; the weekend without activity is left out: next Monday + Friday..Monday workdays.
 	expectInt(t, "days", int64(len(list)), 6)
 	expectInt(t, "first listed day", int64(list[0].Day), int64(today))

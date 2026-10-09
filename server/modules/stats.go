@@ -55,6 +55,11 @@ type playerSummary struct {
 	// Play today and the play-limit state (play.go): ok, warning, resting or blocked.
 	PlaySecondsToday int    `json:"play_seconds_today"`
 	PlayState        string `json:"play_state"`
+	// In the office Wi-Fi now: inside the office day with a visit that is not silent (visits.go).
+	OnSite bool `json:"on_site"`
+	// The player's time and the silence that counts as gone out, for the visits of the day history.
+	now         int64
+	awaySeconds int64
 }
 
 // summarize computes a player's totals. `today` is the player's own day (dev clock included).
@@ -172,6 +177,9 @@ func loadPlayerRows(ctx context.Context, db *sql.DB, nk runtime.NakamaModule, us
 			limits = gameContent.Rules.Limits
 		}
 		summary.PlayState = currentPlayStatus(&state.Play, now, offset, limits).State
+		summary.now, summary.awaySeconds = now, awaySeconds(limits)
+		visit := openVisit(state, today)
+		summary.OnSite = summary.InOffice && visit != nil && !visit.stale(now, summary.awaySeconds)
 		summaries = append(summaries, summary)
 		states[summary.ID] = state
 	}
@@ -211,6 +219,10 @@ type statsDay struct {
 	Earned     int            `json:"earned"`
 	// Seconds the game was on screen that day.
 	PlaySeconds int `json:"play_seconds"`
+	// Every visit by the office Wi-Fi, and when the player left: the exit code or "Go home"
+	// (CheckoutAt), else the end of the last visit; 0 while the player is still in.
+	Visits []OfficeVisit `json:"visits"`
+	LeftAt int64         `json:"left_at"`
 }
 
 type ledgerEntry struct {
@@ -287,7 +299,7 @@ func rpcAdminPlayerStats(ctx context.Context, logger runtime.Logger, db *sql.DB,
 		logger.Error("stats of %s: %v", request.UserID, err)
 		return "", errInternal
 	}
-	days := statsDays(state, player.Today, names)
+	days := statsDays(state, player, names)
 	for _, photo := range state.PhotoRequests {
 		names.user(photo.Partner)
 	}
@@ -313,7 +325,8 @@ func rpcAdminPlayerStats(ctx context.Context, logger runtime.Logger, db *sql.DB,
 
 // statsDays: every day from the player's first day to today, newest first, that is a workday or
 // has any activity. Weekends without activity are left out.
-func statsDays(state *PlayerState, today int, names *nameBook) []statsDay {
+func statsDays(state *PlayerState, player playerSummary, names *nameBook) []statsDay {
+	today := player.Today
 	days := []statsDay{}
 	if state.FirstDay == 0 {
 		return days
@@ -326,7 +339,9 @@ func statsDays(state *PlayerState, today int, names *nameBook) []statsDay {
 			Tasks: state.TaskLog[key], Skipped: names.tasks(state.Skipped[key]), Pending: names.tasks(state.Pending[key]),
 			Met: state.Met[key], Purchases: state.Purchases[key], Earned: state.Earned[key],
 			PlaySeconds: state.PlaySeconds[key],
+			Visits:      visitsOfDay(state, day, today, player.now, player.awaySeconds),
 		}
+		record.LeftAt = leftAt(state, record.Visits, day)
 		if record.Tasks == nil {
 			record.Tasks = []TaskLogEntry{}
 		}

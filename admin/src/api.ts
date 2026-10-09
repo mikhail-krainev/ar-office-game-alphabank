@@ -95,7 +95,10 @@ export interface PlayerSummary {
   first_day: number;
   last_login_day: number;
   present_today: boolean;
+  /** Inside the office day: the entry code was scanned today and the day is not ended. */
   in_office: boolean;
+  /** In the office Wi-Fi now (server/modules/visits.go). */
+  on_site: boolean;
   today: number;
   /** Unix seconds, 0 = no recorded actions. */
   last_activity: number;
@@ -116,6 +119,8 @@ export interface Limits {
   play_limit_minutes: number;
   exit_grace_minutes: number;
   rest_minutes: number;
+  /** Minutes without the office Wi-Fi after which a player counts as gone out. */
+  away_minutes: number;
 }
 
 /** Test clock (server/modules/clock.go): the game time is the real time plus shift_seconds. */
@@ -147,8 +152,14 @@ export interface StatsDay {
   workday: boolean;
   present: boolean;
   excused: boolean;
+  /** First arrival: the entry code. */
   checkin_at: number;
+  /** The exit code or "Go home"; 0 when the day was not ended that way. */
   checkout_at: number;
+  /** Every stay in the office Wi-Fi that day. */
+  visits: OfficeVisit[];
+  /** When the player left: checkout_at, else the end of the last visit; 0 while still in. */
+  left_at: number;
   tasks: TaskLogEntry[];
   skipped: NamedId[];
   pending: NamedId[];
@@ -157,6 +168,19 @@ export interface StatsDay {
   earned: number;
   play_seconds: number;
 }
+
+/** One stay in the office Wi-Fi (server/modules/visits.go), unix seconds. */
+export interface OfficeVisit {
+  in: number;
+  /** Last heartbeat from the office network. */
+  seen: number;
+  /** Absent while the player is still in. */
+  out?: number;
+  how?: VisitEnd;
+}
+
+/** network: left the Wi-Fi; away: no heartbeat for away_minutes; code: exit code; home: "Go home". */
+export type VisitEnd = "network" | "away" | "code" | "home" | "office";
 
 export interface ActivityEvent {
   t: number;

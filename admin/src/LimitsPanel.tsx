@@ -10,6 +10,7 @@ const RANGES = {
   play_limit_minutes: [5, 480],
   exit_grace_minutes: [1, 60],
   rest_minutes: [1, 240],
+  away_minutes: [1, 240],
 } as const;
 
 type NumberField = keyof typeof RANGES;
@@ -176,6 +177,24 @@ export function LimitsPanel({ actions }: { actions: DashboardActions }) {
             {formatMinutes(form.rest_minutes)}, иначе доступ на сегодня будет ограничен!» — и таймер на{" "}
             {formatMinutes(form.exit_grace_minutes)}.
           </p>
+        </div>
+      </section>
+
+      <section className="card">
+        <h2>Присутствие в офисе</h2>
+        <p className="muted">
+          Код ВХОД сканируется один раз в день: он отмечает приход. Дальше выходы и возвращения определяются по Wi-Fi офиса,
+          пока у игрока открыта игра. Код ВЫХОД или кнопка «Поехать домой» завершают день; без них уходом считается последний
+          раз, когда игрок был в сети офиса.
+        </p>
+        <div className="grid-form limits-form">
+          <label>
+            Вышел, если нет в сети, мин
+            {numberInput("away_minutes")}
+            <span className="hint">
+              Столько минут без связи из сети офиса — и игрок считается вышедшим. Закрытая игра тоже выглядит как выход.
+            </span>
+          </label>
         </div>
       </section>
 

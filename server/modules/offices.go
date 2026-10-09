@@ -62,10 +62,17 @@ func (o *Office) prefixes() []netip.Prefix {
 
 // limits: the admin's limits of the office, or the defaults.
 func (o *Office) limits() Limits {
-	if o != nil && o.Limits != nil && validateLimits(*o.Limits) == nil {
-		return *o.Limits
+	if o == nil || o.Limits == nil {
+		return gameContent.Rules.Limits
 	}
-	return gameContent.Rules.Limits
+	limits := *o.Limits
+	if limits.AwayMinutes == 0 {
+		limits.AwayMinutes = gameContent.Rules.Limits.AwayMinutes
+	}
+	if validateLimits(limits) != nil {
+		return gameContent.Rules.Limits
+	}
+	return limits
 }
 
 // normalizeNetworks checks the CIDR prefixes (or single addresses) and returns them cleaned.

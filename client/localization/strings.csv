@@ -137,9 +137,9 @@ QR_WRONG_CODE,Это не тот QR-код,That's not the right QR code
 QR_UNKNOWN_ROOM,Такой комнаты нет на карте,No such room on the map
 QR_GOING_TO_ROOM,Идём: %s,Heading to: %s
 QR_COLLEAGUE_HINT,Это профиль коллеги. Он нужен в заданиях на знакомство,That's a colleague's profile. It is used in the meet-a-colleague tasks
-QR_ALREADY_CHECKED_IN,Ты уже в офисе,You're already at the office
+QR_ALREADY_CHECKED_IN,"Ты уже отметился в офисе сегодня, больше сканировать код ВХОД сегодня нельзя","You've already checked in at the office today, the IN code can't be scanned again today"
 QR_BACK_IN_OFFICE,С возвращением в офис!,Welcome back to the office!
-QR_CHECKED_OUT,"Ты вышел из офиса. Задания подождут до следующего входа","You've left the office. Tasks will wait until you come back"
+QR_CHECKED_OUT,"Рабочий день в офисе завершён. До завтра!","Your office day is over. See you tomorrow!"
 MG_NO_SENSORS,На этом устройстве нет нужных датчиков.,This device lacks the required sensors.
 MG_NO_PERMISSION,Нет доступа к датчикам движения.,No access to the motion sensors.
 MG_NO_MIC_PERMISSION,"Нет доступа к микрофону. Разреши его в настройках сайта (значок слева от адреса) и открой задание снова.","No access to the microphone. Allow it in the site settings (the icon left of the address) and open the task again."
@@ -161,7 +161,7 @@ MG_TWISTER_GOOD,Чисто! Следующая,Clean! Next one
 MG_TWISTER_AGAIN,"Не разобрал, ещё раз","Didn't catch that, try again"
 MG_TWISTER_ERROR,Распознавание не сработало: %s,Recognition failed: %s
 MG_SELFIE_HINT,Встаньте вдвоём перед фронтальной камерой и улыбнитесь,Stand together in front of the selfie camera and smile
-ERROR_PRESENCE_REQUIRED,Сначала отсканируй код ВХОД на экране у ресепшна,Scan the IN code on the reception screen first
+ERROR_PRESENCE_REQUIRED,"Задания засчитываются после кода ВХОД у ресепшна и до конца дня в офисе","Tasks count after the IN code at the reception and until your office day ends"
 ERROR_OFFICE_NETWORK_REQUIRED,Подключись к Wi-Fi офиса: игра работает только в его сети,Connect to the office Wi-Fi: the game works only on its network
 ERROR_PRESENCE_TOKEN_INVALID,QR-код устарел или недействителен,The QR code has expired or is invalid
 ERROR_PRESENCE_TOKEN_REUSED,Этот QR-код уже использован,This QR code has already been used
@@ -359,7 +359,7 @@ ERROR_SERVER,Сервер не ответил. Попробуй ещё раз,Th
 ERROR_UNAUTHENTICATED,Сессия закончилась. Войди снова,Your session has ended. Sign in again
 ERROR_INVALID_PAYLOAD,Сервер не понял запрос,The server did not understand the request
 ERROR_NOT_PLAYER,Это аккаунт администратора,This is the admin account
-ERROR_ALREADY_IN_OFFICE,Ты уже в офисе,You're already at the office
+ERROR_ALREADY_CHECKED_IN_TODAY,"Ты уже отметился в офисе сегодня, больше сканировать код ВХОД сегодня нельзя","You've already checked in at the office today, the IN code can't be scanned again today"
 ERROR_NOT_IN_OFFICE,Ты сейчас не в офисе,You're not at the office now
 ERROR_TASK_COOLDOWN,Пауза между заданиями ещё не закончилась,The break between tasks is not over yet
 ERROR_OUTSIDE_TASK_WINDOW,Задания засчитываются только в рабочее время,Tasks count only during working hours

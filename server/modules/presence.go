@@ -18,9 +18,10 @@ import (
 )
 
 // Presence in the office. The office screen shows two rotating codes signed with a secret that only
-// the server knows: the entry code opens the "in the office" interval, the exit code closes it.
-// Tasks, colleague meetings and room codes count only inside the interval; an interval left open
-// ends with the day. Static room codes at the doors work only after the entry code. Each of these
+// the server knows: the entry code opens the "in the office" interval, the exit code closes it. The
+// entry code counts once a day: it marks the first arrival, and steps out and back in during the day
+// follow the office Wi-Fi (visits.go). The exit code ends the office day. Tasks, colleague meetings
+// and room codes count only inside the interval; an interval left open ends with the day. Static room codes at the doors work only after the entry code. Each of these
 // requests must also come from the office network (network.go). Every office has its own screen:
 // the codes carry the office id, and a player counts only the codes of the office they are in today.
 
@@ -128,15 +129,22 @@ func (tx *gameTx) useToken(purpose, token string) string {
 	return ""
 }
 
-// enterOffice opens the interval and marks the day present (streak, calendar).
+// enterOffice opens the interval and its first visit and marks the day present (streak, calendar).
 func (tx *gameTx) enterOffice() error {
 	state := tx.me.state
 	key := dayKey(tx.today)
+	// Already in this office today (the check-in task after the entry code): keep the first arrival.
+	again := tx.checkedInToday()
 	state.PresenceDays[key] = true
-	state.CheckinAt[key] = tx.now
+	if !again {
+		state.CheckinAt[key] = tx.now
+	}
 	delete(state.CheckoutAt, key)
 	state.PresenceOffice = tx.office()
 	state.Room = ""
+	if !again || openVisit(state, tx.today) == nil {
+		startVisit(state, tx.today, tx.now)
+	}
 	state.BestStreak = max(state.BestStreak, streak(state.PresenceDays, state.ExcusedDays, tx.today, state.FirstDay))
 	tx.logActivity(tx.me, activityCheckIn, map[string]any{"office": state.PresenceOffice})
 	return tx.writePresence(true, "")
@@ -158,8 +166,10 @@ func fail(problem string) actionResult {
 
 var okResult = actionResult{OK: true}
 
-// rpcOfficeCheckIn: {"token"}. Entry after the daily check-in task (e.g. back from lunch).
-// The first entry of the day goes through complete_task of the check-in task, which pays a reward.
+// rpcOfficeCheckIn: {"token"}. The entry code outside the check-in task. The first entry of the day
+// goes through complete_task of the check-in task, which pays a reward; after it the code is refused
+// until tomorrow (coming back from lunch needs only the office Wi-Fi). Only a business trip to
+// another office that starts during the day needs the entry code of that office.
 func rpcOfficeCheckIn(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	var request struct {
 		Token string `json:"token"`
@@ -172,27 +182,38 @@ func rpcOfficeCheckIn(ctx context.Context, logger runtime.Logger, db *sql.DB, nk
 			tx.logSuspicious("office_check_in", problem)
 			return fail(problem), err
 		}
+		if tx.checkedInToday() {
+			return fail("already_checked_in_today"), nil
+		}
 		if problem := tx.useToken(purposeEntry, request.Token); problem != "" {
 			tx.logSuspicious("office_check_in", problem)
 			return fail(problem), nil
-		}
-		if tx.inMyOffice() {
-			return fail("already_in_office"), nil
 		}
 		return okResult, tx.enterOffice()
 	})
 }
 
-// leaveOffice closes the interval; tasks wait for the next entry.
-// `how` is "code" for the exit code, "home" for the "Go home" button.
+// checkedInToday: the entry code of the office the player counts in today was already scanned today.
+func (tx *gameTx) checkedInToday() bool {
+	_, ok := tx.me.state.CheckinAt[dayKey(tx.today)]
+	return ok && presenceOffice(tx.me.state) == tx.office()
+}
+
+// leaveOffice ends the office day and its open visit. `how` is visitOutCode for the exit code,
+// visitOutHome for the "Go home" button.
 func (tx *gameTx) leaveOffice(how string) error {
+	limits, err := tx.limits()
+	if err != nil {
+		return err
+	}
+	tx.closeVisitAt(how, limits)
 	tx.me.state.CheckoutAt[dayKey(tx.today)] = tx.now
 	tx.me.state.Room = ""
 	tx.logActivity(tx.me, activityCheckOut, map[string]any{"how": how})
 	return tx.writePresence(false, "")
 }
 
-// rpcOfficeCheckOut: {"token"}. Closes the interval; tasks wait for the next entry.
+// rpcOfficeCheckOut: {"token"}. Ends the office day; the entry code is refused until tomorrow.
 func rpcOfficeCheckOut(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	var request struct {
 		Token string `json:"token"`
@@ -208,7 +229,7 @@ func rpcOfficeCheckOut(ctx context.Context, logger runtime.Logger, db *sql.DB, n
 		if !inOffice(tx.me.state, tx.today) {
 			return fail("not_in_office"), nil
 		}
-		return okResult, tx.leaveOffice("code")
+		return okResult, tx.leaveOffice(visitOutCode)
 	})
 }
 
@@ -220,7 +241,7 @@ func rpcLeaveOffice(ctx context.Context, logger runtime.Logger, db *sql.DB, nk r
 		if !inOffice(tx.me.state, tx.today) {
 			return okResult, nil
 		}
-		return okResult, tx.leaveOffice("home")
+		return okResult, tx.leaveOffice(visitOutHome)
 	})
 }
 

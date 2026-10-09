@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { api, type ActivityEvent, type LedgerEntry, type PlayerStats as Stats, type StatsDay } from "./api";
+import { api, type ActivityEvent, type LedgerEntry, type OfficeVisit, type PlayerStats as Stats, type StatsDay } from "./api";
 import type { DashboardActions } from "./Dashboard";
 import { Dropdown } from "./Dropdown";
 import { formatDate, formatDateTime, formatDay, formatMinutes, formatPlayTime, formatTime, plural, weekdayOf } from "./format";
@@ -10,6 +10,7 @@ import {
   REWARD_STATES,
   ROOM_LABELS,
   SUSPICIOUS_ACTIONS,
+  VISIT_ENDS,
   label,
   suspiciousLabel,
 } from "./labels";
@@ -255,8 +256,9 @@ function DaysTable({ days, today, name }: { days: StatsDay[]; today: number; nam
           <tr>
             <th>Дата</th>
             <th>Посещение</th>
-            <th>Вход</th>
-            <th>Выход</th>
+            <th>Приход</th>
+            <th>Уход</th>
+            <th>Входы и выходы</th>
             <th>Выполненные задания</th>
             <th>Другое</th>
             <th className="num">В игре</th>
@@ -274,7 +276,10 @@ function DaysTable({ days, today, name }: { days: StatsDay[]; today: number; nam
                 <AttendanceBadge day={day} today={today} />
               </td>
               <td className="nowrap">{formatTime(day.checkin_at)}</td>
-              <td className="nowrap">{day.checkout_at > day.checkin_at ? formatTime(day.checkout_at) : "—"}</td>
+              <td className="nowrap">{formatTime(day.left_at)}</td>
+              <td>
+                <VisitList visits={day.visits ?? []} />
+              </td>
               <td>
                 {day.tasks.length === 0 ? (
                   <span className="muted">—</span>
@@ -311,6 +316,30 @@ function DaysTable({ days, today, name }: { days: StatsDay[]; today: number; nam
   );
 }
 
+/** Stays in the office Wi-Fi: "09:02–12:30 · отключился от Wi-Fi", the open one "с 13:10 · в офисе". */
+function VisitList({ visits }: { visits: OfficeVisit[] }) {
+  if (visits.length === 0) {
+    return <span className="muted">—</span>;
+  }
+  return (
+    <ul className="plain-list">
+      {visits.map((visit) => (
+        <li key={visit.in} className="nowrap">
+          {visit.out ? (
+            <>
+              {formatTime(visit.in)}–{formatTime(visit.out)} <span className="muted">· {label(VISIT_ENDS, visit.how ?? "")}</span>
+            </>
+          ) : (
+            <>
+              с {formatTime(visit.in)} <span className="muted">· в офисе</span>
+            </>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 type JournalFilter = "all" | "presence" | "tasks" | "coins";
 
 interface JournalRow {
@@ -321,7 +350,7 @@ interface JournalRow {
   amount?: number;
 }
 
-const PRESENCE_KINDS = new Set(["login", "check_in", "check_out", "room", "play_warning", "play_rest", "play_blocked"]);
+const PRESENCE_KINDS = new Set(["login", "check_in", "check_out", "office_out", "office_back", "room", "play_warning", "play_rest", "play_blocked"]);
 const TASK_REASONS = new Set(["task_reward", "photo_partner_bonus", "facts_partner_bonus"]);
 
 function activityRow(event: ActivityEvent, name: (id: string) => string): JournalRow {
@@ -334,6 +363,9 @@ function activityRow(event: ActivityEvent, name: (id: string) => string): Journa
       break;
     case "check_out":
       detail = text("how") === "home" ? "кнопка «Поехать домой»" : "";
+      break;
+    case "office_out":
+      detail = `${label(VISIT_ENDS, text("how"))} · последний раз в сети в ${formatTime(Number(params.at ?? 0))}`;
       break;
     case "room":
       detail = label(ROOM_LABELS, text("room"));

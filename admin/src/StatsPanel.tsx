@@ -73,7 +73,7 @@ export function StatsPanel({ actions }: { actions: DashboardActions }) {
   }
 
   const ofOffice = (players ?? []).filter((p) => office === ALL_OFFICES || p.office_id === office);
-  const inOffice = ofOffice.filter((p) => p.in_office).length;
+  const inOffice = ofOffice.filter((p) => p.on_site).length;
   const presentToday = ofOffice.filter((p) => p.present_today).length;
   const limited = ofOffice.filter((p) => p.play_state === "resting" || p.play_state === "blocked").length;
   const onTrip = ofOffice.filter((p) => p.trip).length;
@@ -187,8 +187,11 @@ export function PresenceBadge({ player }: { player: PlayerSummary }) {
   if (player.banned) {
     return <span className="badge muted-badge">заблокирован</span>;
   }
-  if (player.in_office) {
+  if (player.on_site) {
     return <span className="badge present">в офисе</span>;
+  }
+  if (player.in_office) {
+    return <span className="badge soft">вышел</span>;
   }
   if (player.present_today) {
     return <span className="badge soft">был сегодня</span>;

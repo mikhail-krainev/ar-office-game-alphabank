@@ -7,7 +7,7 @@ import (
 
 var testLimits = Limits{
 	TaskCooldownMinutes: 30, TaskWindowStart: "08:00", TaskWindowEnd: "20:00",
-	PlayLimitMinutes: 60, ExitGraceMinutes: 5, RestMinutes: 30,
+	PlayLimitMinutes: 60, ExitGraceMinutes: 5, RestMinutes: 30, AwayMinutes: 15,
 }
 
 func packTasks(count int) []Task {

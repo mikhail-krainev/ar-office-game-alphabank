@@ -141,9 +141,14 @@ func _process(delta: float) -> void:
 				_overlay.set_rest_left(ceili(_countdown))
 				if _countdown <= 0.0:
 					_beat()
-			if not _off_network:
-				return
-	var polling: bool = _off_network or _state == BackendModels.PlayStatus.State.BLOCKED
+					return
+	# The rest and the lock keep the heartbeat too: it tells the server the player is still in the
+	# office Wi-Fi (server/modules/visits.go); the server adds no play time for them.
+	var polling: bool = (
+		_off_network
+		or _state == BackendModels.PlayStatus.State.RESTING
+		or _state == BackendModels.PlayStatus.State.BLOCKED
+	)
 	if not polling and (not _focused or _overlay.is_screen_open()):
 		# In the background, or the rest is over and the player has not come back yet.
 		return

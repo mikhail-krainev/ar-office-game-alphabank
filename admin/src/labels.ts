@@ -4,6 +4,8 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   login: "Вход в игру",
   check_in: "Вход в офис",
   check_out: "Выход из офиса",
+  office_out: "Вышел из сети офиса",
+  office_back: "Вернулся в офис",
   room: "Отметка в комнате",
   task_taken: "Задание взято",
   task_done: "Задание выполнено",
@@ -98,3 +100,12 @@ export function suspiciousLabel(reason: string): string {
   const [key] = reason.split(":");
   return SUSPICIOUS_LABELS[key] ?? reason;
 }
+
+/** How an office visit ended (server/modules/visits.go). */
+export const VISIT_ENDS: Record<string, string> = {
+  network: "отключился от Wi-Fi",
+  away: "пропал из сети",
+  code: "код ВЫХОД",
+  home: "«Поехать домой»",
+  office: "другой офис",
+};

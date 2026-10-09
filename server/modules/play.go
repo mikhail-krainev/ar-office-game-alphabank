@@ -234,9 +234,24 @@ func rpcPlayHeartbeat(ctx context.Context, logger runtime.Logger, db *sql.DB, nk
 			return "", err
 		}
 	}
+	// The heartbeat checks the office network itself (selfCheckedRpcs): one from outside still tells
+	// the server that the player left the office Wi-Fi (visits.go) before it is refused.
+	allowed, err := callerInOfficeNetwork(ctx, nk)
+	if err != nil {
+		return "", err
+	}
+	if !allowed {
+		if err := recordOutsideHeartbeat(ctx, logger, db, nk); err != nil {
+			return "", err
+		}
+		return "", errOfficeNetwork
+	}
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
 		limits, err := tx.limits()
 		if err != nil {
+			return nil, err
+		}
+		if err := tx.seenInOfficeNetwork(limits); err != nil {
 			return nil, err
 		}
 		state := tx.me.state

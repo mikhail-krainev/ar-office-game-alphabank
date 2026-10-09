@@ -111,7 +111,7 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"play_rest":             rpcPlayRest,
 	}
 	for id, fn := range rpcs {
-		if gameRpc(id) {
+		if gameRpc(id) && !selfCheckedRpcs[id] {
 			fn = officeOnly(fn)
 		}
 		if err := initializer.RegisterRpc(id, fn); err != nil {
