@@ -25,6 +25,9 @@ const REQUIRED_FEATURES: Dictionary[String, Array] = {
 	"meet_colleague": [PlatformBackend.Feature.QR_SCAN],
 	"colleague_bingo": [PlatformBackend.Feature.QR_SCAN],
 	"two_truths": [PlatformBackend.Feature.QR_SCAN],
+	"bug_hunt": [PlatformBackend.Feature.CAMERA, PlatformBackend.Feature.ACCELEROMETER],
+	# Drawing works everywhere; the AR try-on on the forehead runs only with face detection.
+	"mood_doodle": [],
 }
 
 var task: BackendModels.TaskInfo
@@ -229,6 +232,10 @@ static func create(kind: String) -> Minigame:
 			return ColleagueBingoMinigame.new()
 		"two_truths":
 			return TwoTruthsMinigame.new()
+		"bug_hunt":
+			return BugHuntMinigame.new()
+		"mood_doodle":
+			return MoodDoodleMinigame.new()
 		# Screen-only fallbacks from the first prototype.
 		"coffee":
 			return CoffeeMinigame.new()

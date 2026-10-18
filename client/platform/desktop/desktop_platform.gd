@@ -16,6 +16,8 @@ const STAND_KNEE_ANGLE: float = 175.0
 const SQUAT_KNEE_ANGLE: float = 75.0
 const SPEECH_DELAY: float = 0.6
 
+## Degrees per second the arrow keys turn the emulated phone (get_rotation_rate).
+const EMULATED_TURN_SPEED: float = 70.0
 var tilt: Vector2 = Vector2.ZERO
 var face_count: int = 0
 var smiling: bool = false
@@ -54,6 +56,13 @@ func get_acceleration() -> Vector3:
 	var y: float = GRAVITY * sin(deg_to_rad(tilt.y))
 	var z: float = -sqrt(maxf(0.0, pow(GRAVITY, 2) - x * x - y * y))
 	return Vector3(x, y, z) + _jerk
+
+
+## Arrow keys turn the emulated phone: left and right about its y axis, up and down about x.
+func get_rotation_rate() -> Vector3:
+	var turn: float = float(Input.is_physical_key_pressed(KEY_LEFT)) - float(Input.is_physical_key_pressed(KEY_RIGHT))
+	var lift: float = float(Input.is_physical_key_pressed(KEY_UP)) - float(Input.is_physical_key_pressed(KEY_DOWN))
+	return Vector3(lift, turn, 0.0) * EMULATED_TURN_SPEED
 
 
 func jerk() -> void:

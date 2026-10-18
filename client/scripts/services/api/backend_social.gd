@@ -48,6 +48,22 @@ func mark_inbox_read() -> void:
 	await _backend.call_rpc("mark_inbox_read")
 
 
+## Everyone in the player's office now, except the player, for the office map.
+func office_players() -> Array[BackendModels.OfficePlayer]:
+	var response: ServerSession.RpcResult = await _backend.call_rpc("office_players")
+	return BackendParser.office_players(response.data) if response.ok else []
+
+
+## Today's "Mood of the day" story of a colleague in the office (or the player's own), or null.
+func get_mood(user_id: String) -> Image:
+	var response: ServerSession.RpcResult = await _backend.call_rpc("get_mood", {"user_id": user_id})
+	var encoded: String = str(response.data.get("png", ""))
+	if not response.ok or encoded.is_empty():
+		return null
+	var picture: Image = Image.new()
+	return picture if picture.load_png_from_buffer(Marshalls.base64_to_raw(encoded)) == OK else null
+
+
 ## Answer to "<colleague> took a photo with you. Is it true?".
 func respond_photo_request(item_id: int, confirm: bool) -> BackendModels.ActionResult:
 	var payload: Dictionary = {"item_id": item_id, "confirm": confirm, "operation_key": _backend.operation_key()}

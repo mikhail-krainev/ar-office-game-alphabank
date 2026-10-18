@@ -23,6 +23,8 @@ static func profile(data: Dictionary) -> BackendModels.Profile:
 	result.car_name = str(data.get("car_name", ""))
 	result.car_speed_kmh = int(data.get("car_speed_kmh", result.car_speed_kmh))
 	result.outfit = outfit(data.get("outfit", {}))
+	result.needs_entry_code = bool(data.get("needs_entry_code", false))
+	result.has_mood = bool(data.get("has_mood", false))
 	return result
 
 
@@ -157,6 +159,19 @@ static func colleague(entry: Dictionary) -> BackendModels.Colleague:
 	return info
 
 
+static func office_players(data: Dictionary) -> Array[BackendModels.OfficePlayer]:
+	var result: Array[BackendModels.OfficePlayer] = []
+	for entry: Dictionary in _dictionaries(data.get("players")):
+		var player: BackendModels.OfficePlayer = BackendModels.OfficePlayer.new()
+		player.colleague = colleague(entry)
+		player.streak = int(entry.get("streak", 0))
+		player.outfit = outfit(entry.get("outfit", {}))
+		player.has_mood = bool(entry.get("has_mood", false))
+		player.character_avatar = bool(entry.get("character_avatar", false))
+		result.append(player)
+	return result
+
+
 static func colleague_result(data: Dictionary, error: String) -> BackendModels.ColleagueResult:
 	var result: BackendModels.ColleagueResult = BackendModels.ColleagueResult.new()
 	result.ok = error.is_empty() and bool(data.get("ok", false))
@@ -269,6 +284,7 @@ static func play_status(data: Dictionary, error: String) -> BackendModels.PlaySt
 	status.limit_minutes = int(data.get("limit_minutes", 0))
 	status.grace_minutes = int(data.get("grace_minutes", 0))
 	status.rest_minutes = int(data.get("rest_minutes", 0))
+	status.needs_entry_code = bool(data.get("needs_entry_code", false))
 	status.seconds_left = int(data.get("seconds_left", 0))
 	status.beat_seconds = maxi(5, int(data.get("beat_seconds", 30)))
 	return status

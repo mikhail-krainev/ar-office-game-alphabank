@@ -1,3 +1,5 @@
+# gdlint:ignore = max-public-methods
+# One method per platform feature: the interface is wide by design.
 class_name PlatformBackend
 extends Node
 ## Platform implementation behind PlatformServices. This base class is the "nothing available"
@@ -65,6 +67,11 @@ func access_problem() -> String:
 
 func get_acceleration() -> Vector3:
 	return Input.get_accelerometer()
+
+
+## Gyroscope: degrees per second about the device x (right), y (up) and z (out of the screen) axes.
+func get_rotation_rate() -> Vector3:
+	return Input.get_gyroscope() * rad_to_deg(1.0)
 
 
 ## Raw microphone samples. The base class uses the Godot core (MicrophoneCapture); the web replaces it.

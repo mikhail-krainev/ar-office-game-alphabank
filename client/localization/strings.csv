@@ -441,3 +441,22 @@ MY_QR_LOADING,Получаю код…,Getting the code…
 MY_QR_REFRESH,Новый код через %d с,New code in %d s
 ERROR_COLLEAGUE_CODE_EXPIRED,Код устарел. Отсканируй его прямо с телефона коллеги,The code has expired. Scan it right from the colleague's phone
 ERROR_COLLEAGUE_NOT_SCANNED,Сначала отсканируй «Мой QR» коллеги с его телефона,"Scan the colleague's ""My QR"" from their phone first"
+REMIND_ENTRY_CODE,"Ты уже в офисе: отсканируй QR-код ВХОД на экране у ресепшна, чтобы день засчитался. Серия пока сохранена.",You're in the office: scan the IN code on the reception screen so the day counts. Your streak is kept for now.
+HUD_SCAN_ENTRY_CODE,ОТСКАНИРУЙ QR ВХОДА,SCAN THE ENTRY CODE
+MG_BUG_HUNT_HINT,"Поворачивайся с телефоном: баги прячутся вокруг тебя. Нажми на баг, чтобы поймать",Turn around with the phone: bugs hide all around you. Tap a bug to catch it
+MG_BUG_HUNT_CAUGHT,ПОЙМАН!,GOT IT!
+MG_MOOD_HINT,Нарисуй пальцем своё настроение сегодня,Draw your mood today with a finger
+MG_MOOD_CLEAR,Стереть,Clear
+MG_MOOD_TRY_ON,ПРИМЕРИТЬ НА ЛОБ,TRY IT ON
+MG_MOOD_TRY_ON_HINT,Посмотри во фронтальную камеру: настроение на лбу станет твоей историей на сегодня,Look into the front camera: the mood on your forehead becomes your story for today
+MG_MOOD_HOLD,Покажи лицо камере,Show your face to the camera
+MG_MOOD_KEEP,Держи... %d,Hold... %d
+ERROR_MOOD_INVALID,"Рисунок не получилось сохранить, попробуй ещё раз","The drawing could not be saved, try again"
+COLLEAGUE_PROFILE_TITLE,Коллега,Colleague
+COLLEAGUE_STREAK,Серия: %d дн. в офисе,Streak: %d office days
+COLLEAGUE_SEEN_IN,Сейчас: %s,Now: %s
+COLLEAGUE_WATCH_STORY,СМОТРЕТЬ НАСТРОЕНИЕ ДНЯ,WATCH TODAY'S MOOD
+COLLEAGUE_NO_STORY,Сегодня без истории настроения,No mood story today
+COLLEAGUE_STORY_LOADING,Загружаю историю…,Loading the story…
+COLLEAGUE_STORY_GONE,История уже недоступна,The story is no longer available
+COLLEAGUE_STORY_TITLE,Настроение дня · %s,Mood of the day · %s

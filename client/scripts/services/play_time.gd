@@ -182,6 +182,7 @@ func _beat() -> void:
 		if _off_network:
 			_off_network = false
 			_overlay.hide_screen()
+		Notifications.set_entry_code_needed(status.needs_entry_code)
 		_apply(status)
 	checked.emit()
 	if _beat_again:

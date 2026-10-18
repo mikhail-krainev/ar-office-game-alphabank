@@ -478,6 +478,8 @@ window.alfaMotion = window.alfaMotion || (function () {
 		permission: 'unknown', steps: 0, counting: false, filtered: 0, above: false, lastStepAt: 0, slow: 9.81,
 		// Last acceleration with gravity in m/s^2, Android axes: z is +9.8 with the phone flat face up.
 		gravity: [0, 0, 0],
+		// Last rotation rate in degrees per second about the device x, y and z axes (beta, gamma, alpha).
+		rotation: [0, 0, 0],
 	};
 	// Safari reports accelerationIncludingGravity with the opposite sign.
 	var IOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
@@ -508,6 +510,8 @@ window.alfaMotion = window.alfaMotion || (function () {
 		if (!g || g.x === null) { return; }
 		var sign = IOS ? -1 : 1;
 		state.gravity = [sign * g.x, sign * g.y, sign * g.z];
+		var r = event.rotationRate;
+		if (r && r.beta !== null) { state.rotation = [r.beta || 0, r.gamma || 0, r.alpha || 0]; }
 		if (!state.counting) { return; }
 		var magnitude = Math.sqrt(g.x * g.x + g.y * g.y + g.z * g.z);
 		state.slow += GRAVITY_SMOOTHING * (magnitude - state.slow);
@@ -537,6 +541,7 @@ window.alfaMotion = window.alfaMotion || (function () {
 		stopSteps: function () { state.counting = false; },
 		steps: function () { return state.steps; },
 		acceleration: function () { return state.gravity.join(','); },
+		rotation: function () { return state.rotation.join(','); },
 	};
 })();
 

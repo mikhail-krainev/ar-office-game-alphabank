@@ -10,6 +10,8 @@ extends Node
 signal unread_changed(count: int)
 ## The player tapped a banner.
 signal banner_pressed(kind: String)
+## In the office Wi-Fi without the entry code today, or the code was scanned since.
+signal entry_code_needed_changed(needed: bool)
 
 const SETTINGS_PATH: String = "user://notifications.cfg"
 const POLL_INTERVAL: float = 10.0
@@ -17,8 +19,12 @@ const POLL_INTERVAL: float = 10.0
 const RESYNC_INTERVAL: float = 30.0
 const BANNER_TIME: float = 4.5
 const BANNER_SLIDE: float = 0.25
+## Banner kind of the entry code reminder; the office scene opens the scan on a tap.
+const ENTRY_CODE_KIND: String = "entry_code"
 
 var unread: int = 0
+## The game is open in the office Wi-Fi, but the entry code is not scanned today.
+var entry_code_needed: bool = false
 
 var _last_seen_id: int = 0
 ## The first poll after launch only sets the baseline; old news is in the inbox.
@@ -34,6 +40,8 @@ var _enabled: bool = false
 var _queue: Array[Array] = []
 var _banner_left: float = 0.0
 var _banner_kind: String = ""
+## Date ("YYYY-MM-DD") the entry code reminder was last announced: once a day is enough.
+var _entry_reminded_on: String = ""
 
 var _layer: CanvasLayer
 var _banner: PanelContainer
@@ -117,6 +125,23 @@ func poll() -> void:
 			_show_banner(NotificationTexts.title(), NotificationTexts.inbox_text(item), item.kind)
 	_last_seen_id = newest
 	_has_baseline = true
+
+
+## The server says whether the entry code is still to be scanned today (profile, heartbeat). The first
+## time a day it is, a banner and a system notification remind the player; the office scene keeps a
+## button for the scan while it is needed.
+func set_entry_code_needed(needed: bool) -> void:
+	if needed == entry_code_needed:
+		return
+	entry_code_needed = needed
+	entry_code_needed_changed.emit(needed)
+	var today: String = Time.get_date_string_from_system()
+	if not needed or _entry_reminded_on == today:
+		return
+	_entry_reminded_on = today
+	_show_banner(NotificationTexts.title(), tr("REMIND_ENTRY_CODE"), ENTRY_CODE_KIND)
+	if is_enabled():
+		PlatformServices.show_notification(NotificationTexts.title(), tr("REMIND_ENTRY_CODE"))
 
 
 func _on_state_changed() -> void:

@@ -1,3 +1,5 @@
+# gdlint:ignore = max-public-methods
+# One method per platform feature: the interface is wide by design.
 extends Node
 ## Single entry point for platform-specific functionality (autoload "PlatformServices").
 ## Game code must use this instead of native plugins or JavaScriptBridge.
@@ -22,6 +24,8 @@ signal notification_shown(title: String, body: String)
 
 const WEB_SCRIPT: String = "res://platform/web/web_platform.gd"
 const DESKTOP_SCRIPT: String = "res://platform/desktop/desktop_platform.gd"
+## Id of show_notification(); the server's planned notifications use small positive ids.
+const INSTANT_NOTIFICATION_ID: int = 900000
 
 var _has_safe_rect_override: bool = false
 var _safe_rect_override: Rect2 = Rect2()
@@ -86,6 +90,11 @@ func access_problem() -> String:
 
 func get_acceleration() -> Vector3:
 	return _backend.get_acceleration()
+
+
+## Gyroscope in degrees per second about the device x (right), y (up) and z (out of the screen) axes.
+func get_rotation_rate() -> Vector3:
+	return _backend.get_rotation_rate()
 
 
 ## Starts counting steps from zero; steps_changed reports the running total.
@@ -168,6 +177,12 @@ func replace_notifications(items: Array[Dictionary]) -> void:
 	_backend.cancel_all_notifications()
 	for item: Dictionary in items:
 		_backend.schedule_notification(int(item["id"]), str(item["title"]), str(item["body"]), maxi(0, int(item["delay"])))
+
+
+## Shows a notification now (needs Feature.NOTIFICATIONS). It survives the next
+## replace_notifications(), which only replaces the scheduled ones.
+func show_notification(title: String, body: String) -> void:
+	_backend.schedule_notification(INSTANT_NOTIFICATION_ID, title, body, 0)
 
 
 ## Opens the gallery (or a file dialog). Resolves to null when cancelled or unsupported.

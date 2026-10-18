@@ -13,6 +13,8 @@ const PORTRAIT_REGION: Rect2 = Rect2(CharacterPainter.BODY_OFFSET.x + 4, Charact
 static var _frames_cache: Dictionary[String, SpriteFrames] = {}
 static var _player_frames: SpriteFrames
 static var _player_sheet: Texture2D
+## Sheets painted from colleagues' outfits, by Outfit.key().
+static var _outfit_sheets: Dictionary[String, Texture2D] = {}
 
 var facing: Vector2 = Vector2.DOWN
 var bounce: float = 0.0
@@ -32,6 +34,40 @@ func setup(look_id: String) -> void:
 	if look_id == PLAYER_ID:
 		Appearance.changed.connect(_on_appearance_changed)
 	_apply()
+
+
+## A colleague's character, painted from the outfit they put together in their wardrobe.
+func setup_outfit(outfit: Dictionary) -> void:
+	_look_id = ""
+	_sprite = AnimatedSprite2D.new()
+	_sprite.sprite_frames = outfit_frames(outfit)
+	_sprite.position = Vector2(0, FRAME.y / 2.0 - FEET_Y)
+	add_child(_sprite)
+	_apply()
+
+
+static func outfit_sheet(outfit: Dictionary) -> Texture2D:
+	var key: String = Outfit.key(outfit)
+	if not _outfit_sheets.has(key):
+		var canvas: PixelCanvas = PixelCanvas.create(CharacterPainter.sheet_size())
+		CharacterPainter.new(Outfit.to_look(outfit)).paint_sheet(canvas)
+		_outfit_sheets[key] = ImageTexture.create_from_image(canvas.image)
+	return _outfit_sheets[key]
+
+
+static func outfit_frames(outfit: Dictionary) -> SpriteFrames:
+	var key: String = "outfit|" + Outfit.key(outfit)
+	if not _frames_cache.has(key):
+		_frames_cache[key] = _build_frames(outfit_sheet(outfit))
+	return _frames_cache[key]
+
+
+## Head and shoulders of a colleague's character, for avatars.
+static func outfit_portrait(outfit: Dictionary) -> AtlasTexture:
+	var atlas: AtlasTexture = AtlasTexture.new()
+	atlas.atlas = outfit_sheet(outfit)
+	atlas.region = PORTRAIT_REGION
+	return atlas
 
 
 func set_walking(walking: bool, direction: Vector2 = Vector2.ZERO) -> void:

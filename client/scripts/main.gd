@@ -9,7 +9,8 @@ extends WorldScene
 ## code (starts the check-in) or a colleague's profile code.
 ## On arrival from the commute the entry code scan opens by itself until the player checks in.
 ## Right after the check-in the game asks for the facts of "Three truths, two lies" when that task is
-## in today's pack.
+## in today's pack. Colleagues in the office now walk on the map in their own outfits
+## (OfficeColleagues); a tap on one opens the mini profile with today's mood story.
 
 ## NPCs can be talked to from this many cells away, e.g. across the reception desk.
 const TALK_REACH_CELLS: int = 2
@@ -41,6 +42,10 @@ var _pending_room: StringName = &""
 var _corner: PlayerCorner
 var _task_list: TaskList
 var _facts_panel: FactsPanel
+## "Scan the entry code" while the game is open in the office Wi-Fi without it.
+var _entry_button: Button
+var _colleagues: OfficeColleagues
+var _colleague_panel: ColleagueProfilePanel
 
 @onready var _task_panel: TaskPanel = $TaskPanel
 @onready var _shop_panel: ShopPanel = $ShopPanel
@@ -71,10 +76,16 @@ func _ready() -> void:
 	_corner = PlayerCorner.attach(self, _hud)
 	_facts_panel = FactsPanel.new()
 	add_child(_facts_panel)
+	_colleagues = OfficeColleagues.new()
+	_colleagues.setup(_map, _entities)
+	add_child(_colleagues)
+	_colleague_panel = ColleagueProfilePanel.new()
+	add_child(_colleague_panel)
 	_task_list = TaskList.new()
 	_task_list.task_pressed.connect(_on_task_list_pressed)
 	_hud.add_corner_panel(_task_list)
 	Notifications.banner_pressed.connect(_on_banner_pressed)
+	Notifications.entry_code_needed_changed.connect(_show_entry_reminder)
 	Presence.zone_changed.connect(_on_zone_changed)
 	Backend.request_failed.connect(_on_request_failed)
 	_task_panel.go_requested.connect(_go_to_task)
@@ -83,6 +94,8 @@ func _ready() -> void:
 		await Backend.login()
 	await _refresh_tasks()
 	_update_room()
+	Notifications.set_entry_code_needed(Backend.profile != null and Backend.profile.needs_entry_code)
+	_show_entry_reminder(Notifications.entry_code_needed)
 	if not by_lift and await _auto_check_in():
 		return
 	_resume_after_lift()
@@ -101,15 +114,19 @@ func _is_modal_open() -> bool:
 		_busy or _leaving or _task_panel.is_open() or _shop_panel.is_open()
 		or _minigame_panel.is_open() or _choice.is_open() or (_corner != null and _corner.is_open())
 		or (_facts_panel != null and _facts_panel.is_open())
+		or (_colleague_panel != null and _colleague_panel.is_open())
 	)
 
 
-## Only task markers react to taps: the character is not steered.
+## Only task markers and colleagues react to taps: the character is not steered.
 func _on_tap(world_position: Vector2) -> void:
 	for pin: TaskPin in _pins.values():
 		if pin.visible and pin.is_hit(world_position):
 			_go_to_task(pin.task)
 			return
+	var colleague: BackendModels.OfficePlayer = _colleagues.hit(world_position)
+	if colleague != null:
+		_colleague_panel.open(colleague)
 
 
 func _refresh_tasks() -> void:
@@ -337,6 +354,8 @@ func _run_task(task: BackendModels.TaskInfo) -> void:
 		_hud.flash_message(tr("ERROR_" + result.error.to_upper()))
 	await _refresh_tasks()
 	if result.ok and task.is_check_in():
+		Notifications.set_entry_code_needed(false)
+		_colleagues.refresh_now()
 		await _ask_facts()
 
 
@@ -473,8 +492,33 @@ func _on_zone_changed(room_id: StringName) -> void:
 
 
 func _on_banner_pressed(kind: String) -> void:
-	if not kind.is_empty() and not _is_modal_open():
-		_corner.open_inbox()
+	if kind.is_empty() or _is_modal_open():
+		return
+	if kind == Notifications.ENTRY_CODE_KIND:
+		_scan_entry_code()
+		return
+	_corner.open_inbox()
+
+
+## The reminder button stays while the day has no entry code; the day still keeps the streak.
+func _show_entry_reminder(needed: bool) -> void:
+	if needed and _entry_button == null and _home_button == null:
+		_entry_button = _hud.add_wide_action(tr("HUD_SCAN_ENTRY_CODE"))
+		_entry_button.pressed.connect(_scan_entry_code)
+	elif not needed and _entry_button != null:
+		_entry_button.queue_free()
+		_entry_button = null
+
+
+## Opens the check-in task (the entry code scan) of today.
+func _scan_entry_code() -> void:
+	if _is_modal_open():
+		return
+	for task: BackendModels.TaskInfo in _tasks:
+		if task.minigame == CHECK_IN_MINIGAME and not task.is_closed():
+			_go_to_task(task)
+			return
+	_scan_code()
 
 
 # --- Floors ------------------------------------------------------------------------

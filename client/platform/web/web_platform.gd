@@ -1,3 +1,5 @@
+# gdlint:ignore = max-public-methods
+# One method per platform feature: the interface is wide by design.
 extends PlatformBackend
 ## Web implementation. The Godot core reads neither the accelerometer nor the microphone in the
 ## browser, so both come from camera_bridge.js too: DeviceMotion and getUserMedia audio samples.
@@ -178,7 +180,16 @@ func access_problem() -> String:
 
 
 func get_acceleration() -> Vector3:
-	var parts: PackedStringArray = str(JavaScriptBridge.eval("window.alfaMotion.acceleration()", true)).split(",")
+	return _vector_from_js("window.alfaMotion.acceleration()")
+
+
+func get_rotation_rate() -> Vector3:
+	return _vector_from_js("window.alfaMotion.rotation()")
+
+
+## "x,y,z" from the bridge as a vector; zero when the bridge sends something else.
+func _vector_from_js(expression: String) -> Vector3:
+	var parts: PackedStringArray = str(JavaScriptBridge.eval(expression, true)).split(",")
 	if parts.size() != 3:
 		return Vector3.ZERO
 	return Vector3(parts[0].to_float(), parts[1].to_float(), parts[2].to_float())

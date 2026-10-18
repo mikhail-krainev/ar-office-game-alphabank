@@ -30,6 +30,11 @@ class Profile:
 	var car_name: String = ""
 	var car_speed_kmh: int = 110
 	var outfit: Dictionary = {}
+	## In the office Wi-Fi today without the entry code: the day keeps the streak, but the game
+	## reminds to scan the code at the reception.
+	var needs_entry_code: bool = false
+	## Today's "Mood of the day" drawing exists: colleagues see it as a story.
+	var has_mood: bool = false
 
 
 class TaskInfo:
@@ -180,6 +185,20 @@ class Colleague:
 	var room: StringName = &""
 	## In the office now (entered and not left).
 	var present: bool = false
+
+
+## A colleague in the office now, for the office map: the character, the name tag and the mini profile.
+class OfficePlayer:
+	extends RefCounted
+
+	var colleague: Colleague
+	var streak: int = 0
+	## The outfit the colleague put together in the wardrobe: their character is drawn with it.
+	var outfit: Dictionary = {}
+	## Today's "Mood of the day" story exists.
+	var has_mood: bool = false
+	## The avatar is the colleague's own character (draw it from the outfit).
+	var character_avatar: bool = false
 
 
 class ColleagueResult:
@@ -375,3 +394,5 @@ class PlayStatus:
 	## Seconds left of the grace (WARNING) or of the rest (RESTING), at the moment of the request.
 	var seconds_left: int = 0
 	var beat_seconds: int = 30
+	## In the office Wi-Fi today without the entry code (see Profile.needs_entry_code).
+	var needs_entry_code: bool = false
