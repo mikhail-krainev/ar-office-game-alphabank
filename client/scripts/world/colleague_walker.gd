@@ -12,8 +12,8 @@ const WANDER_RADIUS: int = 8
 const WANDER_TRIES: int = 10
 const HIT_RECT: Rect2 = Rect2(-14, -64, 28, 68)
 const TAG_Y: float = -54.0
-const AVATAR_RADIUS: float = 6.0
-const NAME_SIZE: int = 8
+const AVATAR_RADIUS: float = 7.0
+const NAME_SIZE: int = 10
 const NAME_MAX: int = 14
 const STORY_RING: Color = Color("#ff2e88")
 

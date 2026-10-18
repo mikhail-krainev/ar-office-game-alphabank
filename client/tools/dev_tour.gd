@@ -3,13 +3,18 @@ extends Node
 ## screenshots. Plays as the account signed in on this computer (sign in through the game once) on
 ## a server with DEV_MODE=true; the tour changes that account's progress, so use a test account.
 ## Run (GUI): godot --path client res://tools/dev_tour.tscn -- --device=pixel_8 --out=<dir> [--shot-scale=2]
+## [--login=<user>:<password>] (a test account; otherwise the session signed in on this computer)
 ## --shot-scale below 1 shrinks screenshots smoothly, 1 and above enlarges them with crisp pixels.
 ## --only=play runs only the play-time limit screens. The tour turns the task limits (hours and the
 ## pause between tasks) off for the account, so it can close a whole day at any hour.
+## --only=colleagues runs only the entry-code reminder, colleagues on the office map, the mini profile
+## with the mood story, "Bug hunt" and "Mood of the day": other players must be in the office then.
 
 var _out: String = ""
 var _shot_scale: float = 0.5
 var _only: String = ""
+## "username:password" to sign in with (a test account) instead of the saved session.
+var _login: String = ""
 
 
 func _ready() -> void:
@@ -20,6 +25,8 @@ func _ready() -> void:
 			_shot_scale = maxf(0.1, argument.trim_prefix("--shot-scale=").to_float())
 		elif argument.begins_with("--only="):
 			_only = argument.trim_prefix("--only=")
+		elif argument.begins_with("--login="):
+			_login = argument.trim_prefix("--login=")
 	# The emulator's key help would end up in the screenshots.
 	var emulator: Node = get_node_or_null("/root/DeviceEmulator")
 	if emulator != null and emulator.get("_help") is Label:
@@ -40,6 +47,9 @@ func _start() -> void:
 	var placeholder: Node = Node.new()
 	tree.root.add_child(placeholder)
 	tree.current_scene = placeholder
+	if not _login.is_empty():
+		var parts: PackedStringArray = _login.split(":", true, 1)
+		await Backend.server.sign_in(parts[0], parts[1] if parts.size() > 1 else "")
 	if not Backend.server.restore() or not (await Backend.load_account()).is_empty():
 		printerr("dev tour: sign in through the game once, then run the tour again")
 		tree.quit(1)
@@ -48,6 +58,10 @@ func _start() -> void:
 	await Backend.dev_call("dev_task_limits", {"off": true})
 	if _only == "play":
 		await _play_limit_tour()
+		tree.quit()
+		return
+	if _only == "colleagues":
+		await _colleagues_tour()
 		tree.quit()
 		return
 	await _morning_tour()
@@ -438,6 +452,103 @@ func _deferred_rest_tour() -> void:
 	await Backend.dev_call("dev_play_state", {"state": "ok"})
 	PlayTime.check_now()
 	await _wait(1.0)
+
+
+## In the Wi-Fi without the entry code: the reminder. After the code: colleagues on the map, the mini
+## profile and the story, then the two AR minigames opened directly (no task pack needed).
+func _colleagues_tour() -> void:
+	OfficeFloors.reset()
+	await Backend.dev_call("dev_reset_day")
+	await Backend.login()
+	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	await _wait(2.5)
+	var office: Node = get_tree().current_scene
+	var panel: MinigamePanel = office.get("_minigame_panel")
+	if panel.is_open():
+		# The entry code scan opens by itself on arrival; the player closed it.
+		panel.emit_signal("_resolved", MinigamePanel.Outcome.CANCELLED)
+	await _wait(0.8)
+	await _shot("n1_entry_reminder")
+	await _check_in()
+	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	await _wait(3.0)
+	office = get_tree().current_scene
+	panel = office.get("_minigame_panel")
+	await _teleport(office, Vector2i(38, 23))
+	await _wait(2.0)
+	await _shot("n2_colleagues")
+	var colleagues: OfficeColleagues = office.get("_colleagues")
+	var walkers: Dictionary = colleagues.get("_walkers")
+	var storyteller: BackendModels.OfficePlayer = null
+	for walker: ColleagueWalker in walkers.values():
+		if walker.player.has_mood:
+			storyteller = walker.player
+	if storyteller != null:
+		var profile: ColleagueProfilePanel = office.get("_colleague_panel")
+		profile.open(storyteller)
+		await _wait(0.6)
+		await _shot("n3_colleague_profile")
+		await profile.call("_show_story")
+		await _wait(1.2)
+		await _shot("n4_colleague_story")
+		profile.close_panel()
+	await _wait(0.4)
+	var desktop: Node = PlatformServices.get_node("Backend")
+	_run_minigame(panel, "bug_hunt", {"bugs": 8, "time_limit": 60})
+	await _wait(1.0)
+	var swarm: BugSwarm = (panel.get("_game") as Minigame).get("_swarm")
+	swarm.bugs[0].yaw = -8.0
+	swarm.bugs[1].yaw = 14.0
+	swarm.bugs[1].pitch = 12.0
+	await _wait(0.3)
+	(panel.get("_game") as Minigame).call("_gui_input", _press(Vector2(16, 34) + swarm.project(swarm.bugs[0], Vector2(288, 270))))
+	await _wait(0.15)
+	await _shot("n5_bug_hunt")
+	panel.emit_signal("_resolved", MinigamePanel.Outcome.CANCELLED)
+	await _wait(0.5)
+	_run_minigame(panel, "mood_doodle", {})
+	await _wait(0.8)
+	var mood: Minigame = panel.get("_game")
+	var canvas: MoodCanvas = mood.get("_canvas")
+	canvas.stroke(Vector2i(16, 20), Vector2i(24, 20), 4, Color("#1d1d1f"))
+	canvas.stroke(Vector2i(40, 20), Vector2i(48, 20), 4, Color("#1d1d1f"))
+	for x: int in range(14, 50):
+		var y: int = 40 + roundi(8.0 * sin(PI * (x - 14) / 36.0))
+		canvas.stroke(Vector2i(x, y), Vector2i(x, y), 3, Color("#ef3124"))
+	canvas.stroke(Vector2i(6, 6), Vector2i(10, 2), 2, Color("#f7c948"))
+	canvas.stroke(Vector2i(54, 2), Vector2i(58, 6), 2, Color("#f7c948"))
+	(mood.get("_texture") as ImageTexture).update(canvas.image)
+	(mood.get("_next") as Button).disabled = false
+	mood.queue_redraw()
+	await _wait(0.3)
+	await _shot("n6_mood_draw")
+	desktop.set("face_count", 1)
+	desktop.set("smiling", true)
+	mood.call("_on_next")
+	await _wait(0.9)
+	await _shot("n7_mood_try_on")
+	desktop.set("face_count", 0)
+	if panel.is_open():
+		panel.emit_signal("_resolved", MinigamePanel.Outcome.CANCELLED)
+	await _wait(0.5)
+
+
+## Opens a minigame without a server task, for screenshots.
+func _run_minigame(panel: MinigamePanel, kind: String, params: Dictionary) -> void:
+	var task: BackendModels.TaskInfo = BackendModels.TaskInfo.new()
+	task.id = kind
+	task.minigame = kind
+	task.title = {"bug_hunt": "Охота на баги", "mood_doodle": "Настроение дня"}.get(kind, kind)
+	task.params = params
+	panel.run(task)
+
+
+func _press(at: Vector2) -> InputEventMouseButton:
+	var press: InputEventMouseButton = InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = at
+	return press
 
 
 ## The reception screen with the rotating presence code, normally shown on a TV in the office.

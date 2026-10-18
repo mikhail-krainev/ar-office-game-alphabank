@@ -40,8 +40,12 @@ var _enabled: bool = false
 var _queue: Array[Array] = []
 var _banner_left: float = 0.0
 var _banner_kind: String = ""
-## Date ("YYYY-MM-DD") the entry code reminder was last announced: once a day is enough.
+## Date ("YYYY-MM-DD") the entry code reminder was last announced in the game, and as a system
+## notification: once a day each is enough.
 var _entry_reminded_on: String = ""
+var _entry_notified_on: String = ""
+## The game is on screen. The system notification is for when it is not (another app or tab).
+var _focused: bool = true
 
 var _layer: CanvasLayer
 var _banner: PanelContainer
@@ -128,20 +132,30 @@ func poll() -> void:
 
 
 ## The server says whether the entry code is still to be scanned today (profile, heartbeat). The first
-## time a day it is, a banner and a system notification remind the player; the office scene keeps a
-## button for the scan while it is needed.
+## time a day it is, a banner reminds the player; the office scene keeps a button for the scan while
+## it is needed. When the game is not on screen, a system notification reminds instead.
 func set_entry_code_needed(needed: bool) -> void:
 	if needed == entry_code_needed:
 		return
 	entry_code_needed = needed
 	entry_code_needed_changed.emit(needed)
 	var today: String = Time.get_date_string_from_system()
-	if not needed or _entry_reminded_on == today:
+	if not needed:
 		return
-	_entry_reminded_on = today
-	_show_banner(NotificationTexts.title(), tr("REMIND_ENTRY_CODE"), ENTRY_CODE_KIND)
-	if is_enabled():
-		PlatformServices.show_notification(NotificationTexts.title(), tr("REMIND_ENTRY_CODE"))
+	if not _focused:
+		_notify_entry_code()
+	elif _entry_reminded_on != today:
+		_entry_reminded_on = today
+		_show_banner(NotificationTexts.title(), tr("REMIND_ENTRY_CODE"), ENTRY_CODE_KIND)
+
+
+## The system notification about the entry code, once a day, while the game is in the background.
+func _notify_entry_code() -> void:
+	var today: String = Time.get_date_string_from_system()
+	if not entry_code_needed or _entry_notified_on == today or not is_enabled():
+		return
+	_entry_notified_on = today
+	PlatformServices.show_notification(NotificationTexts.title(), tr("REMIND_ENTRY_CODE"))
 
 
 func _on_state_changed() -> void:
@@ -168,7 +182,11 @@ func _process(delta: float) -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		_focused = false
 		sync_schedule()
+		_notify_entry_code()
+	elif what == NOTIFICATION_APPLICATION_RESUMED or what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		_focused = true
 
 
 # --- Banner ----------------------------------------------------------------------

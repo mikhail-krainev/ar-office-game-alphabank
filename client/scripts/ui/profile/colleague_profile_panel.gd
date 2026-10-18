@@ -35,6 +35,7 @@ func _show_profile() -> void:
 	row.add_theme_constant_override("separation", 10)
 	content.add_child(row)
 	var avatar: AvatarView = AvatarView.new(AVATAR_SIDE)
+	avatar.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	row.add_child(avatar)
 	if _player.character_avatar:
 		avatar.show_outfit(_player.outfit, colleague.user_id)
