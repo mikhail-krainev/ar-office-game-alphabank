@@ -9,6 +9,7 @@ extends Node
 ## pause between tasks) off for the account, so it can close a whole day at any hour.
 ## --only=colleagues runs only the entry-code reminder, colleagues on the office map, the mini profile
 ## with the mood story, "Bug hunt" and "Mood of the day": other players must be in the office then.
+## --only=ar runs only the AR stickers in the photo task and squats.
 
 var _out: String = ""
 var _shot_scale: float = 0.5
@@ -62,6 +63,10 @@ func _start() -> void:
 		return
 	if _only == "colleagues":
 		await _colleagues_tour()
+		tree.quit()
+		return
+	if _only == "ar":
+		await _ar_tour()
 		tree.quit()
 		return
 	await _morning_tour()
@@ -533,12 +538,65 @@ func _colleagues_tour() -> void:
 	await _wait(0.5)
 
 
+## AR stickers over the emulated camera: shades and a crown in the photo task, the neon skeleton
+## with knee rings and the "+1" pop in squats.
+func _ar_tour() -> void:
+	OfficeFloors.reset()
+	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	await _wait(2.5)
+	var office: Node = get_tree().current_scene
+	var panel: MinigamePanel = office.get("_minigame_panel")
+	if panel.is_open():
+		panel.emit_signal("_resolved", MinigamePanel.Outcome.CANCELLED)
+		await _wait(0.5)
+	var desktop: Node = PlatformServices.get_node("Backend")
+	desktop.set("face_count", 2)
+	# Two faces take the photo after HOLD_SECONDS, so each shot comes before that.
+	for smiling: bool in [false, true]:
+		desktop.set("smiling", smiling)
+		_run_minigame(panel, "selfie", {})
+		await _wait(0.8)
+		(panel.get("_game") as Minigame).call("_start_camera")
+		await _wait(0.6)
+		await _shot("a2_selfie_crown" if smiling else "a1_selfie_shades")
+		panel.emit_signal("_resolved", MinigamePanel.Outcome.CANCELLED)
+		await _wait(0.5)
+	desktop.set("face_count", 0)
+	desktop.set("smiling", false)
+	_run_minigame(panel, "squats", {"reps": 10})
+	await _wait(0.8)
+	Input.parse_input_event(_physical_key(KEY_S, true))
+	await _wait(1.2)
+	await _shot("a3_squats_down")
+	Input.parse_input_event(_physical_key(KEY_S, false))
+	# The "+1" fades within REP_POP_SECONDS, so the shot follows the repetition closely.
+	var squats: Minigame = panel.get("_game")
+	while float(squats.get("_since_rep")) > 0.2:
+		await get_tree().process_frame
+	await _shot("a4_squats_rep")
+	if panel.is_open():
+		panel.emit_signal("_resolved", MinigamePanel.Outcome.CANCELLED)
+	await _wait(0.5)
+
+
+func _physical_key(key: Key, pressed: bool) -> InputEventKey:
+	var event: InputEventKey = InputEventKey.new()
+	event.physical_keycode = key
+	event.pressed = pressed
+	return event
+
+
 ## Opens a minigame without a server task, for screenshots.
 func _run_minigame(panel: MinigamePanel, kind: String, params: Dictionary) -> void:
 	var task: BackendModels.TaskInfo = BackendModels.TaskInfo.new()
 	task.id = kind
 	task.minigame = kind
-	task.title = {"bug_hunt": "Охота на баги", "mood_doodle": "Настроение дня"}.get(kind, kind)
+	task.title = {
+		"bug_hunt": "Охота на баги",
+		"mood_doodle": "Настроение дня",
+		"selfie": "Фото с коллегой",
+		"squats": "Утренняя зарядка",
+	}.get(kind, kind)
 	task.params = params
 	panel.run(task)
 
