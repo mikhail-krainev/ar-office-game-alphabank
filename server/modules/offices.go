@@ -180,6 +180,25 @@ func officeNameTaken(offices []Office, name, exceptID string) bool {
 	return false
 }
 
+// networksOverlap: one of `networks` shares addresses with the network of another office (not
+// `exceptID`). A request must point at one office, so office networks never overlap.
+func networksOverlap(offices []Office, networks []string, exceptID string) bool {
+	mine, _ := parseOfficeNetworks(strings.Join(networks, ","))
+	for i := range offices {
+		if offices[i].ID == exceptID {
+			continue
+		}
+		for _, theirs := range offices[i].prefixes() {
+			for _, prefix := range mine {
+				if prefix.Overlaps(theirs) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 func newOfficeID() (string, error) {
 	bytes := make([]byte, 4)
 	if _, err := rand.Read(bytes); err != nil {
@@ -329,6 +348,9 @@ func rpcAdminCreateOffice(ctx context.Context, logger runtime.Logger, _ *sql.DB,
 	if officeNameTaken(offices, office.Name, "") {
 		return "", errOfficeExists
 	}
+	if networksOverlap(offices, office.Networks, "") {
+		return "", errNetworksOverlap
+	}
 	if office.ID, err = newOfficeID(); err != nil {
 		return "", errInternal
 	}
@@ -363,6 +385,9 @@ func rpcAdminUpdateOffice(ctx context.Context, logger runtime.Logger, _ *sql.DB,
 	}
 	if officeNameTaken(offices, office.Name, office.ID) {
 		return "", errOfficeExists
+	}
+	if networksOverlap(offices, office.Networks, office.ID) {
+		return "", errNetworksOverlap
 	}
 	office.Limits = existing.Limits
 	if err := writeOffice(ctx, nk, office, ""); err != nil {

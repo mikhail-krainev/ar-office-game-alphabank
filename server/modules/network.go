@@ -12,8 +12,8 @@ import (
 
 // Office network: the second presence factor next to the entry code. The entry code, tasks, room
 // codes and colleague picks count only when the request comes from an address of the player's
-// office today (offices.go), so a player who checked in and went home cannot keep playing, and a
-// player of one city cannot play from the network of another. The address comes from Nakama: the
+// office today (offices.go), so a player who checked in and went home cannot keep playing. A player
+// who comes to the office of another city plays there for the day (followOfficeNetwork). The address comes from Nakama: the
 // connection or the first X-Forwarded-For entry. Nakama trusts that header, so its port must be
 // reachable only through a proxy that overwrites it (Caddy does by default).
 
@@ -101,18 +101,19 @@ var selfCheckedRpcs = map[string]bool{
 
 var errOfficeNetwork = runtime.NewError("office_network_required", codePermissionDenied)
 
-// gameRpc: an RPC of the game itself, which needs the office network (not admin, account or dev).
+// gameRpc: an RPC of the game itself, which needs the office network (not admin, manager, account
+// or dev).
 func gameRpc(id string) bool {
-	if anywhereRpcs[id] || id == "get_profile" || id == "list_departments" || strings.HasPrefix(id, "admin_") || strings.HasPrefix(id, "dev_") {
+	if anywhereRpcs[id] || id == "get_profile" || id == "list_departments" || strings.HasPrefix(id, "admin_") || strings.HasPrefix(id, "manager_") || strings.HasPrefix(id, "dev_") {
 		return false
 	}
 	return true
 }
 
-// officeOnly refuses the RPC outside the network of the caller's office today.
+// officeOnly refuses the RPC outside the networks of the offices.
 func officeOnly(fn rpcFunc) rpcFunc {
 	return func(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
-		allowed, err := callerInOfficeNetwork(ctx, nk)
+		allowed, err := callerInOfficeNetwork(ctx, logger, db, nk)
 		if err != nil {
 			return "", err
 		}
@@ -123,8 +124,11 @@ func officeOnly(fn rpcFunc) rpcFunc {
 	}
 }
 
-func callerInOfficeNetwork(ctx context.Context, nk runtime.NakamaModule) (bool, error) {
-	_, metadata, err := callerAccount(ctx, nk)
+// callerInOfficeNetwork: the request comes from the network of the office the player counts in
+// today, or from the network of another office, which then becomes the player's office for today
+// (followOfficeNetwork).
+func callerInOfficeNetwork(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule) (bool, error) {
+	account, metadata, err := callerAccount(ctx, nk)
 	if err != nil {
 		return false, err
 	}
@@ -132,13 +136,64 @@ func callerInOfficeNetwork(ctx context.Context, nk runtime.NakamaModule) (bool, 
 		// Game RPCs refuse other accounts themselves (not_player).
 		return true, nil
 	}
-	officeID, _ := metadata.placement(dayOf(gameNow(), gameContent.officeOffset()))
+	today := officeToday()
+	officeID, _ := metadata.placement(today)
 	office, err := readOffice(ctx, nk, officeID)
-	if err != nil || office == nil {
+	if err != nil {
 		return false, err
 	}
 	ip, _ := ctx.Value(runtime.RUNTIME_CTX_CLIENT_IP).(string)
-	return inOfficeNetwork(office.prefixes(), ip), nil
+	if office != nil && inOfficeNetwork(office.prefixes(), ip) {
+		return true, nil
+	}
+	return followOfficeNetwork(ctx, logger, db, nk, account.GetUser().GetId(), ip, today)
+}
+
+// followOfficeNetwork: an unplanned business trip. A player who came to another office without a
+// trip from the admin is recognised by that office's Wi-Fi: for the rest of the day the player
+// counts in that office (tasks, the entry code, colleagues, limits) with the home department, and
+// the home office sees where the player is (accountMetadata.Visit). Back in the network of the
+// planned office, the visit ends. Offices without a network never match, so their check stays off
+// only for their own players. false: the address is in no office network.
+func followOfficeNetwork(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, userID, ip string, today int) (bool, error) {
+	offices, err := listOffices(ctx, nk)
+	if err != nil {
+		return false, err
+	}
+	found := officeByNetwork(offices, ip)
+	if found == nil {
+		return false, nil
+	}
+	_, err = updateMetadata(ctx, db, userID, asPlayer(func(metadata *accountMetadata) error {
+		followVisit(metadata, found.ID, today)
+		return nil
+	}))
+	if err != nil {
+		return false, err
+	}
+	logger.Info("player %s is in the network of office %s today", userID, found.ID)
+	return true, nil
+}
+
+// officeByNetwork: the office whose own network has the address, or nil. Office networks never
+// overlap (offices.go), so there is at most one.
+func officeByNetwork(offices []Office, ip string) *Office {
+	for i := range offices {
+		if len(offices[i].Networks) > 0 && inOfficeNetwork(offices[i].prefixes(), ip) {
+			return &offices[i]
+		}
+	}
+	return nil
+}
+
+// followVisit makes `officeID` the player's office for `today`: a visit when it differs from the
+// planned one (the trip or the home office), no visit when it is the planned one.
+func followVisit(metadata *accountMetadata, officeID string, today int) {
+	if planned, _ := metadata.plannedPlacement(today); planned == officeID {
+		metadata.Visit = nil
+		return
+	}
+	metadata.Visit = &Visit{OfficeID: officeID, Day: today}
 }
 
 // presenceError: why presence does not count now, or "" when the player is in today's office.

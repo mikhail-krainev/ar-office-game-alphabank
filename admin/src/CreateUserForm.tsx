@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { api } from "./api";
+import type { NewUser } from "./api";
 import type { DashboardActions } from "./Dashboard";
 import { DepartmentSelect } from "./DepartmentSelect";
 import { OfficeSelect } from "./OfficeSelect";
@@ -12,7 +12,7 @@ interface Issued {
 }
 
 /** Creating an account is what activates a player: without it the game refuses to sign in. */
-export function CreateUserForm({ actions }: { actions: DashboardActions }) {
+export function CreateUserForm({ actions, create }: { actions: DashboardActions; create: (user: NewUser) => Promise<unknown> }) {
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState(() => generatePassword());
@@ -23,7 +23,7 @@ export function CreateUserForm({ actions }: { actions: DashboardActions }) {
   async function submit(event: FormEvent) {
     event.preventDefault();
     const user = { username, password, display_name: displayName, office_id: officeId, department_id: departmentId };
-    const ok = await actions.run(() => api.createUser(actions.session, user));
+    const ok = await actions.run(() => create(user));
     if (ok) {
       setIssued({ name: displayName.trim(), username: username.trim().toLowerCase(), password });
       setDisplayName("");

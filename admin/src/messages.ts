@@ -3,7 +3,12 @@ import { ApiError } from "./api";
 const MESSAGES: Record<string, string> = {
   unauthenticated: "Сессия истекла. Войдите снова.",
   network: "Сервер недоступен. Проверьте, что Nakama запущена.",
-  not_admin: "Этот аккаунт не администратор.",
+  not_admin: "Этот аккаунт не администратор и не руководитель.",
+  not_manager: "Этот аккаунт больше не руководитель.",
+  manager_right_missing: "Администратор не дал вам этого права (или только что отобрал его).",
+  out_of_scope: "Этот сотрудник не в ваших офисах и департаментах.",
+  invalid_scope: "Отметьте хотя бы один офис или департамент.",
+  networks_overlap: "Эта сеть пересекается с сетью другого офиса: у каждого офиса своя сеть.",
   test_clock_disabled: "Тестовые часы выключены: поставьте TEST_CLOCK=true в server/.env и перезапустите сервер.",
   "Invalid credentials.": "Неверный логин или пароль.",
   "User account not found.": "Неверный логин или пароль.",
@@ -33,5 +38,5 @@ export function errorText(error: unknown): string {
 }
 
 export function isSessionError(error: unknown): boolean {
-  return error instanceof ApiError && (error.key === "unauthenticated" || error.key === "not_admin");
+  return error instanceof ApiError && (error.key === "unauthenticated" || error.key === "not_admin" || error.key === "not_manager");
 }

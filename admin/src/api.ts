@@ -1,6 +1,7 @@
 import { Client, Session } from "@heroiclabs/nakama-js";
 
-// Talks to the Nakama Go module (server/modules). Every call is an admin RPC checked on the server.
+// Talks to the Nakama Go module (server/modules). The main admin calls admin_* RPCs, a manager
+// (department head) calls manager_* RPCs; the server checks the role and the scope of every call.
 
 const env = import.meta.env;
 // Opened over HTTPS (Caddy on the LAN) the panel may call only HTTPS: Nakama is proxied on 7443.
@@ -49,6 +50,47 @@ export interface Trip {
   active: boolean;
 }
 
+/** Who uses the panel: the main admin or a manager with their own, separate panel. */
+export type PanelRole = "admin" | "manager";
+
+export interface PanelSession {
+  session: Session;
+  role: PanelRole;
+}
+
+/** What a manager sees and may do (server/modules/managers.go). A whole office covers all its departments. */
+export interface ManagerScope {
+  offices: string[];
+  departments: string[];
+  can_create: boolean;
+  can_delete: boolean;
+}
+
+export interface Manager {
+  id: string;
+  username: string;
+  display_name: string;
+  scope: ManagerScope;
+  created_at: number;
+}
+
+export interface NewManager {
+  username: string;
+  password: string;
+  display_name: string;
+  scope: ManagerScope;
+}
+
+/** The manager's own view: the scope with the offices and departments it covers. */
+export interface ManagerProfile {
+  display_name: string;
+  scope: ManagerScope;
+  offices: Office[];
+  departments: Department[];
+  /** Names of all offices, to show where a player of the scope is today. */
+  office_names: Record<string, string>;
+}
+
 export interface User {
   id: string;
   username: string;
@@ -58,6 +100,8 @@ export interface User {
   office_id: string;
   department_id: string;
   trip: Trip | null;
+  /** Office the player came to today without a trip, found by its Wi-Fi; "" when none. */
+  guest_office_id: string;
   banned: boolean;
   created_at: number;
 }
@@ -80,6 +124,8 @@ export interface PlayerSummary {
   /** Office the player counts in today (the trip office on a business trip). */
   current_office_id: string;
   trip: Trip | null;
+  /** Office the player came to today without a trip, found by its Wi-Fi; "" when none. */
+  guest_office_id: string;
   banned: boolean;
   created_at: number;
   balance: number;
@@ -262,34 +308,54 @@ async function call<T>(session: Session, id: string, payload: object = {}): Prom
   }
 }
 
-export function restoreSession(): Session | null {
+export function restoreSession(): PanelSession | null {
   try {
-    const saved = JSON.parse(localStorage.getItem(SESSION_KEY) ?? "null") as { token: string; refresh: string } | null;
-    if (!saved) {
+    const saved = JSON.parse(localStorage.getItem(SESSION_KEY) ?? "null") as { token: string; refresh: string; role?: PanelRole } | null;
+    if (!saved || (saved.role !== "admin" && saved.role !== "manager")) {
       return null;
     }
     const session = Session.restore(saved.token, saved.refresh);
-    return session.isexpired(Date.now() / 1000) ? null : session;
+    return session.isexpired(Date.now() / 1000) ? null : { session, role: saved.role };
   } catch {
     return null;
   }
 }
 
-export async function signIn(username: string, password: string): Promise<Session> {
+/** Signs in and finds out which panel the account opens. Players get "not_admin". */
+async function panelRole(session: Session): Promise<PanelRole> {
+  try {
+    await call(session, "admin_list_offices");
+    return "admin";
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.key !== "not_admin") {
+      throw error;
+    }
+  }
+  try {
+    await call(session, "manager_get_scope");
+    return "manager";
+  } catch (error) {
+    if (error instanceof ApiError && error.key === "not_manager") {
+      throw new ApiError("not_admin");
+    }
+    throw error;
+  }
+}
+
+export async function signIn(username: string, password: string): Promise<PanelSession> {
   let session: Session;
   try {
     session = await client.authenticateEmail("", password, false, username.trim().toLowerCase());
   } catch (error) {
     throw await toApiError(error);
   }
-  // Only admin accounts may use the panel; the server says so on the first admin call.
-  await call(session, "admin_list_users");
+  const role = await panelRole(session);
   try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ token: session.token, refresh: session.refresh_token }));
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ token: session.token, refresh: session.refresh_token, role }));
   } catch {
     // Private mode: the session lives until the tab closes.
   }
-  return session;
+  return { session, role };
 }
 
 export async function signOut(session: Session): Promise<void> {
@@ -322,6 +388,19 @@ export const api = {
   playerStats: (s: Session, user_id: string) => call<PlayerStats>(s, "admin_player_stats", { user_id }),
   getLimits: (s: Session, office_id: string) => call<{ limits: Limits; defaults: Limits }>(s, "admin_get_limits", { office_id }),
   setLimits: (s: Session, office_id: string, limits: Limits) => call<Limits>(s, "admin_set_limits", { office_id, limits }),
+  deleteUser: (s: Session, user_id: string) => call(s, "admin_delete_user", { user_id }),
+  listManagers: (s: Session) => call<{ managers: Manager[] }>(s, "admin_list_managers").then((r) => r.managers),
+  createManager: (s: Session, manager: NewManager) => call<Manager>(s, "admin_create_manager", manager),
+  updateManager: (s: Session, user_id: string, scope: ManagerScope) => call(s, "admin_update_manager", { user_id, scope }),
   getClock: (s: Session) => call<Clock>(s, "admin_get_clock"),
   setClock: (s: Session, shift_seconds: number) => call<Clock>(s, "admin_set_clock", { shift_seconds }),
+};
+
+/** The manager's panel: only the scope the admin gave, checked again by the server on every call. */
+export const managerApi = {
+  profile: (s: Session) => call<ManagerProfile>(s, "manager_get_scope"),
+  statsOverview: (s: Session) => call<{ players: PlayerSummary[] }>(s, "manager_stats_overview").then((r) => r.players),
+  playerStats: (s: Session, user_id: string) => call<PlayerStats>(s, "manager_player_stats", { user_id }),
+  createUser: (s: Session, user: NewUser) => call<User>(s, "manager_create_user", user),
+  deleteUser: (s: Session, user_id: string) => call(s, "manager_delete_user", { user_id }),
 };

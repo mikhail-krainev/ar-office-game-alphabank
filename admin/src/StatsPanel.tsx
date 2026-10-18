@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api, type PlayerSummary } from "./api";
+import type { PlayerSummary } from "./api";
 import type { DashboardActions } from "./Dashboard";
 import { Dropdown } from "./Dropdown";
 import { formatDateTime, formatDay, formatPlayTime } from "./format";
@@ -23,7 +23,7 @@ const ALL_OFFICES = "__all__";
 
 /** Statistics: all players at a glance; a row opens the player's full activity audit. */
 export function StatsPanel({ actions }: { actions: DashboardActions }) {
-  const { session, departments, offices, report, officeName } = actions;
+  const { departments, offices, report, officeName, loadStats } = actions;
   const [players, setPlayers] = useState<PlayerSummary[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -33,11 +33,11 @@ export function StatsPanel({ actions }: { actions: DashboardActions }) {
 
   const load = useCallback(async () => {
     try {
-      setPlayers(await api.statsOverview(session));
+      setPlayers(await loadStats());
     } catch (e) {
       report(e);
     }
-  }, [session, report]);
+  }, [loadStats, report]);
 
   useEffect(() => {
     void load();
@@ -77,6 +77,7 @@ export function StatsPanel({ actions }: { actions: DashboardActions }) {
   const presentToday = ofOffice.filter((p) => p.present_today).length;
   const limited = ofOffice.filter((p) => p.play_state === "resting" || p.play_state === "blocked").length;
   const onTrip = ofOffice.filter((p) => p.trip).length;
+  const elsewhere = ofOffice.filter((p) => p.guest_office_id).length;
 
   return (
     <section className="card">
@@ -89,7 +90,7 @@ export function StatsPanel({ actions }: { actions: DashboardActions }) {
       {players && (
         <p className="muted summary-line">
           Игроков: <b>{ofOffice.length}</b> · сейчас в офисе: <b>{inOffice}</b> · были сегодня: <b>{presentToday}</b> · на
-          отдыхе или закрыто: <b>{limited}</b> · в командировке: <b>{onTrip}</b>
+          отдыхе или закрыто: <b>{limited}</b> · в командировке: <b>{onTrip}</b> · в другом офисе: <b>{elsewhere}</b>
         </p>
       )}
       <div className="filters">
@@ -149,6 +150,7 @@ export function StatsPanel({ actions }: { actions: DashboardActions }) {
                     {officeName(p.office_id)}
                     <div className="muted">{departmentName(p.department_id)}</div>
                     {p.trip && <span className="badge soft">в командировке: {officeName(p.trip.office_id)}</span>}
+                    {p.guest_office_id && <span className="badge soft">сейчас в офисе: {officeName(p.guest_office_id)}</span>}
                   </td>
                   <td>
                     <PresenceBadge player={p} /> <PlayBadge player={p} />

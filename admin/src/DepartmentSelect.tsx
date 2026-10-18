@@ -23,7 +23,7 @@ export function DepartmentSelect({
   const [name, setName] = useState("");
 
   async function create() {
-    const department = await actions.createDepartment(name, officeId);
+    const department = await actions.createDepartment?.(name, officeId);
     if (department) {
       onChange(department.id);
       setCreating(false);
@@ -57,7 +57,7 @@ export function DepartmentSelect({
         ...actions.departments
           .filter((department) => department.office_id === officeId)
           .map((department) => ({ value: department.id, label: department.name })),
-        { value: NEW_DEPARTMENT, label: "+ Новый департамент…", action: true },
+        ...(actions.createDepartment ? [{ value: NEW_DEPARTMENT, label: "+ Новый департамент…", action: true }] : []),
       ]}
       onChange={(id) => (id === NEW_DEPARTMENT ? setCreating(true) : onChange(id))}
     />

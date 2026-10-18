@@ -23,8 +23,10 @@ type userView struct {
 	OfficeID     string    `json:"office_id"`
 	DepartmentID string    `json:"department_id"`
 	Trip         *tripView `json:"trip"`
-	Banned       bool      `json:"banned"`
-	CreatedAt    int64     `json:"created_at"`
+	// Office the player came to today without a trip (found by its network); "" when none.
+	GuestOfficeID string `json:"guest_office_id"`
+	Banned        bool   `json:"banned"`
+	CreatedAt     int64  `json:"created_at"`
 }
 
 // tripView: a business trip that has not ended yet (an ended one is not shown).
@@ -67,7 +69,7 @@ func officeToday() int {
 	return dayOf(gameNow(), gameContent.officeOffset())
 }
 
-// rpcAdminListUsers: -> {"users": [userView]}, newest first.
+// rpcAdminListUsers: -> {"users": [userView]}, the admin and the players, newest first.
 func rpcAdminListUsers(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, _ string) (string, error) {
 	if err := requireAdmin(ctx, nk); err != nil {
 		return "", err
@@ -94,12 +96,17 @@ func rpcAdminListUsers(ctx context.Context, logger runtime.Logger, db *sql.DB, n
 			return "", errInternal
 		}
 		parsed := parseMetadata(metadata)
+		if parsed.Role == roleManager || parsed.Role == roleRemoved {
+			// Managers have their own list (admin_list_managers).
+			continue
+		}
 		user.DisplayName = displayName.String
 		user.Role = parsed.Role
 		user.DepartmentID = parsed.DepartmentID
 		if parsed.Role == rolePlayer {
 			user.OfficeID = parsed.homeOffice()
 			user.Trip = tripOf(parsed, officeToday())
+			user.GuestOfficeID = parsed.guestOffice(officeToday())
 		}
 		user.Banned = disabled.Unix() > 0
 		user.CreatedAt = created.Unix()
@@ -112,74 +119,95 @@ func rpcAdminListUsers(ctx context.Context, logger runtime.Logger, db *sql.DB, n
 	return encodeResponse(map[string]any{"users": users})
 }
 
-// rpcAdminCreateUser: {"username", "password", "display_name", "office_id", "department_id"} -> userView.
+// newPlayerRequest: the account a player gets from the admin or a manager.
+type newPlayerRequest struct {
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	DisplayName  string `json:"display_name"`
+	OfficeID     string `json:"office_id"`
+	DepartmentID string `json:"department_id"`
+}
+
+// rpcAdminCreateUser: newPlayerRequest -> userView.
 func rpcAdminCreateUser(ctx context.Context, logger runtime.Logger, _ *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	if err := requireAdmin(ctx, nk); err != nil {
 		return "", err
 	}
-	var request struct {
-		Username     string `json:"username"`
-		Password     string `json:"password"`
-		DisplayName  string `json:"display_name"`
-		OfficeID     string `json:"office_id"`
-		DepartmentID string `json:"department_id"`
-	}
+	var request newPlayerRequest
 	if err := decodePayload(payload, &request); err != nil {
 		return "", err
 	}
-	username := normalizeUsername(request.Username)
-	if err := validateUsername(username); err != nil {
-		return "", err
-	}
-	if err := validatePassword(request.Password); err != nil {
-		return "", err
-	}
-	displayName, err := normalizeName(request.DisplayName)
+	user, err := createPlayer(ctx, logger, nk, request)
 	if err != nil {
 		return "", err
 	}
+	return encodeResponse(user)
+}
+
+// createPlayer checks the request and creates the player in the office and department.
+func createPlayer(ctx context.Context, logger runtime.Logger, nk runtime.NakamaModule, request newPlayerRequest) (userView, error) {
 	if _, err := findOffice(ctx, nk, request.OfficeID); err != nil {
-		return "", err
+		return userView{}, err
 	}
 	department, err := findOfficeDepartment(ctx, nk, request.OfficeID, request.DepartmentID)
 	if err != nil {
-		return "", err
-	}
-	if existing, err := nk.UsersGetUsername(ctx, []string{username}); err != nil {
-		return "", errInternal
-	} else if len(existing) > 0 {
-		return "", errUsernameTaken
-	}
-	userID, _, created, err := nk.AuthenticateEmail(ctx, playerEmail(username), request.Password, username, true)
-	if err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "username") {
-			return "", errUsernameTaken
-		}
-		logger.Error("create user %q: %v", username, err)
-		return "", errInternal
-	}
-	if !created {
-		return "", errUsernameTaken
+		return userView{}, err
 	}
 	metadata := accountMetadata{Role: rolePlayer, OfficeID: request.OfficeID, DepartmentID: department.ID}
+	user, err := createAccount(ctx, logger, nk, request.Username, request.Password, request.DisplayName, metadata)
+	if err != nil {
+		return userView{}, err
+	}
+	logger.Info("user %s (%s) created in office %s, department %s", user.ID, user.Username, request.OfficeID, department.ID)
+	return user, nil
+}
+
+// createAccount creates a signed-in-by-username account with the metadata (a player or a manager).
+func createAccount(ctx context.Context, logger runtime.Logger, nk runtime.NakamaModule, rawUsername, password, rawName string, metadata accountMetadata) (userView, error) {
+	username := normalizeUsername(rawUsername)
+	if err := validateUsername(username); err != nil {
+		return userView{}, err
+	}
+	if err := validatePassword(password); err != nil {
+		return userView{}, err
+	}
+	displayName, err := normalizeName(rawName)
+	if err != nil {
+		return userView{}, err
+	}
+	if existing, err := nk.UsersGetUsername(ctx, []string{username}); err != nil {
+		return userView{}, errInternal
+	} else if len(existing) > 0 {
+		return userView{}, errUsernameTaken
+	}
+	userID, _, created, err := nk.AuthenticateEmail(ctx, playerEmail(username), password, username, true)
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "username") {
+			return userView{}, errUsernameTaken
+		}
+		logger.Error("create user %q: %v", username, err)
+		return userView{}, errInternal
+	}
+	if !created {
+		return userView{}, errUsernameTaken
+	}
 	if err := nk.AccountUpdateId(ctx, userID, "", metadata.toMap(), displayName, "", "", "", ""); err != nil {
 		logger.Error("set up user %s: %v", userID, err)
-		// A half-made account without a department must not stay.
+		// A half-made account without a role and a department must not stay.
 		if deleteErr := nk.AccountDeleteId(ctx, userID, false); deleteErr != nil {
 			logger.Error("delete half-made user %s: %v", userID, deleteErr)
 		}
-		return "", errInternal
+		return userView{}, errInternal
 	}
-	logger.Info("user %s (%s) created in office %s, department %s", userID, username, request.OfficeID, department.ID)
-	return encodeResponse(userView{
-		ID: userID, Username: username, DisplayName: displayName, Role: rolePlayer,
-		OfficeID: request.OfficeID, DepartmentID: department.ID, CreatedAt: time.Now().Unix(),
-	})
+	return userView{
+		ID: userID, Username: username, DisplayName: displayName, Role: metadata.Role,
+		OfficeID: metadata.OfficeID, DepartmentID: metadata.DepartmentID, CreatedAt: time.Now().Unix(),
+	}, nil
 }
 
 // rpcAdminUpdateUser: {"user_id", "display_name"?, "office_id"?, "department_id"?} -> {}. A new
 // home office needs a department of that office.
-func rpcAdminUpdateUser(ctx context.Context, logger runtime.Logger, _ *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
+func rpcAdminUpdateUser(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	if err := requireAdmin(ctx, nk); err != nil {
 		return "", err
 	}
@@ -192,17 +220,17 @@ func rpcAdminUpdateUser(ctx context.Context, logger runtime.Logger, _ *sql.DB, n
 	if err := decodePayload(payload, &request); err != nil {
 		return "", err
 	}
-	metadata, err := playerMetadata(ctx, nk, request.UserID)
-	if err != nil {
-		return "", err
-	}
 	displayName := ""
 	if request.DisplayName != "" {
+		var err error
 		if displayName, err = normalizeName(request.DisplayName); err != nil {
 			return "", err
 		}
 	}
-	if request.OfficeID != "" || request.DepartmentID != "" {
+	_, err := updateMetadata(ctx, db, request.UserID, asPlayer(func(metadata *accountMetadata) error {
+		if request.OfficeID == "" && request.DepartmentID == "" {
+			return nil
+		}
 		office, department := metadata.homeOffice(), metadata.DepartmentID
 		if request.OfficeID != "" {
 			office = request.OfficeID
@@ -211,16 +239,22 @@ func rpcAdminUpdateUser(ctx context.Context, logger runtime.Logger, _ *sql.DB, n
 			department = request.DepartmentID
 		}
 		if _, err := findOffice(ctx, nk, office); err != nil {
-			return "", err
+			return err
 		}
 		if _, err := findOfficeDepartment(ctx, nk, office, department); err != nil {
-			return "", err
+			return err
 		}
 		metadata.OfficeID, metadata.DepartmentID = office, department
+		return nil
+	}))
+	if err != nil {
+		return "", err
 	}
-	if err := nk.AccountUpdateId(ctx, request.UserID, "", metadata.toMap(), displayName, "", "", "", ""); err != nil {
-		logger.Error("update user %s: %v", request.UserID, err)
-		return "", errInternal
+	if displayName != "" {
+		if err := nk.AccountUpdateId(ctx, request.UserID, "", nil, displayName, "", "", "", ""); err != nil {
+			logger.Error("rename user %s: %v", request.UserID, err)
+			return "", errInternal
+		}
 	}
 	return "{}", nil
 }
@@ -228,7 +262,7 @@ func rpcAdminUpdateUser(ctx context.Context, logger runtime.Logger, _ *sql.DB, n
 // rpcAdminSetTrip: {"user_id", "office_id", "department_id", "until"} -> {"trip"}. Sends the player
 // on a business trip until "until" ("YYYY-MM-DD", inclusive): in that office and department they
 // check in, meet colleagues and follow its limits. Empty "office_id" ends the trip now.
-func rpcAdminSetTrip(ctx context.Context, logger runtime.Logger, _ *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
+func rpcAdminSetTrip(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	if err := requireAdmin(ctx, nk); err != nil {
 		return "", err
 	}
@@ -241,29 +275,27 @@ func rpcAdminSetTrip(ctx context.Context, logger runtime.Logger, _ *sql.DB, nk r
 	if err := decodePayload(payload, &request); err != nil {
 		return "", err
 	}
-	metadata, err := playerMetadata(ctx, nk, request.UserID)
-	if err != nil {
-		return "", err
-	}
 	today := officeToday()
-	if request.OfficeID == "" {
-		metadata.Trip = nil
-	} else {
+	metadata, err := updateMetadata(ctx, db, request.UserID, asPlayer(func(metadata *accountMetadata) error {
+		if request.OfficeID == "" {
+			metadata.Trip = nil
+			return nil
+		}
 		until, ok := parseTripDate(request.Until)
 		if !ok || !validTripEnd(until, today) || request.OfficeID == metadata.homeOffice() {
-			return "", errInvalidTrip
+			return errInvalidTrip
 		}
 		if _, err := findOffice(ctx, nk, request.OfficeID); err != nil {
-			return "", err
+			return err
 		}
 		if _, err := findOfficeDepartment(ctx, nk, request.OfficeID, request.DepartmentID); err != nil {
-			return "", err
+			return err
 		}
 		metadata.Trip = &Trip{OfficeID: request.OfficeID, DepartmentID: request.DepartmentID, Until: until}
-	}
-	if err := nk.AccountUpdateId(ctx, request.UserID, "", metadata.toMap(), "", "", "", "", ""); err != nil {
-		logger.Error("set trip of %s: %v", request.UserID, err)
-		return "", errInternal
+		return nil
+	}))
+	if err != nil {
+		return "", err
 	}
 	if metadata.Trip == nil {
 		logger.Info("trip of %s ended", request.UserID)
@@ -285,7 +317,8 @@ func rpcAdminSetPassword(ctx context.Context, logger runtime.Logger, db *sql.DB,
 	if err := decodePayload(payload, &request); err != nil {
 		return "", err
 	}
-	if _, err := playerMetadata(ctx, nk, request.UserID); err != nil {
+	// Players and managers; the admin password comes only from the server environment.
+	if _, err := accountMetadataOf(ctx, nk, request.UserID); err != nil {
 		return "", err
 	}
 	if err := validatePassword(request.Password); err != nil {
@@ -372,10 +405,10 @@ func setBannedAt(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runt
 	})
 }
 
-// playerMetadata loads a player account for an admin action. Admin accounts are managed only
-// through the server environment.
-func playerMetadata(ctx context.Context, nk runtime.NakamaModule, userID string) (accountMetadata, error) {
-	if userID == "" || userID == systemUserID {
+// accountMetadataOf loads a player or manager account for an admin action. Admin accounts are
+// managed only through the server environment.
+func accountMetadataOf(ctx context.Context, nk runtime.NakamaModule, userID string) (accountMetadata, error) {
+	if !isUUID(userID) || userID == systemUserID {
 		return accountMetadata{}, errUserNotFound
 	}
 	account, err := nk.AccountGetId(ctx, userID)
@@ -383,8 +416,24 @@ func playerMetadata(ctx context.Context, nk runtime.NakamaModule, userID string)
 		return accountMetadata{}, errUserNotFound
 	}
 	metadata := parseMetadata(account.GetUser().GetMetadata())
-	if metadata.Role == roleAdmin {
+	switch metadata.Role {
+	case roleAdmin:
 		return accountMetadata{}, errAdminProtected
+	case roleRemoved:
+		return accountMetadata{}, errUserNotFound
+	}
+	return metadata, nil
+}
+
+// playerMetadata loads a player account for an admin or manager action (read only: changes go
+// through updateMetadata).
+func playerMetadata(ctx context.Context, nk runtime.NakamaModule, userID string) (accountMetadata, error) {
+	metadata, err := accountMetadataOf(ctx, nk, userID)
+	if err != nil {
+		return accountMetadata{}, err
+	}
+	if err := playerOnly(metadata); err != nil {
+		return accountMetadata{}, err
 	}
 	metadata.Role = rolePlayer
 	return metadata, nil

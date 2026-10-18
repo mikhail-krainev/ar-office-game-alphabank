@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@heroiclabs/nakama-js";
-import { api, type Clock, type Department, type Office, type User } from "./api";
+import { api, type Clock, type Department, type Office, type PlayerStats, type PlayerSummary, type User } from "./api";
 import { errorText, isSessionError } from "./messages";
 import { CreateUserForm } from "./CreateUserForm";
 import { UsersTable } from "./UsersTable";
@@ -9,8 +9,9 @@ import { StatsPanel } from "./StatsPanel";
 import { LimitsPanel } from "./LimitsPanel";
 import { OfficesPanel } from "./OfficesPanel";
 import { ClockPanel } from "./ClockPanel";
+import { ManagersPanel } from "./ManagersPanel";
 
-type Section = "access" | "offices" | "stats" | "limits" | "clock";
+type Section = "access" | "managers" | "offices" | "stats" | "limits" | "clock";
 
 export interface DashboardActions {
   session: Session;
@@ -20,7 +21,11 @@ export interface DashboardActions {
   departmentName: (id: string) => string;
   /** Runs a server call, reloads the lists afterwards and reports errors. Resolves to false on error. */
   run: (action: () => Promise<unknown>) => Promise<boolean>;
-  createDepartment: (name: string, officeId: string) => Promise<Department | null>;
+  /** Null in the manager panel: only the admin creates departments. */
+  createDepartment: ((name: string, officeId: string) => Promise<Department | null>) | null;
+  /** Statistics of the players this panel may see: all for the admin, the scope for a manager. */
+  loadStats: () => Promise<PlayerSummary[]>;
+  loadPlayerStats: (userId: string) => Promise<PlayerStats>;
   /** Shows an error of a call made outside `run`, or signs out when the session is gone. */
   report: (error: unknown) => void;
 }
@@ -91,6 +96,8 @@ export function Dashboard({ session, onSessionLost }: { session: Session; onSess
     [run, session],
   );
 
+  const loadStats = useCallback(() => api.statsOverview(session), [session]);
+  const loadPlayerStats = useCallback((userId: string) => api.playerStats(session, userId), [session]);
   const officeName = useCallback((id: string) => offices.find((o) => o.id === id)?.name ?? "—", [offices]);
   const departmentName = useCallback((id: string) => departments.find((d) => d.id === id)?.name ?? "—", [departments]);
   const actions: DashboardActions = {
@@ -101,6 +108,8 @@ export function Dashboard({ session, onSessionLost }: { session: Session; onSess
     departmentName,
     run,
     createDepartment,
+    loadStats,
+    loadPlayerStats,
     report: fail,
   };
   const players = users.filter((user) => user.role === "player");
@@ -115,6 +124,9 @@ export function Dashboard({ session, onSessionLost }: { session: Session; onSess
       <nav className="sections" role="tablist">
         <button role="tab" aria-selected={section === "access"} className={section === "access" ? "tab active" : "tab"} onClick={() => setSection("access")}>
           Доступ
+        </button>
+        <button role="tab" aria-selected={section === "managers"} className={section === "managers" ? "tab active" : "tab"} onClick={() => setSection("managers")}>
+          Руководители
         </button>
         <button role="tab" aria-selected={section === "offices"} className={section === "offices" ? "tab active" : "tab"} onClick={() => setSection("offices")}>
           Офисы
@@ -133,10 +145,11 @@ export function Dashboard({ session, onSessionLost }: { session: Session; onSess
       </nav>
       {section === "access" && (
         <>
-          <CreateUserForm actions={actions} />
+          <CreateUserForm actions={actions} create={(user) => api.createUser(session, user)} />
           <UsersTable actions={actions} users={players} />
         </>
       )}
+      {section === "managers" && <ManagersPanel actions={actions} />}
       {section === "offices" && (
         <>
           <OfficesPanel actions={actions} players={players} />

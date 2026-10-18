@@ -1,19 +1,19 @@
 import { useCallback, useState } from "react";
-import type { Session } from "@heroiclabs/nakama-js";
-import { restoreSession, signOut } from "./api";
+import { restoreSession, signOut, type PanelSession } from "./api";
 import { LoginForm } from "./LoginForm";
 import { Dashboard } from "./Dashboard";
+import { ManagerDashboard } from "./ManagerDashboard";
 import { AlfaLogo } from "./AlfaLogo";
 
 export function App() {
-  const [session, setSession] = useState<Session | null>(() => restoreSession());
+  const [panel, setPanel] = useState<PanelSession | null>(() => restoreSession());
 
   const handleSignOut = useCallback(() => {
-    if (session) {
-      void signOut(session);
+    if (panel) {
+      void signOut(panel.session);
     }
-    setSession(null);
-  }, [session]);
+    setPanel(null);
+  }, [panel]);
 
   return (
     <>
@@ -24,16 +24,37 @@ export function App() {
             <span>
               Alfa<span className="brand-accent">Game</span>
             </span>
-            <span className="brand-sub">админка</span>
+            <span className="brand-sub">{panel?.role === "manager" ? "панель руководителя" : "админка"}</span>
           </span>
-          {session && (
+          {panel && (
             <button className="link" onClick={handleSignOut}>
               Выйти
             </button>
           )}
         </div>
       </header>
-      <main className="app">{session ? <Dashboard session={session} onSessionLost={handleSignOut} /> : <LoginForm onSignedIn={setSession} />}</main>
+      <main className="app">
+        <Panel panel={panel} onSessionLost={handleSignOut} onSignedIn={setPanel} />
+      </main>
     </>
   );
+}
+
+/** The admin and a manager get two different panels; the server checks the role of every call too. */
+function Panel({
+  panel,
+  onSessionLost,
+  onSignedIn,
+}: {
+  panel: PanelSession | null;
+  onSessionLost: () => void;
+  onSignedIn: (panel: PanelSession) => void;
+}) {
+  if (!panel) {
+    return <LoginForm onSignedIn={onSignedIn} />;
+  }
+  if (panel.role === "manager") {
+    return <ManagerDashboard session={panel.session} onSessionLost={onSessionLost} />;
+  }
+  return <Dashboard session={panel.session} onSessionLost={onSessionLost} />;
 }

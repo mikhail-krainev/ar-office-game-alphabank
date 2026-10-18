@@ -33,25 +33,27 @@ type playerSummary struct {
 	// Office the player counts in today (another one on a business trip) and the trip.
 	CurrentOfficeID string    `json:"current_office_id"`
 	Trip            *tripView `json:"trip"`
-	Banned          bool      `json:"banned"`
-	CreatedAt       int64     `json:"created_at"`
-	Balance         int64     `json:"balance"`
-	Streak          int       `json:"streak"`
-	BestStreak      int       `json:"best_streak"`
-	OfficeDays      int       `json:"office_days"`
-	ExcusedDays     int       `json:"excused_days"`
-	TasksTotal      int       `json:"tasks_total"`
-	SkippedTotal    int       `json:"skipped_total"`
-	CoinsEarned     int       `json:"coins_earned"`
-	Colleagues      int       `json:"colleagues"`
-	FirstDay        int       `json:"first_day"`
-	LastLoginDay    int       `json:"last_login_day"`
-	PresentToday    bool      `json:"present_today"`
-	InOffice        bool      `json:"in_office"`
-	Today           int       `json:"today"`
-	LastActivity    int64     `json:"last_activity"`
-	Car             string    `json:"car"`
-	Status          string    `json:"status"`
+	// Office the player came to today without a trip, found by its network; "" when none.
+	GuestOfficeID string `json:"guest_office_id"`
+	Banned        bool   `json:"banned"`
+	CreatedAt     int64  `json:"created_at"`
+	Balance       int64  `json:"balance"`
+	Streak        int    `json:"streak"`
+	BestStreak    int    `json:"best_streak"`
+	OfficeDays    int    `json:"office_days"`
+	ExcusedDays   int    `json:"excused_days"`
+	TasksTotal    int    `json:"tasks_total"`
+	SkippedTotal  int    `json:"skipped_total"`
+	CoinsEarned   int    `json:"coins_earned"`
+	Colleagues    int    `json:"colleagues"`
+	FirstDay      int    `json:"first_day"`
+	LastLoginDay  int    `json:"last_login_day"`
+	PresentToday  bool   `json:"present_today"`
+	InOffice      bool   `json:"in_office"`
+	Today         int    `json:"today"`
+	LastActivity  int64  `json:"last_activity"`
+	Car           string `json:"car"`
+	Status        string `json:"status"`
 	// Play today and the play-limit state (play.go): ok, warning, resting or blocked.
 	PlaySecondsToday int    `json:"play_seconds_today"`
 	PlayState        string `json:"play_state"`
@@ -117,7 +119,7 @@ const playerRowsQuery = `
 	LEFT JOIN storage s ON s.collection = 'game' AND s.key = 'state' AND s.user_id = u.id
 	WHERE u.id <> $1`
 
-// loadPlayerRows reads players (not admins) with their state. An empty `userID` means all players.
+// loadPlayerRows reads players (not admins or managers) with their state. An empty `userID` means all players.
 func loadPlayerRows(ctx context.Context, db *sql.DB, nk runtime.NakamaModule, userID string) ([]playerSummary, map[string]*PlayerState, error) {
 	offices, err := listOffices(ctx, nk)
 	if err != nil {
@@ -153,7 +155,7 @@ func loadPlayerRows(ctx context.Context, db *sql.DB, nk runtime.NakamaModule, us
 			return nil, nil, err
 		}
 		parsed := parseMetadata(metadata)
-		if parsed.Role == roleAdmin {
+		if playerOnly(parsed) != nil {
 			continue
 		}
 		state := parseState(stateValue)
@@ -172,6 +174,7 @@ func loadPlayerRows(ctx context.Context, db *sql.DB, nk runtime.NakamaModule, us
 		summarize(&summary, state, today)
 		summary.CurrentOfficeID, _ = parsed.placement(today)
 		summary.Trip = tripOf(parsed, today)
+		summary.GuestOfficeID = parsed.guestOffice(today)
 		limits, ok := officeLimits[summary.CurrentOfficeID]
 		if !ok {
 			limits = gameContent.Rules.Limits
@@ -261,25 +264,34 @@ func rpcAdminPlayerStats(ctx context.Context, logger runtime.Logger, db *sql.DB,
 	if _, err := playerMetadata(ctx, nk, request.UserID); err != nil {
 		return "", err
 	}
-	players, states, err := loadPlayerRows(ctx, db, nk, request.UserID)
+	stats, err := playerStats(ctx, logger, db, nk, request.UserID)
 	if err != nil {
-		logger.Error("stats of %s: %v", request.UserID, err)
-		return "", errInternal
+		return "", err
+	}
+	return encodeResponse(stats)
+}
+
+// playerStats: the audit of one player for the admin or a manager.
+func playerStats(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, userID string) (map[string]any, error) {
+	players, states, err := loadPlayerRows(ctx, db, nk, userID)
+	if err != nil {
+		logger.Error("stats of %s: %v", userID, err)
+		return nil, errInternal
 	}
 	if len(players) == 0 {
-		return "", errUserNotFound
+		return nil, errUserNotFound
 	}
-	player, state := players[0], states[request.UserID]
+	player, state := players[0], states[userID]
 	names := newNameBook(gameContent)
 	offices, err := listOffices(ctx, nk)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	for _, office := range offices {
 		names.names[office.ID] = office.Name
 	}
 
-	activity, err := loadActivity(ctx, db, request.UserID)
+	activity, err := loadActivity(ctx, db, userID)
 	names.addUsersFromActivity(activity)
 	var (
 		ledger   []ledgerEntry
@@ -287,17 +299,17 @@ func rpcAdminPlayerStats(ctx context.Context, logger runtime.Logger, db *sql.DB,
 		requests []rewardRequest
 	)
 	if err == nil {
-		ledger, err = loadLedger(ctx, db, request.UserID)
+		ledger, err = loadLedger(ctx, db, userID)
 	}
 	if err == nil {
-		flagged, err = loadFlagged(ctx, db, request.UserID)
+		flagged, err = loadFlagged(ctx, db, userID)
 	}
 	if err == nil {
-		requests, err = loadRewardRequests(ctx, db, request.UserID)
+		requests, err = loadRewardRequests(ctx, db, userID)
 	}
 	if err != nil {
-		logger.Error("stats of %s: %v", request.UserID, err)
-		return "", errInternal
+		logger.Error("stats of %s: %v", userID, err)
+		return nil, errInternal
 	}
 	days := statsDays(state, player, names)
 	for _, photo := range state.PhotoRequests {
@@ -309,18 +321,18 @@ func rpcAdminPlayerStats(ctx context.Context, logger runtime.Logger, db *sql.DB,
 		}
 	}
 	if err := names.resolveUsers(ctx, nk); err != nil {
-		logger.Error("stats names for %s: %v", request.UserID, err)
-		return "", errInternal
+		logger.Error("stats names for %s: %v", userID, err)
+		return nil, errInternal
 	}
 	photos := state.PhotoRequests
 	if photos == nil {
 		photos = []PhotoRequest{}
 	}
-	return encodeResponse(map[string]any{
+	return map[string]any{
 		"player": player, "days": days, "activity": activity, "ledger": ledger, "suspicious": flagged,
 		"reward_requests": requests, "photo_requests": photos, "names": names.names,
 		"excused_days": sortedDays(state.ExcusedDays),
-	})
+	}, nil
 }
 
 // statsDays: every day from the player's first day to today, newest first, that is a workday or

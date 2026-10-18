@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from "react";
-import type { Session } from "@heroiclabs/nakama-js";
-import { signIn } from "./api";
+import { signIn, type PanelSession } from "./api";
 import { errorText } from "./messages";
 
-export function LoginForm({ onSignedIn }: { onSignedIn: (session: Session) => void }) {
+export function LoginForm({ onSignedIn }: { onSignedIn: (panel: PanelSession) => void }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -24,7 +23,8 @@ export function LoginForm({ onSignedIn }: { onSignedIn: (session: Session) => vo
 
   return (
     <form className="card login" onSubmit={submit}>
-      <h1>Вход администратора</h1>
+      <h1>Вход в панель</h1>
+      <p className="muted">Для администратора и руководителей.</p>
       <label>
         Логин
         <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" required />

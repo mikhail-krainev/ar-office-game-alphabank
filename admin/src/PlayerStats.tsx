@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { api, type ActivityEvent, type LedgerEntry, type OfficeVisit, type PlayerStats as Stats, type StatsDay } from "./api";
+import { type ActivityEvent, type LedgerEntry, type OfficeVisit, type PlayerStats as Stats, type StatsDay } from "./api";
 import type { DashboardActions } from "./Dashboard";
 import { Dropdown } from "./Dropdown";
 import { formatDate, formatDateTime, formatDay, formatMinutes, formatPlayTime, formatTime, plural, weekdayOf } from "./format";
@@ -31,17 +31,17 @@ export function PlayerStats({
   departmentName: (id: string) => string;
   onBack: () => void;
 }) {
-  const { session, report } = actions;
+  const { report, loadPlayerStats } = actions;
   const [stats, setStats] = useState<Stats | null>(null);
   const [tab, setTab] = useState<Tab>("days");
 
   const load = useCallback(async () => {
     try {
-      setStats(await api.playerStats(session, userId));
+      setStats(await loadPlayerStats(userId));
     } catch (e) {
       report(e);
     }
-  }, [session, userId, report]);
+  }, [loadPlayerStats, userId, report]);
 
   useEffect(() => {
     void load();

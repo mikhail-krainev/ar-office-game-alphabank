@@ -24,7 +24,7 @@ function OfficeDepartments({ actions, office, players }: { actions: DashboardAct
 
   async function create(event: FormEvent) {
     event.preventDefault();
-    if (await actions.createDepartment(name, office.id)) {
+    if (await actions.createDepartment?.(name, office.id)) {
       setName("");
     }
   }

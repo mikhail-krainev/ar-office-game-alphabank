@@ -236,7 +236,7 @@ func rpcPlayHeartbeat(ctx context.Context, logger runtime.Logger, db *sql.DB, nk
 	}
 	// The heartbeat checks the office network itself (selfCheckedRpcs): one from outside still tells
 	// the server that the player left the office Wi-Fi (visits.go) before it is refused.
-	allowed, err := callerInOfficeNetwork(ctx, nk)
+	allowed, err := callerInOfficeNetwork(ctx, logger, db, nk)
 	if err != nil {
 		return "", err
 	}

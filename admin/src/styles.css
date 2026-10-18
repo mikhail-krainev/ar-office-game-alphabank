@@ -853,3 +853,58 @@ code.network {
   font-size: 1.4rem;
   font-variant-numeric: tabular-nums;
 }
+
+/* Manager access: offices with their departments as checkboxes. */
+.scope-editor {
+  display: grid;
+  gap: 12px;
+  margin: 8px 0 16px;
+}
+
+.scope-offices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.scope-office {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+}
+
+.scope-office-head {
+  padding-bottom: 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+label.check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+label.check input {
+  width: auto;
+  margin: 0;
+}
+
+.scope-rights {
+  display: grid;
+  gap: 6px;
+}
+
+.scope-edit h3 {
+  margin-top: 0;
+}
+
+.manager-head p {
+  margin-bottom: 0;
+}

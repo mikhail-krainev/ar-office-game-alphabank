@@ -70,6 +70,16 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"admin_set_limits":        rpcAdminSetLimits,
 		"admin_get_clock":         rpcAdminGetClock,
 		"admin_set_clock":         rpcAdminSetClock,
+		"admin_delete_user":       rpcAdminDeleteUser,
+		"admin_list_managers":     rpcAdminListManagers,
+		"admin_create_manager":    rpcAdminCreateManager,
+		"admin_update_manager":    rpcAdminUpdateManager,
+		// Manager panel: from anywhere, each call checks the manager's scope (managers.go).
+		"manager_get_scope":      rpcManagerGetScope,
+		"manager_stats_overview": rpcManagerStatsOverview,
+		"manager_player_stats":   rpcManagerPlayerStats,
+		"manager_create_user":    rpcManagerCreateUser,
+		"manager_delete_user":    rpcManagerDeleteUser,
 		// Game: only from the office network (officeOnly below), except the ones in anywhereRpcs.
 		"login":                 rpcLogin,
 		"get_my_profile":        rpcGetMyProfile,

@@ -25,6 +25,12 @@ export function UsersTable({ actions, users }: { actions: DashboardActions; user
     }
   }
 
+  function remove(user: User) {
+    if (window.confirm(`Удалить аккаунт ${user.username} (${user.display_name})? Прогресс, монеты и история удалятся без возврата.`)) {
+      void run(() => api.deleteUser(session, user.id));
+    }
+  }
+
   function endTrip(user: User) {
     if (window.confirm(`Завершить командировку ${user.display_name}? С этого момента игрок снова в своём офисе.`)) {
       void run(() => api.setTrip(session, user.id, { office_id: "", department_id: "", until: "" }));
@@ -59,6 +65,7 @@ export function UsersTable({ actions, users }: { actions: DashboardActions; user
                   onEndTrip={() => endTrip(user)}
                   onPassword={() => void resetPassword(user)}
                   onBan={() => toggleBan(user)}
+                  onDelete={() => remove(user)}
                 />
               ))}
             </tbody>
@@ -76,6 +83,7 @@ function UserRow({
   onEndTrip,
   onPassword,
   onBan,
+  onDelete,
 }: {
   actions: DashboardActions;
   user: User;
@@ -83,6 +91,7 @@ function UserRow({
   onEndTrip: () => void;
   onPassword: () => void;
   onBan: () => void;
+  onDelete: () => void;
 }) {
   const { session, run } = actions;
   // A new home office waits for a department of that office before it is saved.
@@ -126,6 +135,7 @@ function UserRow({
         ) : (
           <span className="muted">—</span>
         )}
+        {user.guest_office_id && <div className="hint">сейчас в офисе «{actions.officeName(user.guest_office_id)}» (по Wi-Fi)</div>}
       </td>
       <td className="nowrap">{formatDateTime(user.created_at)}</td>
       <td className="actions">
@@ -138,6 +148,9 @@ function UserRow({
           </button>
           <button className={user.banned ? "secondary" : "danger"} onClick={onBan}>
             {user.banned ? "Разблокировать" : "Заблокировать"}
+          </button>
+          <button className="danger" onClick={onDelete}>
+            Удалить
           </button>
         </div>
       </td>
