@@ -37,6 +37,10 @@ type publicPlayer struct {
 	office     string
 	avatar     string
 	status     string
+	// For the office map (mood.go): the streak, the outfit and whether today's story exists.
+	streak  int
+	outfit  map[string]string
+	hasMood bool
 }
 
 // readPlayers loads the public cards of players (admins and unknown ids are left out), with the
@@ -75,6 +79,9 @@ func readPlayers(ctx context.Context, nk runtime.NakamaModule, userIDs []string,
 		}
 		player := result[object.GetUserId()]
 		player.status = state.Status
+		player.streak = streak(state.PresenceDays, state.keptDays(), today, state.FirstDay)
+		player.outfit = state.Outfit
+		player.hasMood = state.MoodDay == today
 		if state.Avatar != "" {
 			player.avatar = state.Avatar
 		}

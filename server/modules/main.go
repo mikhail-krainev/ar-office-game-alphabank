@@ -107,6 +107,8 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"mark_inbox_read":       rpcMarkInboxRead,
 		"respond_photo_request": rpcRespondPhotoRequest,
 		"get_facts":             rpcGetFacts,
+		"office_players":        rpcOfficePlayers,
+		"get_mood":              rpcGetMood,
 		"set_facts":             rpcSetFacts,
 		"send_facts":            rpcSendFacts,
 		"answer_facts":          rpcAnswerFacts,

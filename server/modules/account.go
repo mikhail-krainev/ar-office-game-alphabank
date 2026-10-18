@@ -50,12 +50,12 @@ func (tx *gameTx) processAbsences() error {
 	start := max(state.ProcessedDay+1, state.FirstDay, tx.today-attendance.MaxCatchUpDays)
 	for day := start; day < tx.today; day++ {
 		key := dayKey(day)
-		if !isWorkday(day) || state.PresenceDays[key] || state.ExcusedDays[key] {
+		if !isWorkday(day) || state.PresenceDays[key] || state.keptDays()[key] {
 			continue
 		}
-		missed := missedInRow(state.PresenceDays, state.ExcusedDays, day, state.FirstDay)
+		missed := missedInRow(state.PresenceDays, state.keptDays(), day, state.FirstDay)
 		if missed == 1 {
-			if lost := streak(state.PresenceDays, state.ExcusedDays, day-1, state.FirstDay); lost > 0 {
+			if lost := streak(state.PresenceDays, state.keptDays(), day-1, state.FirstDay); lost > 0 {
 				if _, err := tx.notify(tx.me, "streak_reset", map[string]any{"streak": lost, "date": shortDate(day)}, ""); err != nil {
 					return err
 				}
@@ -95,6 +95,10 @@ type profileData struct {
 	CarName      string            `json:"car_name"`
 	CarSpeedKmh  int               `json:"car_speed_kmh"`
 	Outfit       map[string]string `json:"outfit"`
+	// In the office Wi-Fi today without the entry code: the game reminds to scan it (wifi_arrival.go).
+	NeedsEntryCode bool `json:"needs_entry_code"`
+	// A "Mood of the day" drawing of today exists (mood.go).
+	HasMood bool `json:"has_mood"`
 }
 
 func (tx *gameTx) profile() profileData {
@@ -102,9 +106,10 @@ func (tx *gameTx) profile() profileData {
 	data := profileData{
 		UserID: tx.me.userID, DisplayName: tx.me.displayName(), Department: tx.department(),
 		Status: state.Status, Avatar: state.Avatar, Balance: tx.me.balance,
-		StreakDays:   streak(state.PresenceDays, state.ExcusedDays, tx.today, state.FirstDay),
+		StreakDays:   streak(state.PresenceDays, state.keptDays(), tx.today, state.FirstDay),
 		PresentToday: state.PresenceDays[dayKey(tx.today)], InOffice: tx.inMyOffice(),
 		Multiplier: tx.multiplier(), CarID: state.Car, CarName: state.Car, CarSpeedKmh: 110, Outfit: state.Outfit,
+		NeedsEntryCode: tx.needsEntryCode(), HasMood: state.MoodDay == tx.today,
 	}
 	if car := tx.content.car(state.Car); car != nil {
 		data.CarName, data.CarSpeedKmh = car.Name, car.SpeedKmh
@@ -126,6 +131,8 @@ func rpcLogin(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime
 			tx.credit(tx.me, int64(welcome), "welcome_bonus", "welcome")
 		}
 		state.LastLoginDay = tx.today
+		// Login is an office-network RPC: opening the game in the office Wi-Fi is an arrival.
+		tx.noteWifiArrival()
 		tx.logActivity(tx.me, activityLogin, nil)
 		if err := tx.tick(); err != nil {
 			return nil, err
@@ -176,7 +183,7 @@ func rpcGetProfilePage(ctx context.Context, logger runtime.Logger, db *sql.DB, n
 			days = append(days, record)
 		}
 		return map[string]any{
-			"profile": tx.profile(), "best_streak": max(state.BestStreak, streak(state.PresenceDays, state.ExcusedDays, tx.today, state.FirstDay)),
+			"profile": tx.profile(), "best_streak": max(state.BestStreak, streak(state.PresenceDays, state.keptDays(), tx.today, state.FirstDay)),
 			"office_days_total": len(state.PresenceDays), "tasks_total": tasksTotal, "coins_earned_total": state.CoinsEarned,
 			"days": days, "today": tx.today, "has_custom_avatar": state.HasCustomAvatar,
 		}, nil

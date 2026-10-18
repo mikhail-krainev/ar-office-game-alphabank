@@ -62,6 +62,8 @@ type playStatus struct {
 	// Seconds left of the grace (warning), of the deferral (deferred) or of the rest (resting).
 	SecondsLeft int64 `json:"seconds_left"`
 	BeatSeconds int   `json:"beat_seconds"`
+	// Heartbeat only: in the office Wi-Fi without the entry code today (wifi_arrival.go).
+	NeedsEntryCode bool `json:"needs_entry_code,omitempty"`
 }
 
 // minigameDeadline notes the task minigame named by a heartbeat (nil = none on screen) and returns
@@ -251,6 +253,7 @@ func rpcPlayHeartbeat(ctx context.Context, logger runtime.Logger, db *sql.DB, nk
 		if err != nil {
 			return nil, err
 		}
+		tx.noteWifiArrival()
 		if err := tx.seenInOfficeNetwork(limits); err != nil {
 			return nil, err
 		}
@@ -266,7 +269,9 @@ func rpcPlayHeartbeat(ctx context.Context, logger runtime.Logger, db *sql.DB, nk
 			state.PlaySeconds[dayKey(tx.today)] += credit
 		}
 		tx.logPlayEvent(event, limits)
-		return currentPlayStatus(&state.Play, tx.now, tx.offset, limits), nil
+		status := currentPlayStatus(&state.Play, tx.now, tx.offset, limits)
+		status.NeedsEntryCode = tx.needsEntryCode()
+		return status, nil
 	})
 }
 

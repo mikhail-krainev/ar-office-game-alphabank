@@ -145,7 +145,7 @@ func (tx *gameTx) enterOffice() error {
 	if !again || openVisit(state, tx.today) == nil {
 		startVisit(state, tx.today, tx.now)
 	}
-	state.BestStreak = max(state.BestStreak, streak(state.PresenceDays, state.ExcusedDays, tx.today, state.FirstDay))
+	state.BestStreak = max(state.BestStreak, streak(state.PresenceDays, state.keptDays(), tx.today, state.FirstDay))
 	tx.logActivity(tx.me, activityCheckIn, map[string]any{"office": state.PresenceOffice})
 	return tx.writePresence(true, "")
 }

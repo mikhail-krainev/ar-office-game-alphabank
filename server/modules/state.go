@@ -110,6 +110,11 @@ type PlayerState struct {
 	// Visits per day between the entry code and the end of the day (the exit code or "Go home" in
 	// CheckoutAt), by the office Wi-Fi (visits.go).
 	Visits map[string][]OfficeVisit `json:"visits,omitempty"`
+	// Unix time the game was first open in the office Wi-Fi on a day without the entry code
+	// (wifi_arrival.go). Such a day keeps the streak and is not fined, but does not add to it.
+	WifiArrivals map[string]int64 `json:"wifi_arrivals,omitempty"`
+	// Day of the last "Mood of the day" drawing (mood.go); 0 when there is none.
+	MoodDay int `json:"mood_day,omitempty"`
 }
 
 func (s *PlayerState) normalize() {
@@ -127,6 +132,9 @@ func (s *PlayerState) normalize() {
 	}
 	if s.Visits == nil {
 		s.Visits = map[string][]OfficeVisit{}
+	}
+	if s.WifiArrivals == nil {
+		s.WifiArrivals = map[string]int64{}
 	}
 	for _, m := range []*map[string][]string{&s.Completed, &s.Skipped, &s.Pending, &s.Taken, &s.Met, &s.Purchases} {
 		if *m == nil {

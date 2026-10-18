@@ -210,7 +210,7 @@ func (tx *gameTx) isUnlocked(entry *WardrobeEntry) bool {
 	case "shop":
 		return contains(state.OwnedItems, entry.Unlock.Item)
 	case "streak":
-		return max(state.BestStreak, streak(state.PresenceDays, state.ExcusedDays, tx.today, state.FirstDay)) >= entry.Unlock.Days
+		return max(state.BestStreak, streak(state.PresenceDays, state.keptDays(), tx.today, state.FirstDay)) >= entry.Unlock.Days
 	}
 	return true
 }
@@ -235,7 +235,7 @@ func rpcGetWardrobe(ctx context.Context, logger runtime.Logger, db *sql.DB, nk r
 		state := tx.me.state
 		return map[string]any{
 			"items": items, "outfit": state.Outfit,
-			"streak_days": streak(state.PresenceDays, state.ExcusedDays, tx.today, state.FirstDay),
+			"streak_days": streak(state.PresenceDays, state.keptDays(), tx.today, state.FirstDay),
 		}, nil
 	})
 }

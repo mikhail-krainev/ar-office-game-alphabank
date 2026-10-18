@@ -69,7 +69,7 @@ func summarize(summary *playerSummary, state *PlayerState, today int) {
 	summary.Today = today
 	summary.FirstDay = state.FirstDay
 	summary.LastLoginDay = state.LastLoginDay
-	summary.Streak = streak(state.PresenceDays, state.ExcusedDays, today, state.FirstDay)
+	summary.Streak = streak(state.PresenceDays, state.keptDays(), today, state.FirstDay)
 	summary.BestStreak = max(state.BestStreak, summary.Streak)
 	summary.OfficeDays = len(state.PresenceDays)
 	summary.ExcusedDays = len(state.ExcusedDays)
@@ -226,6 +226,9 @@ type statsDay struct {
 	// (CheckoutAt), else the end of the last visit; 0 while the player is still in.
 	Visits []OfficeVisit `json:"visits"`
 	LeftAt int64         `json:"left_at"`
+	// The game was open in the office Wi-Fi that day without the entry code (wifi_arrival.go): the
+	// first such moment, 0 when none.
+	WifiArrivalAt int64 `json:"wifi_arrival_at"`
 }
 
 type ledgerEntry struct {
@@ -354,6 +357,7 @@ func statsDays(state *PlayerState, player playerSummary, names *nameBook) []stat
 			Visits:      visitsOfDay(state, day, today, player.now, player.awaySeconds),
 		}
 		record.LeftAt = leftAt(state, record.Visits, day)
+		record.WifiArrivalAt = state.WifiArrivals[key]
 		if record.Tasks == nil {
 			record.Tasks = []TaskLogEntry{}
 		}
@@ -367,7 +371,7 @@ func statsDays(state *PlayerState, player playerSummary, names *nameBook) []stat
 			names.user(id)
 		}
 		idle := !record.Present && len(record.Tasks) == 0 && len(record.Skipped) == 0 && len(record.Pending) == 0 &&
-			len(record.Purchases) == 0 && record.Earned == 0 && record.PlaySeconds == 0
+			len(record.Purchases) == 0 && record.Earned == 0 && record.PlaySeconds == 0 && record.WifiArrivalAt == 0
 		if !record.Workday && idle {
 			continue
 		}

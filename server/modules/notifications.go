@@ -196,7 +196,7 @@ func rpcGetNotificationPlan(ctx context.Context, logger runtime.Logger, db *sql.
 		rules := tx.content.Rules.Notifications
 		facts := planFacts{
 			now: tx.now, offset: tx.offset, today: tx.today,
-			streak:       streak(state.PresenceDays, state.ExcusedDays, tx.today, state.FirstDay),
+			streak:       streak(state.PresenceDays, state.keptDays(), tx.today, state.FirstDay),
 			presentToday: state.PresenceDays[dayKey(tx.today)], reminderTimes: rules.ReminderTimes,
 			raffleJoined: contains(draw.draw.Tickets, tx.me.userID),
 			funTexts:     tx.content.FunTexts, funWindows: rules.FunWindows, funMax: rules.FunMax, seed: tx.me.userID,

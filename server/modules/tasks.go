@@ -62,7 +62,7 @@ type taskResult struct {
 
 func (tx *gameTx) multiplier() float64 {
 	state := tx.me.state
-	return streakMultiplier(streak(state.PresenceDays, state.ExcusedDays, tx.today, state.FirstDay), state.PresenceDays[dayKey(tx.today)], &tx.content.Rules)
+	return streakMultiplier(streak(state.PresenceDays, state.keptDays(), tx.today, state.FirstDay), state.PresenceDays[dayKey(tx.today)], &tx.content.Rules)
 }
 
 // taskReward: base reward x difficulty x streak multiplier.
@@ -207,6 +207,8 @@ type taskProof struct {
 	PartnerID     string   `json:"partner_id"`
 	Faces         int      `json:"faces"`
 	Score         float64  `json:"score"`
+	// "Mood of the day": the drawing, a base64 PNG (mood.go).
+	MoodPNG string `json:"mood_png"`
 }
 
 // rpcCompleteTask: {"task_id", "success", "operation_key", "proof"} -> taskResult.
@@ -256,6 +258,13 @@ func rpcCompleteTask(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 				return nil, err
 			}
 		}
+		var mood []byte
+		if task.Minigame == moodMinigame {
+			// The drawing is the proof: without a valid one the task does not count.
+			if mood, result.Error = validMoodPNG(proof.MoodPNG); result.Error != "" {
+				return result, nil
+			}
+		}
 		if task.Minigame == factsMinigame {
 			// The colleague's guess, not the client, decides the score.
 			proof.Score = tx.factsQuizScore(task)
@@ -278,6 +287,9 @@ func rpcCompleteTask(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 			return result, err
 		}
 		tx.rememberMet(task, proof)
+		if mood != nil {
+			tx.saveMood(mood)
+		}
 		tx.grantTask(tx.me, task, tx.today, reward)
 		result.Reward = reward
 		result.Balance = tx.me.balance
@@ -294,6 +306,7 @@ func parseProof(raw map[string]any) taskProof {
 		proof.Faces = int(faces)
 	}
 	proof.Score, _ = raw["score"].(float64)
+	proof.MoodPNG, _ = raw["mood_png"].(string)
 	if ids, ok := raw["colleague_ids"].([]any); ok {
 		for _, id := range ids {
 			if text, ok := id.(string); ok {
