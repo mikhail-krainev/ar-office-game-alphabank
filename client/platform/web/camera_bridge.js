@@ -1,6 +1,7 @@
 // Web camera, motion and speech bridge for WebPlatform (client/platform/web/web_platform.gd). Loaded
 // into the page with JavaScriptBridge.eval. Frames are processed here and only results go to Godot: a
-// small RGB preview, QR text, face boxes, pose landmarks, marker ids, object labels, step count,
+// small RGB preview, QR text, face boxes with the eye, forehead and chin points for AR stickers, pose
+// landmarks, marker ids, object labels (with a box when the detector found one), step count,
 // recognized speech. Raw camera frames never leave the browser.
 //
 // Libraries and models come from cdn.jsdelivr.net and storage.googleapis.com on first use (the phone
@@ -43,6 +44,9 @@ window.alfaCamera = window.alfaCamera || (function () {
 	var MARKERS_LONG_SIDE = 480;
 	var MIN_LABEL_SCORE = 0.2;
 	var MAX_LABELS = 6;
+	// Face landmarker points the AR stickers stand on (client/scripts/ar): the outer eye corners, the top
+	// of the forehead and the chin.
+	var FACE_ANCHORS = { leftEye: 33, rightEye: 263, top: 10, chin: 152 };
 	var QR_REPEAT_MS = 1500;
 	var MAX_FACES = 4;
 
@@ -262,6 +266,11 @@ window.alfaCamera = window.alfaCamera || (function () {
 		return found > 0 ? Math.min(1, total / found * 1.6) : -1;
 	}
 
+	// [x, y] of a face landmark, mirrored for the front camera like the preview.
+	function anchor(point) {
+		return point ? [state.front ? 1 - point.x : point.x, point.y] : null;
+	}
+
 	function detectFaces(now) {
 		if (!state.landmarker || now - state.lastFacesAt < FACES_INTERVAL_MS) { return; }
 		state.lastFacesAt = now;
@@ -273,7 +282,16 @@ window.alfaCamera = window.alfaCamera || (function () {
 				minY = Math.min(minY, point.y); maxY = Math.max(maxY, point.y);
 			});
 			var x = state.front ? 1 - maxX : minX;
-			return { x: x, y: minY, w: maxX - minX, h: maxY - minY, smiling: smile((result.faceBlendshapes || [])[index]) };
+			var face = { x: x, y: minY, w: maxX - minX, h: maxY - minY, smiling: smile((result.faceBlendshapes || [])[index]) };
+			var left = anchor(points[FACE_ANCHORS.leftEye]);
+			var right = anchor(points[FACE_ANCHORS.rightEye]);
+			if (left && right) {
+				// Eyes in screen order, left to right, whichever camera.
+				face.eyes = left[0] <= right[0] ? left.concat(right) : right.concat(left);
+				face.top = anchor(points[FACE_ANCHORS.top]);
+				face.chin = anchor(points[FACE_ANCHORS.chin]);
+			}
+			return face;
 		});
 		report('faces', JSON.stringify({ faces: faces }));
 	}
@@ -317,19 +335,37 @@ window.alfaCamera = window.alfaCamera || (function () {
 		if (!state.detector || !state.classifier || now - state.lastLabelsAt < LABELS_INTERVAL_MS) { return; }
 		state.lastLabelsAt = now;
 		var best = {};
-		function add(category) {
+		var boxes = {};
+		function add(category, box) {
 			var name = category.categoryName || category.displayName;
-			if (name && !(best[name] >= category.score)) { best[name] = category.score; }
+			if (name && !(best[name] >= category.score)) {
+				best[name] = category.score;
+				if (box) { boxes[name] = box; }
+			}
 		}
 		(state.detector.detectForVideo(state.video, now).detections || []).forEach(function (detection) {
-			(detection.categories || []).forEach(add);
+			var box = normalizedBox(detection.boundingBox);
+			(detection.categories || []).forEach(function (category) { add(category, box); });
 		});
+		// The classifier names the whole frame: its labels have no box.
 		var classes = (state.classifier.classifyForVideo(state.video, now).classifications || [])[0];
-		((classes && classes.categories) || []).forEach(add);
+		((classes && classes.categories) || []).forEach(function (category) { add(category, null); });
 		var labels = Object.keys(best).map(function (name) {
-			return { id: name, confidence: best[name] };
+			var label = { id: name, confidence: best[name] };
+			if (boxes[name]) { label.box = boxes[name]; }
+			return label;
 		}).sort(function (a, b) { return b.confidence - a.confidence; }).slice(0, MAX_LABELS);
 		report('labels', JSON.stringify({ labels: labels }));
+	}
+
+	// Detector box in video pixels -> [x, y, w, h] normalized to the frame, mirrored like the preview.
+	function normalizedBox(box) {
+		var width = state.video.videoWidth;
+		var height = state.video.videoHeight;
+		if (!box || !width || !height) { return null; }
+		var x = box.originX / width;
+		var w = box.width / width;
+		return [state.front ? 1 - x - w : x, box.originY / height, w, box.height / height];
 	}
 
 	var DETECTORS = { qr: scanQr, faces: detectFaces, pose: detectPose, markers: detectMarkers, labels: detectLabels };

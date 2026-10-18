@@ -34,6 +34,17 @@ class Target:
 	func is_recognized(detected: Array[SensorModels.ObjectLabel]) -> bool:
 		return confidence_in(detected) >= MIN_CONFIDENCE
 
+	## Where the object is in the frame: the box of the most confident matching label the detector
+	## located, or an empty rect (only the classifier saw it, or it is not there).
+	func locate(detected: Array[SensorModels.ObjectLabel]) -> Rect2:
+		var best: float = -1.0
+		var bounds: Rect2 = Rect2()
+		for label: SensorModels.ObjectLabel in detected:
+			if labels.has(label.id) and label.bounds.has_area() and label.confidence > best:
+				best = label.confidence
+				bounds = label.bounds
+		return bounds
+
 
 static func defaults() -> Array[Target]:
 	return [

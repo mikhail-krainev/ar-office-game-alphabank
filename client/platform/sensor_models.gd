@@ -11,10 +11,19 @@ class Face:
 	var bounds: Rect2 = Rect2()
 	## Probability of a smile, 0..1, or -1 when the detector does not report it.
 	var smiling: float = -1.0
+	## Points the AR stickers stand on (scripts/ar): the outer eye corners in screen order, the top of
+	## the forehead and the chin. Unknown (has_anchors() false) when the detector sends only the box.
+	var left_eye: Vector2 = Vector2.ZERO
+	var right_eye: Vector2 = Vector2.ZERO
+	var top: Vector2 = Vector2.ZERO
+	var chin: Vector2 = Vector2.ZERO
 
 	func _init(p_bounds: Rect2 = Rect2(), p_smiling: float = -1.0) -> void:
 		bounds = p_bounds
 		smiling = p_smiling
+
+	func has_anchors() -> bool:
+		return left_eye != right_eye
 
 
 ## One recognized object: the model label text and how sure the model is.
@@ -23,16 +32,26 @@ class ObjectLabel:
 
 	var id: String = ""
 	var confidence: float = 0.0
+	## Where the object is in the frame (normalized); empty when only the whole frame was classified.
+	var bounds: Rect2 = Rect2()
 
-	func _init(p_id: String = "", p_confidence: float = 0.0) -> void:
+	func _init(p_id: String = "", p_confidence: float = 0.0, p_bounds: Rect2 = Rect2()) -> void:
 		id = p_id
 		confidence = p_confidence
+		bounds = p_bounds
 
 
 ## Pose landmark names used by game code (MediaPipe landmark indices map to these).
 const POSE_LANDMARKS: Array[StringName] = [
-	&"nose", &"left_shoulder", &"right_shoulder", &"left_hip", &"right_hip",
-	&"left_knee", &"right_knee", &"left_ankle", &"right_ankle",
+	&"nose",
+	&"left_shoulder",
+	&"right_shoulder",
+	&"left_hip",
+	&"right_hip",
+	&"left_knee",
+	&"right_knee",
+	&"left_ankle",
+	&"right_ankle",
 ]
 
 
@@ -53,7 +72,8 @@ static func parse_pose(json: String) -> Dictionary:
 	return result
 
 
-## Faces JSON: {"faces": [{"x": 0.1, "y": 0.2, "w": 0.3, "h": 0.3, "smiling": 0.9}, ...]}.
+## Faces JSON: {"faces": [{"x": 0.1, "y": 0.2, "w": 0.3, "h": 0.3, "smiling": 0.9,
+## "eyes": [lx, ly, rx, ry], "top": [x, y], "chin": [x, y]}, ...]}; the points are optional.
 static func parse_faces(json: String) -> Array[Face]:
 	var result: Array[Face] = []
 	var parsed: Variant = JSON.parse_string(json)
@@ -66,8 +86,34 @@ static func parse_faces(json: String) -> Array[Face]:
 		if not entry is Dictionary:
 			continue
 		var face: Dictionary = entry
-		var bounds: Rect2 = Rect2(float(face.get("x", 0)), float(face.get("y", 0)), float(face.get("w", 0)), float(face.get("h", 0)))
-		result.append(Face.new(bounds, float(face.get("smiling", -1.0))))
+		var bounds: Rect2 = Rect2(
+			float(face.get("x", 0)),
+			float(face.get("y", 0)),
+			float(face.get("w", 0)),
+			float(face.get("h", 0))
+		)
+		var parsed_face: Face = Face.new(bounds, float(face.get("smiling", -1.0)))
+		var eyes: Array = _numbers(face.get("eyes"), 4)
+		var top: Array = _numbers(face.get("top"), 2)
+		var chin: Array = _numbers(face.get("chin"), 2)
+		if not eyes.is_empty() and not top.is_empty() and not chin.is_empty():
+			parsed_face.left_eye = Vector2(eyes[0], eyes[1])
+			parsed_face.right_eye = Vector2(eyes[2], eyes[3])
+			parsed_face.top = Vector2(top[0], top[1])
+			parsed_face.chin = Vector2(chin[0], chin[1])
+		result.append(parsed_face)
+	return result
+
+
+## `value` as `count` floats, or [] when it is not an array of that many numbers.
+static func _numbers(value: Variant, count: int) -> Array:
+	if not value is Array or (value as Array).size() != count:
+		return []
+	var result: Array = []
+	for item: Variant in value:
+		if not (item is float or item is int):
+			return []
+		result.append(float(item))
 	return result
 
 
@@ -84,7 +130,8 @@ static func parse_markers(json: String) -> PackedInt32Array:
 	return result
 
 
-## Labels JSON: {"labels": [{"id": "coffee mug", "confidence": 0.82}, ...]}, most confident first.
+## Labels JSON: {"labels": [{"id": "coffee mug", "confidence": 0.82, "box": [x, y, w, h]}, ...]}, most
+## confident first; "box" only for objects the detector located.
 static func parse_labels(json: String) -> Array[ObjectLabel]:
 	var result: Array[ObjectLabel] = []
 	var parsed: Variant = JSON.parse_string(json)
@@ -96,7 +143,15 @@ static func parse_labels(json: String) -> Array[ObjectLabel]:
 	for entry: Variant in labels:
 		if entry is Dictionary:
 			var label: Dictionary = entry
-			result.append(ObjectLabel.new(str(label.get("id", "")), float(label.get("confidence", 0.0))))
+			var box: Array = _numbers(label.get("box"), 4)
+			var bounds: Rect2 = (
+				Rect2(box[0], box[1], box[2], box[3]) if not box.is_empty() else Rect2()
+			)
+			result.append(
+				ObjectLabel.new(
+					str(label.get("id", "")), float(label.get("confidence", 0.0)), bounds
+				)
+			)
 	return result
 
 

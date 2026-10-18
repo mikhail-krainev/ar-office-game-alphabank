@@ -218,7 +218,8 @@ func _pose() -> Dictionary:
 func _labels() -> Array[SensorModels.ObjectLabel]:
 	var result: Array[SensorModels.ObjectLabel] = []
 	if not label_id.is_empty():
-		result.append(SensorModels.ObjectLabel.new(label_id, 0.86))
+		# Like the detector: the object is located, so the AR target lock follows it.
+		result.append(SensorModels.ObjectLabel.new(label_id, 0.86, Rect2(0.3, 0.25, 0.4, 0.45)))
 	result.append(SensorModels.ObjectLabel.new("person", 0.42))
 	return result
 
@@ -229,7 +230,14 @@ func _faces() -> Array[SensorModels.Face]:
 		var bounds: Rect2 = Rect2(0.1 + i * 0.3, 0.3, 0.22, 0.3)
 		if _camera_front:
 			bounds.position.x = 1.0 - bounds.end.x
-		result.append(SensorModels.Face.new(bounds, 0.95 if smiling else 0.05))
+		var face: SensorModels.Face = SensorModels.Face.new(bounds, 0.95 if smiling else 0.05)
+		# Landmarks like the face landmarker sends, for the AR stickers.
+		var eye_y: float = bounds.position.y + bounds.size.y * 0.42
+		face.left_eye = Vector2(bounds.position.x + bounds.size.x * 0.2, eye_y)
+		face.right_eye = Vector2(bounds.end.x - bounds.size.x * 0.2, eye_y)
+		face.top = Vector2(bounds.get_center().x, bounds.position.y)
+		face.chin = Vector2(bounds.get_center().x, bounds.end.y)
+		result.append(face)
 	return result
 
 

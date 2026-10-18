@@ -3,11 +3,15 @@ extends Minigame
 ## "Find the object": the game names an everyday office thing - a mug, a plant, a screen - and the
 ## player shows it to the camera. MediaPipe models recognize it; the frame never leaves the phone.
 ## Each round asks for a different object, and the camera has to leave it before the next round.
+## AR: a target lock follows the object where the detector locates it (else a reticle in the middle),
+## with its name on a tag, and a burst of sparks marks each find (scripts/ar).
 
 const DEFAULT_ROUNDS: int = 3
 const DEFAULT_TIME_LIMIT: float = 120.0
 const HOLD_SECONDS: float = 0.8
 const METER_RECT: Rect2 = Rect2(40, 256, 240, 10)
+## The reticle when the object has no box: this share of the view, centred.
+const RETICLE_SHARE: float = 0.55
 
 var _targets: Array[OfficeObjects.Target] = []
 var _round: int = 0
@@ -18,6 +22,9 @@ var _time_limit: float = DEFAULT_TIME_LIMIT
 var _labels: Array[SensorModels.ObjectLabel] = []
 var _confidence: float = 0.0
 var _flash: float = 0.0
+## Where the current object is in the frame (empty when unknown), and the AR motion time.
+var _object_bounds: Rect2 = Rect2()
+var _ar_time: float = 0.0
 
 var _view: CameraView
 var _target_label: Label
@@ -54,6 +61,7 @@ func _exit_tree() -> void:
 func _on_labels(labels: Array[SensorModels.ObjectLabel]) -> void:
 	_labels = labels
 	_confidence = _current().confidence_in(labels)
+	_object_bounds = _current().locate(labels)
 
 
 func _current() -> OfficeObjects.Target:
@@ -63,6 +71,7 @@ func _current() -> OfficeObjects.Target:
 func _process(delta: float) -> void:
 	super(delta)
 	_flash = maxf(0.0, _flash - delta * 2.0)
+	_ar_time += delta
 	if not is_done():
 		_time_left -= delta
 		_hold = _hold + delta if _confidence >= OfficeObjects.MIN_CONFIDENCE else 0.0
@@ -78,6 +87,7 @@ func _process(delta: float) -> void:
 func _found() -> void:
 	_hold = 0.0
 	_confidence = 0.0
+	_object_bounds = Rect2()
 	_flash = 1.0
 	_round += 1
 	if _round >= _rounds:
@@ -95,11 +105,17 @@ func _update_labels() -> void:
 	_status.text = "%s   %s" % [tr("MG_ROUND") % [mini(_round + 1, _rounds), _rounds], tr("MG_TIME") % ceili(maxf(_time_left, 0.0))]
 
 
-func _draw_overlay(view: CameraView, _image_rect: Rect2) -> void:
-	var color: Color = UiStyle.RED if _confidence >= OfficeObjects.MIN_CONFIDENCE else Color.WHITE
-	view.draw_rect(Rect2(Vector2(4, 4), view.size - Vector2(8, 8)), color, false, 2.0)
+func _draw_overlay(view: CameraView, image_rect: Rect2) -> void:
+	var locked: bool = _confidence >= OfficeObjects.MIN_CONFIDENCE
+	var target: Rect2 = Rect2(view.size * (1.0 - RETICLE_SHARE) / 2.0, view.size * RETICLE_SHARE)
+	if _object_bounds.has_area():
+		target = Rect2(ArAnchor.to_view(_object_bounds.position, image_rect), _object_bounds.size * image_rect.size)
+		target = target.intersection(Rect2(Vector2(2, 2), view.size - Vector2(4, 4)))
+	var tag: String = tr(_current().name_key) if _confidence > 0.0 else ""
+	ArPainter.target_lock(view, target, tag, locked, _ar_time)
 	if _flash > 0.0:
-		view.draw_rect(Rect2(Vector2.ZERO, view.size), Color(1, 1, 1, _flash * 0.6))
+		view.draw_rect(Rect2(Vector2.ZERO, view.size), Color(1, 1, 1, _flash * 0.4))
+		ArPainter.burst(view, view.size / 2.0, minf(view.size.x, view.size.y) * 0.45, 1.0 - _flash)
 
 
 func _draw() -> void:

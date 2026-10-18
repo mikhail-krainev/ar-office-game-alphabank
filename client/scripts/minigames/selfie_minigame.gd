@@ -3,7 +3,8 @@ extends Minigame
 ## "Photo with a colleague": the server picks a colleague who checked in at the office today. The two
 ## find each other and look into the front camera together; face detection only counts the faces
 ## (at least two) and identifies nobody. No photo is stored or sent. The server then asks the
-## colleague in their own game to confirm the photo, and the reward waits for that answer.
+## colleague in their own game to confirm the photo, and the reward waits for that answer. AR: every
+## face gets neon shades, a smiling one also a crown with sparks (scripts/ar), drawn on the phone only.
 ## Needs context["colleague"] (BackendModels.Colleague) from Backend.social.assign_colleague().
 
 const MIN_FACES: int = 2
@@ -17,6 +18,8 @@ var _time_left: float = DEFAULT_TIME_LIMIT
 var _camera_on: bool = false
 var _captured: bool = false
 var _flash: float = 0.0
+## Seconds since the camera started, for the AR stickers' motion.
+var _ar_time: float = 0.0
 
 var _intro: Control
 var _view: CameraView
@@ -81,6 +84,7 @@ func _smiling_count() -> int:
 func _process(delta: float) -> void:
 	super(delta)
 	_flash = maxf(0.0, _flash - delta * 1.5)
+	_ar_time += delta
 	if is_done():
 		return
 	_time_left -= delta
@@ -120,8 +124,11 @@ func _capture() -> void:
 
 func _draw_faces(view: CameraView, image_rect: Rect2) -> void:
 	for face: SensorModels.Face in _faces:
-		var rect: Rect2 = Rect2(image_rect.position + face.bounds.position * image_rect.size, face.bounds.size * image_rect.size)
-		var color: Color = UiStyle.RED if face.smiling >= SMILE_THRESHOLD else Color.WHITE
-		view.draw_rect(rect, color, false, 2.0)
+		var anchor: ArAnchor = ArAnchor.of_face(face, image_rect)
+		var smiling: bool = face.smiling >= SMILE_THRESHOLD
+		ArPainter.shades(view, anchor, UiStyle.RED if smiling else ArPainter.NEON_CYAN)
+		if smiling:
+			ArPainter.crown(view, anchor, _ar_time)
+			ArPainter.sparks(view, anchor.top, anchor.eye_span() * 1.1, _ar_time, UiStyle.GOLD)
 	if _flash > 0.0:
 		view.draw_rect(Rect2(Vector2.ZERO, view.size), Color(1, 1, 1, _flash))
