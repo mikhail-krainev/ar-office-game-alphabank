@@ -148,6 +148,13 @@ func scan_qr(prompt: String, kind: QrPayload.Kind) -> QrPayload:
 	return payload
 
 
+## Hides the open scanner while something covers it. On the web the camera is a <video> under the
+## game seen through a hole in the canvas, so only a hidden CameraView takes the video away.
+func set_qr_scanner_visible(is_shown: bool) -> void:
+	if _qr_overlay != null:
+		_qr_overlay.visible = is_shown
+
+
 ## Scans a colleague's "My QR" and asks the server who it is. The result carries the error key when
 ## the code is the player's own ("own_code"), expired or unknown; colleague_error_text() words it.
 func scan_colleague(prompt: String) -> BackendModels.ColleagueResult:

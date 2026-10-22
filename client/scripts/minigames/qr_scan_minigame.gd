@@ -34,7 +34,9 @@ func _toggle_profile() -> void:
 	if _profile_card != null:
 		_profile_card.queue_free()
 		_profile_card = null
+		set_qr_scanner_visible(true)
 		return
+	set_qr_scanner_visible(false)
 	_profile_card = ColorRect.new()
 	(_profile_card as ColorRect).color = UiStyle.PAPER
 	_profile_card.size = Vector2(AREA_SIZE.x, STATUS_Y - 20)
