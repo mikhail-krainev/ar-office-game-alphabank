@@ -117,7 +117,8 @@ HTTPS-адрес, но только для одного порта: для Nakam
   `http://localhost:5173` с Mac после `npm run dev`).
 - Экран у ресепшна: страница `https://<ip>:6443/#key=...` в браузере ноутбука (`tools/office-screen`) или окно
   Godot на Mac (`./run.sh --office-screen`).
-- QR-коды комнат печатаются скриптом `tools/printables/make_printables.py`.
+- Эмблемы комнат показывает вкладка «Комнаты» экрана офиса, плакаты с ними печатает скрипт
+  `tools/printables/make_printables.py`.
 - Сеть офиса (`OFFICE_NETWORKS` в `server/.env`) для `run-lan.sh` оставьте пустой. Docker Desktop на
   macOS не передаёт контейнерам адреса телефонов: все запросы приходят с адреса шлюза Docker (172.x).
   Роль второго фактора здесь играет сама сеть: сервер доступен только из Wi-Fi, к которому подключён Mac.

@@ -2,7 +2,7 @@ class_name DevQrCodes
 extends RefCounted
 ## DEV-ONLY: codes the desktop sensor emulator can "show" to the camera. The entry and exit codes
 ## and the other players come from the dev RPCs of a server running with DEV_MODE=true; the secret
-## that signs the codes never leaves the server.
+## that signs the codes never leaves the server. Room emblems are separate buttons (RoomEmblems).
 
 ## [label, QR text] pairs from the last refresh().
 static var _entries: Array[Array] = []
@@ -15,9 +15,6 @@ static func refresh() -> void:
 	if codes.ok:
 		result.append(["office IN", QrPayload.presence(str(codes.data.get("entry", "")))])
 		result.append(["office OUT", QrPayload.checkout(str(codes.data.get("exit", "")))])
-	for floor_id: StringName in OfficeFloors.ORDER:
-		for room: MapLayout.Room in OfficeFloors.layout(floor_id).rooms:
-			result.append(["room " + room.id, QrPayload.room(room.id)])
 	# Other players' "My QR" codes; "*" marks who is in the office now.
 	var players: ServerSession.RpcResult = await Backend.dev_call("dev_list_players")
 	for player: Variant in players.data.get("players", []):
@@ -38,7 +35,7 @@ static func suggestions() -> Array[Array]:
 ## the office codes rotate every 30 s, the players' "My QR" every 10 s.
 static func fresh_text(index: int) -> String:
 	var label: String = str(_entries[index][0]) if index < _entries.size() else ""
-	if not label.begins_with("room") and label not in ["expired", "wifi"]:
+	if label not in ["expired", "wifi"]:
 		await refresh()
 	for entry: Array in _entries:
 		if str(entry[0]) == label:

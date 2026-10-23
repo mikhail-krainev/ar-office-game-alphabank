@@ -83,6 +83,7 @@ services:
       - ../build/web:/srv/web:ro
       - ../admin/dist:/srv/admin:ro
       - ../tools/office-screen:/srv/office-screen:ro
+      - ../client/assets/brand/emblems:/srv/emblems:ro
     ports:
       - "8443:8443"
       - "7443:7443"

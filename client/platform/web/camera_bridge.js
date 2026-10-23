@@ -1,14 +1,15 @@
 // Web camera, motion and speech bridge for WebPlatform (client/platform/web/web_platform.gd). Loaded
 // into the page with JavaScriptBridge.eval. Frames are processed here and only results go to Godot: a
 // small RGB preview, QR text, face boxes with the eye, forehead and chin points for AR stickers, pose
-// landmarks, marker ids, object labels (with a box when the detector found one), step count,
-// recognized speech. Raw camera frames never leave the browser; the only exception is photo(), a
+// landmarks, marker ids, object labels (with a box when the detector found one), room emblems
+// (emblem_bridge.js), step count, recognized speech. Raw camera frames never leave the browser; the only exception is photo(), a
 // single still the player takes on purpose (the "Mood of the day" story).
 //
 // Libraries and models come from cdn.jsdelivr.net and storage.googleapis.com on first use (the phone
 // needs internet): jsQR for QR codes; MediaPipe Tasks Vision for faces and smiles (face landmarker with
 // blendshapes), the body pose (pose landmarker lite) and objects (EfficientDet-Lite0 detector with COCO
-// classes plus EfficientNet-Lite0 classifier with ImageNet classes); js-aruco2 for ArUco markers.
+// classes plus EfficientNet-Lite0 classifier with ImageNet classes, the image embedder for room emblems);
+// js-aruco2 for ArUco markers.
 window.alfaCamera = window.alfaCamera || (function () {
 	'use strict';
 
@@ -42,6 +43,10 @@ window.alfaCamera = window.alfaCamera || (function () {
 	var POSE_INTERVAL_MS = 80;
 	var MARKERS_INTERVAL_MS = 150;
 	var LABELS_INTERVAL_MS = 300;
+	var EMBLEMS_INTERVAL_MS = 200;
+	// Parts of the frame's short side searched for an emblem, in turn: a poster in the scanner frame
+	// and a poster filling the camera.
+	var EMBLEM_CROPS = [0.6, 0.9];
 	var MARKERS_LONG_SIDE = 480;
 	var MIN_LABEL_SCORE = 0.2;
 	var MAX_LABELS = 6;
@@ -53,8 +58,9 @@ window.alfaCamera = window.alfaCamera || (function () {
 
 	var state = {
 		stream: null, video: null, mode: 'preview', front: false, timer: 0, callbacks: null,
-		lastQrAt: 0, lastFacesAt: 0, lastPoseAt: 0, lastMarkersAt: 0, lastLabelsAt: 0, lastQrText: '', lastQrTextAt: 0,
+		lastQrAt: 0, lastFacesAt: 0, lastPoseAt: 0, lastMarkersAt: 0, lastLabelsAt: 0, lastEmblemsAt: 0, emblemCrop: 0, lastQrText: '', lastQrTextAt: 0,
 		preview: document.createElement('canvas'), scan: document.createElement('canvas'),
+		emblem: document.createElement('canvas'),
 		// Where the game wants the full-quality preview, in canvas pixels; null hides it.
 		viewRect: null,
 		jsQR: null, landmarker: null, pose: null, aruco: null, detector: null, classifier: null,
@@ -158,7 +164,14 @@ window.alfaCamera = window.alfaCamera || (function () {
 		return state.loading.markers;
 	}
 
-	var LOADERS = { qr: ensureQr, faces: ensureFaces, pose: ensurePose, markers: ensureMarkers, labels: ensureLabels };
+	// QR codes and room emblems together: the general scanner reads both.
+	function ensureCodes() {
+		return Promise.all([ensureQr(), vision().then(function (mp) { return window.alfaEmblems.prepare(mp); })]);
+	}
+
+	var LOADERS = {
+		qr: ensureQr, codes: ensureCodes, faces: ensureFaces, pose: ensurePose, markers: ensureMarkers, labels: ensureLabels,
+	};
 
 	function ensure(mode) {
 		return LOADERS[mode] ? LOADERS[mode]() : Promise.resolve();
@@ -230,6 +243,17 @@ window.alfaCamera = window.alfaCamera || (function () {
 		return context.getImageData(0, 0, width, height);
 	}
 
+	// Square from the middle of the frame, `fraction` of its short side, scaled to `side`; not mirrored.
+	function grabCenter(canvas, fraction, side) {
+		var video = state.video;
+		var crop = Math.min(video.videoWidth, video.videoHeight) * fraction;
+		canvas.width = side;
+		canvas.height = side;
+		canvas.getContext('2d').drawImage(video, (video.videoWidth - crop) / 2, (video.videoHeight - crop) / 2, crop, crop,
+			0, 0, side, side);
+		return canvas;
+	}
+
 	// One still of the camera for a photo the player takes on purpose: a base64 JPEG with the long side
 	// `longSide`, mirrored like the preview. '' while the camera shows nothing.
 	function photo(longSide) {
@@ -261,6 +285,20 @@ window.alfaCamera = window.alfaCamera || (function () {
 		state.lastQrText = code.data;
 		state.lastQrTextAt = now;
 		report('qr', code.data);
+	}
+
+	function detectEmblems(now) {
+		if (!window.alfaEmblems.ready() || now - state.lastEmblemsAt < EMBLEMS_INTERVAL_MS) { return; }
+		state.lastEmblemsAt = now;
+		state.emblemCrop = (state.emblemCrop + 1) % EMBLEM_CROPS.length;
+		var crop = grabCenter(state.emblem, EMBLEM_CROPS[state.emblemCrop], window.alfaEmblems.side);
+		var id = window.alfaEmblems.match(crop, now);
+		if (id) { report('emblem', id); }
+	}
+
+	function scanCodes(now) {
+		scanQr(now);
+		detectEmblems(now);
 	}
 
 	function smile(blendshapes) {
@@ -378,7 +416,7 @@ window.alfaCamera = window.alfaCamera || (function () {
 		return [state.front ? 1 - x - w : x, box.originY / height, w, box.height / height];
 	}
 
-	var DETECTORS = { qr: scanQr, faces: detectFaces, pose: detectPose, markers: detectMarkers, labels: detectLabels };
+	var DETECTORS = { qr: scanQr, codes: scanCodes, faces: detectFaces, pose: detectPose, markers: detectMarkers, labels: detectLabels };
 
 	function tick() {
 		if (!state.video || state.video.readyState < 2) { return; }
@@ -407,14 +445,15 @@ window.alfaCamera = window.alfaCamera || (function () {
 		state.video = null;
 	}
 
-	// callbacks: {frame(width, height, rgbBuffer), qr(text), faces(json), pose(json), markers(json),
-	// labels(json), error(code)}.
+	// callbacks: {frame(width, height, rgbBuffer), qr(text), emblem(id), faces(json), pose(json),
+	// markers(json), labels(json), error(code)}.
 	function start(mode, front, callbacks) {
 		stop();
 		state.mode = mode;
 		state.front = !!front;
 		state.callbacks = callbacks;
 		state.lastQrText = '';
+		window.alfaEmblems.reset();
 		ensure(mode).catch(function () { report('error', 'library'); });
 		openStream(state.front).then(function (stream) {
 			state.cameraPermission = 'granted';

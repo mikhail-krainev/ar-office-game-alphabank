@@ -20,7 +20,7 @@ func test_too_long_payload_gives_empty_matrix() -> void:
 
 
 func test_finder_and_timing_patterns_are_drawn() -> void:
-	var matrix: QrEncoder.QrMatrix = QrEncoder.encode(QrPayload.room("kitchen"))
+	var matrix: QrEncoder.QrMatrix = QrEncoder.encode(QrPayload.presence("hq.1.kitchen"))
 	var last: int = matrix.size - 1
 	for corner: Vector2i in [Vector2i(0, 0), Vector2i(last - 6, 0), Vector2i(0, last - 6)]:
 		assert_bool(matrix.is_dark(corner.x, corner.y)).is_true()

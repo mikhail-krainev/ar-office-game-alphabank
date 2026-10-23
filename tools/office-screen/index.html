@@ -1,15 +1,16 @@
 <!doctype html>
 <!--
 Office screen in the browser, for a LAN test (./run-lan.sh prints the link): the rotating entry and
-exit codes of an office plus the static QR codes of every room door, so one laptop replaces the
-reception screen and the printed door posters.
+exit codes of an office plus the emblem of every room door (Alfa-Bank identity, recognized by the
+game's camera), so one laptop replaces the reception screen and the printed door posters.
 
 The codes come from the kiosk_codes RPC with the server's HTTP key. The key is passed in the URL
 fragment (#key=...&office=...), which the browser never sends to the server, so it stays out of the
 files and logs here. Do not open this link on the players' phones.
 
 Room ids and names mirror client/scripts/world/office_layout.gd, analytics_layout.gd and
-client/localization/strings.csv (the same sources as tools/printables/make_printables.py).
+client/localization/strings.csv (the same sources as tools/printables/make_printables.py). The
+emblems and their rooms come from client/assets/brand/emblems, served at emblems/ by Caddy.
 -->
 <html lang="ru">
 <head>
@@ -94,7 +95,15 @@ client/localization/strings.csv (the same sources as tools/printables/make_print
 	.rooms .card { cursor: zoom-in; }
 	.rooms .card h3 { margin: 0 0 4px; font-size: 18px; }
 	.rooms .card code { color: var(--muted); font-size: 13px; }
-	.rooms .qr { margin-top: 10px; }
+	.emblem {
+		display: block;
+		width: 100%;
+		aspect-ratio: 1;
+		object-fit: contain;
+		background: #fff;
+		border-radius: 8px;
+		margin-top: 10px;
+	}
 	.hint { color: var(--muted); margin: 0 0 16px; }
 	#zoom {
 		position: fixed;
@@ -109,7 +118,7 @@ client/localization/strings.csv (the same sources as tools/printables/make_print
 		padding: 20px;
 	}
 	#zoom h2 { margin: 0; font-size: 32px; }
-	#zoom .qr { width: auto; height: min(80vh, 90vw); }
+	#zoom .emblem { width: min(80vh, 90vw); margin: 0; }
 </style>
 </head>
 <body>
@@ -133,11 +142,11 @@ client/localization/strings.csv (the same sources as tools/printables/make_print
 		</div>
 	</section>
 	<section id="rooms" class="hidden">
-		<p class="hint">Коды дверей статичные и засчитываются только после кода входа. Нажмите на код, чтобы увеличить.</p>
+		<p class="hint">Эмблемы дверей статичные и засчитываются только после кода входа. Наведите на эмблему камеру в игре. Нажмите на эмблему, чтобы увеличить.</p>
 		<div id="floors"></div>
 	</section>
 </main>
-<div id="zoom" class="hidden"><h2 id="zoom-title"></h2><canvas id="zoom-qr" class="qr"></canvas></div>
+<div id="zoom" class="hidden"><h2 id="zoom-title"></h2><img id="zoom-emblem" class="emblem" alt=""></div>
 <script>
 "use strict";
 
@@ -244,8 +253,24 @@ function tick() {
 	document.getElementById("countdown").textContent = expiresAt ? "Коды сменятся через " + Math.ceil(left) + " с" : "";
 }
 
-function buildRooms() {
+// Room id -> emblem id from the emblem catalog; rooms without an emblem show a note.
+async function loadEmblems() {
+	const response = await fetch("emblems/emblems.json", { cache: "no-store" });
+	if (!response.ok) {
+		throw new Error("HTTP " + response.status);
+	}
+	const catalog = await response.json();
+	return new Map(catalog.emblems.map((emblem) => [emblem.room, emblem.id]));
+}
+
+async function buildRooms() {
 	const floors = document.getElementById("floors");
+	let emblems = new Map();
+	try {
+		emblems = await loadEmblems();
+	} catch (error) {
+		setStatus("Нет эмблем комнат: " + error.message, true);
+	}
 	for (const floor of FLOORS) {
 		const section = document.createElement("div");
 		section.className = "floor";
@@ -254,20 +279,26 @@ function buildRooms() {
 		for (const [id, name] of floor.rooms) {
 			const card = document.createElement("div");
 			card.className = "card";
-			card.innerHTML = "<h3></h3><code></code><canvas class=\"qr\"></canvas>";
+			card.innerHTML = "<h3></h3><code></code><img class=\"emblem\" alt=\"\">";
 			card.querySelector("h3").textContent = name;
-			card.querySelector("code").textContent = id;
-			drawQr(card.querySelector("canvas"), SCHEME + "room/" + id, 6);
-			card.addEventListener("click", () => zoom(name + " · " + floor.title, SCHEME + "room/" + id));
+			const emblem = emblems.get(id);
+			card.querySelector("code").textContent = emblem ? id + " · " + emblem : id + " · нет эмблемы";
+			const picture = emblem ? "emblems/" + emblem + ".png" : "";
+			if (picture) {
+				card.querySelector("img").src = picture;
+				card.addEventListener("click", () => zoom(name + " · " + floor.title, picture));
+			} else {
+				card.querySelector("img").remove();
+			}
 			section.querySelector(".rooms").append(card);
 		}
 		floors.append(section);
 	}
 }
 
-function zoom(title, text) {
+function zoom(title, picture) {
 	document.getElementById("zoom-title").textContent = title;
-	drawQr(document.getElementById("zoom-qr"), text, 12);
+	document.getElementById("zoom-emblem").src = picture;
 	document.getElementById("zoom").classList.remove("hidden");
 }
 

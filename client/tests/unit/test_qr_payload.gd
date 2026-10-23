@@ -1,8 +1,9 @@
 extends GdUnitTestSuite
 
 
-func test_parses_room_code() -> void:
-	var payload: QrPayload = QrPayload.parse("alfaoffice://room/kitchen")
+func test_room_comes_from_an_emblem_not_a_qr_code() -> void:
+	assert_bool(QrPayload.parse("alfaoffice://room/kitchen").is_valid()).is_false()
+	var payload: QrPayload = QrPayload.from_room("kitchen")
 	assert_int(payload.kind).is_equal(QrPayload.Kind.ROOM)
 	assert_str(payload.value).is_equal("kitchen")
 

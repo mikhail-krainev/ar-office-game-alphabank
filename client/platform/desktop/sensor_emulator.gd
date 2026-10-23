@@ -1,9 +1,9 @@
 class_name SensorEmulator
 extends CanvasLayer
 ## Debug overlay for DesktopPlatform. Visible while a sensor is running; lists the keys and offers
-## buttons for input that has no natural key (QR codes, recognized speech).
+## buttons for input that has no natural key (QR codes, room emblems, recognized speech).
 ## Keys: arrows tilt, Space jerk, W walk, S squat, F faces, G smile, 1-9 marker, 0 no marker.
-## QR codes and recognized objects are picked with the buttons on the panel.
+## QR codes, room emblems and recognized objects are picked with the buttons on the panel.
 
 const PANEL_COLOR: Color = Color(0.08, 0.07, 0.1, 0.88)
 const TEXT_COLOR: Color = Color("#f2efe9")
@@ -111,6 +111,8 @@ func _describe() -> String:
 				lines.append("1-9 marker, 0 none: %d" % int(desktop.get("marker_id")))
 			PlatformBackend.CameraMode.QR:
 				lines.append("QR: pick a code")
+			PlatformBackend.CameraMode.CODES:
+				lines.append("QR or room emblem: pick one")
 			PlatformBackend.CameraMode.LABELS:
 				var label: String = str(desktop.get("label_id"))
 				lines.append("object: %s" % (label if not label.is_empty() else "none"))
@@ -121,14 +123,19 @@ func _describe() -> String:
 	return "  |  ".join(lines)
 
 
-## QR mode lists the codes the camera can "see", object mode lists the recognizable labels.
+## QR mode lists the codes the camera can "see", codes mode adds the room emblems, object mode lists
+## the recognizable labels.
 func _rebuild_buttons(mode: int) -> void:
 	_button_mode = mode
 	for child: Node in _button_box.get_children():
 		child.queue_free()
-	_button_box.visible = mode == PlatformBackend.CameraMode.QR or mode == PlatformBackend.CameraMode.LABELS
-	if mode == PlatformBackend.CameraMode.QR:
-		_load_qr_buttons()
+	_button_box.visible = mode in [PlatformBackend.CameraMode.QR, PlatformBackend.CameraMode.CODES, PlatformBackend.CameraMode.LABELS]
+	if mode == PlatformBackend.CameraMode.CODES:
+		for emblem_id: String in RoomEmblems.ids():
+			var label: String = "%s (%s)" % [emblem_id, RoomEmblems.room_of(emblem_id)]
+			_button_box.add_child(_make_button(label, func() -> void: platform.call("emit_emblem", emblem_id)))
+	if mode in [PlatformBackend.CameraMode.QR, PlatformBackend.CameraMode.CODES]:
+		_load_qr_buttons(mode)
 	elif mode == PlatformBackend.CameraMode.LABELS:
 		_button_box.add_child(_make_button("none", func() -> void: platform.set("label_id", "")))
 		for label: String in OfficeObjects.all_labels():
@@ -136,9 +143,9 @@ func _rebuild_buttons(mode: int) -> void:
 
 
 ## The list comes from the server (office codes, players), so it is filled in when it arrives.
-func _load_qr_buttons() -> void:
+func _load_qr_buttons(mode: int) -> void:
 	await DevQrCodes.refresh()
-	if _button_mode != PlatformBackend.CameraMode.QR:
+	if _button_mode != mode:
 		return
 	var entries: Array[Array] = DevQrCodes.suggestions()
 	for index: int in entries.size():

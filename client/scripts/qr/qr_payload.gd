@@ -1,7 +1,8 @@
 class_name QrPayload
 extends RefCounted
-## Game QR codes. Four kinds share one URI scheme:
-##   alfaoffice://room/<room_id>        static code at a room door; counts only inside the office
+## What the scanner read. ROOM comes from a room emblem at the door (RoomEmblems), not from a QR
+## code: from_room() makes it; it counts only inside the office. Three kinds of QR codes share one
+## URI scheme:
 ##   alfaoffice://presence/<token>      rotating entry code on the office screen, proof of presence
 ##   alfaoffice://checkout/<token>      rotating exit code on the office screen
 ##   alfaoffice://user/<code>           "My QR" on a colleague's phone: "<user id>.<step>.<signature>",
@@ -29,7 +30,8 @@ static func parse(text: String) -> QrPayload:
 	if parts.size() != 2 or parts[1].length() > MAX_VALUE_LENGTH or not _is_safe(parts[1]):
 		return payload
 	for candidate: Kind in KIND_NAMES:
-		if KIND_NAMES[candidate] == parts[0].to_lower():
+		# Rooms have emblems, not QR codes.
+		if candidate != Kind.ROOM and KIND_NAMES[candidate] == parts[0].to_lower():
 			payload.kind = candidate
 			payload.value = parts[1]
 	return payload
@@ -39,8 +41,12 @@ static func make(payload_kind: Kind, payload_value: String) -> String:
 	return "%s%s/%s" % [SCHEME, KIND_NAMES[payload_kind], payload_value]
 
 
-static func room(room_id: String) -> String:
-	return make(Kind.ROOM, room_id)
+## A room emblem seen at the door of `room_id`.
+static func from_room(room_id: String) -> QrPayload:
+	var payload: QrPayload = QrPayload.new()
+	payload.kind = Kind.ROOM
+	payload.value = room_id
+	return payload
 
 
 static func user(code: String) -> String:

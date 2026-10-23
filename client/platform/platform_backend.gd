@@ -14,6 +14,8 @@ signal faces_detected(faces: Array[SensorModels.Face])
 signal markers_detected(marker_ids: PackedInt32Array)
 signal labels_detected(labels: Array[SensorModels.ObjectLabel])
 signal qr_detected(text: String)
+## CameraMode.CODES: a room emblem (RoomEmblems id) in the middle of the frame.
+signal emblem_detected(emblem_id: String)
 signal speech_recognized(text: String, is_final: bool)
 signal speech_failed(error: String)
 ## Emulated platforms only: a scheduled notification "arrived" while the game is open.
@@ -39,7 +41,8 @@ enum Feature {
 	PHOTO_LIBRARY,
 }
 
-enum CameraMode { PREVIEW, QR, POSE, FACES, MARKERS, LABELS }
+## CODES reads QR codes and room emblems together (the general scanner).
+enum CameraMode { PREVIEW, QR, POSE, FACES, MARKERS, LABELS, CODES }
 
 
 func has_feature(feature: Feature) -> bool:
@@ -105,6 +108,12 @@ func start_camera(_mode: CameraMode, _front: bool) -> void:
 
 
 func stop_camera() -> void:
+	pass
+
+
+## Reference pictures of the room emblems, by emblem id, for CameraMode.CODES. Called before the
+## camera starts; platforms without recognition ignore it.
+func set_emblems(_references: Dictionary[String, Image]) -> void:
 	pass
 
 

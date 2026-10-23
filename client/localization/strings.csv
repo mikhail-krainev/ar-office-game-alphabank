@@ -131,9 +131,9 @@ INTRO_NIGHT_DRIVE,ВЕЧЕР. ДОМОЙ ПО ОГНЯМ ГОРОДА.,EVENING. 
 INTRO_HOME_ARRIVE,ДОМА.,HOME.
 INTRO_SLEEP,ОТБОЙ. ЗАВТРА СНОВА В ОФИС.,LIGHTS OUT. OFFICE AGAIN TOMORROW.
 HUD_SCAN,QR,QR
-QR_SCAN_TITLE,Сканер QR,QR scanner
-QR_SCAN_HINT,Наведи камеру на QR-код у двери комнаты или на экране офиса,Point the camera at a room door code or the office screen
-QR_WRONG_CODE,Это не тот QR-код,That's not the right QR code
+QR_SCAN_TITLE,Сканер,Scanner
+QR_SCAN_HINT,Наведи камеру на эмблему у двери комнаты или на QR-код экрана офиса,Point the camera at a room door emblem or the office screen code
+QR_WRONG_CODE,Это не тот код,That's not the right code
 QR_UNKNOWN_ROOM,Такой комнаты нет на карте,No such room on the map
 QR_GOING_TO_ROOM,Идём: %s,Heading to: %s
 QR_COLLEAGUE_HINT,Это профиль коллеги. Он нужен в заданиях на знакомство,That's a colleague's profile. It is used in the meet-a-colleague tasks
@@ -400,11 +400,11 @@ HUD_GO_HOME_QUESTION,"Поехать домой? Визит в офис уже �
 HUD_GO_HOME_CONFIRM,Домой,Go home
 HUD_GO_HOME_CANCEL,Остаться,Stay
 TASK_TAKE,Взять,Take
-TASKS_ROOM_RULE,Задание берут в его комнате: приди туда и отсканируй QR-код у двери. Коллеге из совместного задания приходить туда не нужно,A task is taken in its room: go there and scan the QR code by the door. The colleague of a joint task doesn't need to come there
-TASK_ROOM_QUESTION,"Задание ждёт в комнате «%s». Приди туда и отсканируй QR-код у двери, чтобы взять его","The task waits in the room «%s». Go there and scan the QR code by the door to take it"
+TASKS_ROOM_RULE,Задание берут в его комнате: приди туда и наведи камеру на эмблему у двери. Коллеге из совместного задания приходить туда не нужно,A task is taken in its room: go there and point the camera at the emblem by the door. The colleague of a joint task doesn't need to come there
+TASK_ROOM_QUESTION,"Задание ждёт в комнате «%s». Приди туда и наведи камеру на эмблему у двери, чтобы взять его","The task waits in the room «%s». Go there and point the camera at the emblem by the door to take it"
 TASK_ROOM_SCAN,Сканировать,Scan
 TASK_ROOM_CANCEL,Не сейчас,Not now
-TASK_ROOM_WRONG_CODE,Это другой код. Нужен QR-код комнаты «%s»,That's another code. Scan the QR code of the room «%s»
+TASK_ROOM_WRONG_CODE,Это другая эмблема. Нужна эмблема комнаты «%s»,That's another emblem. Scan the emblem of the room «%s»
 QR_ROOM_TASKS,Заданий в этой комнате: %d. Открой список и возьми,Tasks in this room: %d. Open the list to take one
 ERROR_WRONG_ROOM,Сначала отсканируй QR-код комнаты задания,Scan the QR code of the task's room first
 ERROR_TASK_NOT_TAKEN,Сначала возьми задание в его комнате,Take the task in its room first

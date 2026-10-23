@@ -1,3 +1,5 @@
+# gdlint:ignore = max-public-methods
+# One method per emulated sensor input: the emulator panel calls them.
 extends PlatformBackend
 @warning_ignore_start("integer_division")
 ## Debug-only desktop implementation: emulates phone sensors from the keyboard so every minigame
@@ -143,8 +145,14 @@ func is_speech_running() -> bool:
 
 ## Called by the emulator panel: the QR "seen" by the camera.
 func emit_qr(text: String) -> void:
-	if _camera_running and _camera_mode == CameraMode.QR:
+	if _camera_running and _camera_mode in [CameraMode.QR, CameraMode.CODES]:
 		qr_detected.emit(text)
+
+
+## Called by the emulator panel: the room emblem "seen" by the camera.
+func emit_emblem(emblem_id: String) -> void:
+	if _camera_running and _camera_mode == CameraMode.CODES:
+		emblem_detected.emit(emblem_id)
 
 
 ## Called by the emulator panel: the phrase "heard" by the recognizer.
@@ -286,7 +294,7 @@ func _render_frame() -> Image:
 				for bit: int in 16:
 					if (marker_id * 2654435761 >> bit) & 1:
 						frame.fill_rect(Rect2i(origin + Vector2i(6 + bit % 4 * 6, 6 + bit / 4 * 6), Vector2i(6, 6)), Color.WHITE)
-		CameraMode.QR:
+		CameraMode.QR, CameraMode.CODES:
 			frame.fill_rect(Rect2i(FRAME_SIZE / 2 - Vector2i(20, 20), Vector2i(40, 40)), Color.WHITE)
 		CameraMode.LABELS:
 			var tint: Color = Color.from_hsv(float(hash(label_id) % 360) / 360.0, 0.5, 0.8)

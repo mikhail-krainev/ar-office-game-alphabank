@@ -17,6 +17,8 @@ signal markers_detected(marker_ids: PackedInt32Array)
 ## Objects recognized in the camera frame, most confident first.
 signal labels_detected(labels: Array[SensorModels.ObjectLabel])
 signal qr_detected(text: String)
+## CameraMode.CODES: a room emblem seen in the middle of the frame (RoomEmblems id).
+signal emblem_detected(emblem_id: String)
 signal speech_recognized(text: String, is_final: bool)
 signal speech_failed(error: String)
 ## Desktop emulation only: a scheduled notification "arrived" while the game is open.
@@ -44,6 +46,7 @@ func _ready() -> void:
 	_backend.markers_detected.connect(markers_detected.emit)
 	_backend.labels_detected.connect(labels_detected.emit)
 	_backend.qr_detected.connect(qr_detected.emit)
+	_backend.emblem_detected.connect(emblem_detected.emit)
 	_backend.speech_recognized.connect(speech_recognized.emit)
 	_backend.speech_failed.connect(speech_failed.emit)
 	_backend.notification_shown.connect(notification_shown.emit)
@@ -116,6 +119,11 @@ func start_camera(mode: PlatformBackend.CameraMode, front: bool = false) -> void
 
 func stop_camera() -> void:
 	_backend.stop_camera()
+
+
+## Reference pictures of the room emblems for CameraMode.CODES, by emblem id.
+func set_emblems(references: Dictionary[String, Image]) -> void:
+	_backend.set_emblems(references)
 
 
 ## Shows the camera at full quality over `rect` in window pixels, above everything under it and below

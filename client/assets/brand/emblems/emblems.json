@@ -1,0 +1,18 @@
+{
+	"emblems": [
+		{"id": "logo_red", "room": "reception", "title": "Логотип: красная «А» на белом"},
+		{"id": "logo_night", "room": "cabinet", "title": "Логотип: белая «А» на чёрном"},
+		{"id": "cat_hello", "room": "open_space", "title": "Кот «Привет!»"},
+		{"id": "cat_high_five", "room": "meeting", "title": "Кот «Дай пять!»"},
+		{"id": "cat_party", "room": "design", "title": "Кот с конфетти"},
+		{"id": "cat_inflatable", "room": "corridor", "title": "Надувной кот с монетой"},
+		{"id": "cat_love", "room": "kitchen", "title": "Влюблённый кот с монетой"},
+		{"id": "cat_box", "room": "lounge", "title": "Кот в коробке «Мяу»"},
+		{"id": "logo_circle", "room": "pa_hall", "title": "Логотип в красном круге"},
+		{"id": "cat_park", "room": "pa_corridor", "title": "Надувной кот в парке"},
+		{"id": "logo_square", "room": "pa_open_space", "title": "Логотип: белая «А» на красном"},
+		{"id": "cat_glossy", "room": "pa_data_lab", "title": "Глянцевый кот на чёрном"},
+		{"id": "cat_balance", "room": "pa_coffee", "title": "Кот «Нашёл баланс»"},
+		{"id": "logo_mono", "room": "pa_workshop", "title": "Логотип: чёрная «А» на белом"}
+	]
+}

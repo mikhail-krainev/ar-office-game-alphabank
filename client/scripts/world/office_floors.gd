@@ -1,7 +1,7 @@
 class_name OfficeFloors
 extends RefCounted
 ## Floors of the office building reachable by the lift. The office scene builds the current floor;
-## a floor change reloads the scene. Room ids are unique across floors, so a room QR code also tells
+## a floor change reloads the scene. Room ids are unique across floors, so a room emblem also tells
 ## which floor the player is on.
 
 const HQ: StringName = &"hq"
@@ -14,7 +14,7 @@ const NUMBERS: Dictionary[StringName, int] = {HQ: 3, ANALYTICS: 5}
 static var current: StringName = HQ
 ## The player came by lift: start in front of its doors instead of the main entrance.
 static var arrived_by_lift: bool = false
-## Room to walk to right after arriving (a room QR code from the other floor was scanned).
+## Room to walk to right after arriving (a room emblem from the other floor was scanned).
 static var pending_room: StringName = &""
 
 static var _layouts: Dictionary[StringName, MapLayout] = {}
