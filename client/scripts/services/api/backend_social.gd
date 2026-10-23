@@ -54,14 +54,26 @@ func office_players() -> Array[BackendModels.OfficePlayer]:
 	return BackendParser.office_players(response.data) if response.ok else []
 
 
-## Today's "Mood of the day" story of a colleague in the office (or the player's own), or null.
+## Mini profile of a colleague of the player's office today, or null when the server does not know
+## them there.
+func player_card(user_id: String) -> BackendModels.OfficePlayer:
+	var response: ServerSession.RpcResult = await _backend.call_rpc("player_card", {"user_id": user_id})
+	if not response.ok or not bool(response.data.get("found", false)) or not response.data.get("player") is Dictionary:
+		return null
+	return BackendParser.office_player(response.data["player"])
+
+
+## Today's "Mood of the day" story of a colleague in the office (or the player's own): the photo with
+## the drawing on the forehead, or the drawing alone when there is no photo. Null when there is none.
 func get_mood(user_id: String) -> Image:
 	var response: ServerSession.RpcResult = await _backend.call_rpc("get_mood", {"user_id": user_id})
-	var encoded: String = str(response.data.get("png", ""))
-	if not response.ok or encoded.is_empty():
+	if not response.ok:
 		return null
-	var picture: Image = Image.new()
-	return picture if picture.load_png_from_buffer(Marshalls.base64_to_raw(encoded)) == OK else null
+	for key: String in ["photo", "png"]:
+		var encoded: String = str(response.data.get(key, ""))
+		if not encoded.is_empty():
+			return PlatformBackend.decode_image(Marshalls.base64_to_raw(encoded))
+	return null
 
 
 ## Answer to "<colleague> took a photo with you. Is it true?".

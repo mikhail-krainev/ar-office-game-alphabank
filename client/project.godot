@@ -19,6 +19,7 @@ Appearance="*res://scripts/services/appearance.gd"
 Presence="*res://scripts/services/presence.gd"
 Notifications="*res://scripts/services/notifications.gd"
 PlayTime="*res://scripts/services/play_time.gd"
+ColleagueProfiles="*res://scripts/services/colleague_profiles.gd"
 
 [audio]
 
@@ -41,6 +42,7 @@ window/size/window_height_override=800
 window/stretch/mode="viewport"
 window/stretch/aspect="expand"
 window/stretch/scale_mode="integer"
+window/stretch/scale_mode.web="fractional"
 window/handheld/orientation=1
 window/per_pixel_transparency/allowed=true
 

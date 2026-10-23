@@ -114,6 +114,12 @@ func show_camera_view(_rect: Rect2) -> bool:
 	return false
 
 
+## A still of the running camera, `long_side` pixels on the long side and mirrored like the preview;
+## null when the camera shows nothing. Only for a photo the player takes on purpose.
+func take_photo(_long_side: int) -> Image:
+	return null
+
+
 func start_speech(_locale: String) -> void:
 	speech_failed.emit("unsupported")
 

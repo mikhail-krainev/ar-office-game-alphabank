@@ -156,6 +156,14 @@ func show_camera_view(rect: Rect2) -> bool:
 	return true
 
 
+func take_photo(long_side: int) -> Image:
+	var camera: JavaScriptObject = JavaScriptBridge.get_interface("alfaCamera")
+	if camera == null:
+		return null
+	var encoded: String = str(camera.call("photo", long_side))
+	return null if encoded.is_empty() else PlatformBackend.decode_image(Marshalls.base64_to_raw(encoded))
+
+
 func start_speech(locale: String) -> void:
 	_speech_callbacks = _make_callbacks({"result": _on_speech_result, "error": _on_speech_error}, _speech_callback_refs)
 	var speech: JavaScriptObject = JavaScriptBridge.get_interface("alfaSpeech")

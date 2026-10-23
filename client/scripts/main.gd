@@ -45,7 +45,6 @@ var _facts_panel: FactsPanel
 ## "Scan the entry code" while the game is open in the office Wi-Fi without it.
 var _entry_button: Button
 var _colleagues: OfficeColleagues
-var _colleague_panel: ColleagueProfilePanel
 
 @onready var _task_panel: TaskPanel = $TaskPanel
 @onready var _shop_panel: ShopPanel = $ShopPanel
@@ -79,8 +78,6 @@ func _ready() -> void:
 	_colleagues = OfficeColleagues.new()
 	_colleagues.setup(_map, _entities)
 	add_child(_colleagues)
-	_colleague_panel = ColleagueProfilePanel.new()
-	add_child(_colleague_panel)
 	_task_list = TaskList.new()
 	_task_list.task_pressed.connect(_on_task_list_pressed)
 	_hud.add_corner_panel(_task_list)
@@ -114,7 +111,7 @@ func _is_modal_open() -> bool:
 		_busy or _leaving or _task_panel.is_open() or _shop_panel.is_open()
 		or _minigame_panel.is_open() or _choice.is_open() or (_corner != null and _corner.is_open())
 		or (_facts_panel != null and _facts_panel.is_open())
-		or (_colleague_panel != null and _colleague_panel.is_open())
+		or ColleagueProfiles.is_open()
 	)
 
 
@@ -126,7 +123,7 @@ func _on_tap(world_position: Vector2) -> void:
 			return
 	var colleague: BackendModels.OfficePlayer = _colleagues.hit(world_position)
 	if colleague != null:
-		_colleague_panel.open(colleague)
+		ColleagueProfiles.open(colleague)
 
 
 func _refresh_tasks() -> void:

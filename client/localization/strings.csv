@@ -321,11 +321,11 @@ ERROR_UNKNOWN_REQUEST,Запрос не найден,Request not found
 ERROR_REQUEST_CLOSED,На этот запрос уже ответили,This request has already been answered
 TASK_PENDING,Ждёт,Waiting
 PHOTO_SENT,"Фото отправлено: ждём, когда %s подтвердит",Photo sent: waiting for %s to confirm
-MG_PHOTO_FIND,"Игра выбрала коллегу, который сейчас в офисе. Найдите друг друга",The game picked a colleague who is at the office now. Find each other
+MG_PHOTO_FIND,"Игра выбрала коллегу, который сейчас в офисе. Ему не нужно приходить в комнату задания: подойди к нему сам. Задание засчитается только тебе",The game picked a colleague who is at the office now. They don't need to come to the task's room: go to them. The task counts only for you
 MG_PHOTO_CONFIRM_NOTE,"После снимка коллеге придёт запрос, и он подтвердит, что фото правда было. Снимок никуда не сохраняется",After the shot your colleague gets a request to confirm the photo really happened. The picture is not saved anywhere
 MG_PHOTO_START,"Мы вместе, открыть камеру","We're together, open the camera"
 MG_PHOTO_FACES,Лиц в кадре: %d из %d,Faces in the frame: %d of %d
-MG_MEET_FIND,Найди этого коллегу. Вопросы ниже помогут начать разговор,Find this colleague. The questions below help to start talking
+MG_MEET_FIND,"Найди этого коллегу: ему не нужно приходить в комнату задания, подойди к нему сам. Вопросы ниже помогут начать разговор","Find this colleague: they don't need to come to the task's room, go to them. The questions below help to start talking"
 MG_MEET_ANYONE,"Подойдёт любой коллега из другого департамента, который сейчас в офисе",Any colleague from another department who is at the office now will do
 MG_MEET_TOPIC,ВОПРОС ДЛЯ РАЗГОВОРА,CONVERSATION STARTER
 MG_MEET_NEXT_TOPIC,Другой вопрос,Another question
@@ -400,7 +400,7 @@ HUD_GO_HOME_QUESTION,"Поехать домой? Визит в офис уже �
 HUD_GO_HOME_CONFIRM,Домой,Go home
 HUD_GO_HOME_CANCEL,Остаться,Stay
 TASK_TAKE,Взять,Take
-TASKS_ROOM_RULE,"Задание берут в его комнате: приди туда и отсканируй QR-код у двери","A task is taken in its room: go there and scan the QR code by the door"
+TASKS_ROOM_RULE,Задание берут в его комнате: приди туда и отсканируй QR-код у двери. Коллеге из совместного задания приходить туда не нужно,A task is taken in its room: go there and scan the QR code by the door. The colleague of a joint task doesn't need to come there
 TASK_ROOM_QUESTION,"Задание ждёт в комнате «%s». Приди туда и отсканируй QR-код у двери, чтобы взять его","The task waits in the room «%s». Go there and scan the QR code by the door to take it"
 TASK_ROOM_SCAN,Сканировать,Scan
 TASK_ROOM_CANCEL,Не сейчас,Not now
@@ -419,7 +419,7 @@ FACTS_EMPTY,Заполни все пять фактов,Fill in all five facts
 FACTS_WRONG_COUNT,Нужно ровно три правды и две лжи,Exactly three truths and two lies are needed
 MG_FACTS_LOADING,Загружаю факты…,Loading the facts…
 MG_FACTS_WRITE,Напиши пять фактов о себе: три правдивых и два ложных,Write five facts about yourself: three true and two false
-MG_FACTS_FIND,"Найди этого коллегу. Когда встретитесь, отправь ему факты: он угадает у себя в игре, где правда","Find this colleague. When you meet, send them the facts: they guess the true ones in their game"
+MG_FACTS_FIND,"Найди этого коллегу: ему не нужно приходить в комнату задания, подойди к нему сам. Когда встретитесь, отправь ему факты: он угадает у себя в игре, где правда","Find this colleague: they don't need to come to the task's room, go to them. When you meet, send them the facts: they guess the true ones in their game"
 MG_FACTS_SEND,Мы встретились: отправить факты,We've met: send the facts
 MG_FACTS_EDIT,Изменить факты,Edit the facts
 MG_FACTS_WAIT,"Факты отправлены: %s. Коллега отмечает правду во «Входящих», потом показывает свой QR. Отсканируй его","The facts are sent to %s. The colleague marks the true ones in the inbox, then shows their QR. Scan it"
@@ -448,9 +448,11 @@ MG_BUG_HUNT_CAUGHT,ПОЙМАН!,GOT IT!
 MG_MOOD_HINT,Нарисуй пальцем своё настроение сегодня,Draw your mood today with a finger
 MG_MOOD_CLEAR,Стереть,Clear
 MG_MOOD_TRY_ON,ПРИМЕРИТЬ НА ЛОБ,TRY IT ON
-MG_MOOD_TRY_ON_HINT,Посмотри во фронтальную камеру: настроение на лбу станет твоей историей на сегодня,Look into the front camera: the mood on your forehead becomes your story for today
+MG_MOOD_TRY_ON_HINT,Посмотри во фронтальную камеру и сделай фото: снимок с настроением на лбу станет твоей историей до конца рабочего дня,Look into the front camera and take a photo: the shot with the mood on your forehead becomes your story until the end of the working day
 MG_MOOD_HOLD,Покажи лицо камере,Show your face to the camera
-MG_MOOD_KEEP,Держи... %d,Hold... %d
+MG_MOOD_READY,Нажми «Сделать фото»,"Tap ""Take a photo"""
+MG_MOOD_TAKE_PHOTO,СДЕЛАТЬ ФОТО,TAKE A PHOTO
+MG_MOOD_PHOTO_FAILED,Не получилось сделать снимок. Попробуй ещё раз,Couldn't take the shot. Try again
 ERROR_MOOD_INVALID,"Рисунок не получилось сохранить, попробуй ещё раз","The drawing could not be saved, try again"
 COLLEAGUE_PROFILE_TITLE,Коллега,Colleague
 COLLEAGUE_STREAK,Серия: %d дн. в офисе,Streak: %d office days
@@ -458,5 +460,7 @@ COLLEAGUE_SEEN_IN,Сейчас: %s,Now: %s
 COLLEAGUE_WATCH_STORY,СМОТРЕТЬ НАСТРОЕНИЕ ДНЯ,WATCH TODAY'S MOOD
 COLLEAGUE_NO_STORY,Сегодня без истории настроения,No mood story today
 COLLEAGUE_STORY_LOADING,Загружаю историю…,Loading the story…
-COLLEAGUE_STORY_GONE,История уже недоступна,The story is no longer available
+COLLEAGUE_STORY_GONE,"История недоступна: истории коллег видны, пока ты в офисе, до конца рабочего дня","The story is unavailable: colleagues' stories are visible while you're at the office, until the end of the working day"
 COLLEAGUE_STORY_TITLE,Настроение дня · %s,Mood of the day · %s
+COLLEAGUE_PROFILE_LOADING,Загружаю профиль…,Loading the profile…
+COLLEAGUE_PROFILE_GONE,Профиль недоступен: коллега не из твоего офиса сегодня,The profile is unavailable: the colleague is not in your office today

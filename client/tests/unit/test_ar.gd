@@ -85,3 +85,33 @@ func test_labels_json_carries_the_box_and_the_target_locates_it() -> void:
 	assert_that(mug.locate(labels)).is_equal(Rect2(0.2, 0.3, 0.25, 0.3))
 	var plant: OfficeObjects.Target = OfficeObjects.from_ids(["plant"])[0]
 	assert_bool(plant.locate(labels).has_area()).is_false()
+
+
+func test_mood_photo_puts_the_drawing_on_the_forehead() -> void:
+	var photo: Image = Image.create_empty(200, 100, false, Image.FORMAT_RGB8)
+	photo.fill(Color.BLACK)
+	var drawing: Image = Image.create_empty(MoodCanvas.SIDE, MoodCanvas.SIDE, false, Image.FORMAT_RGBA8)
+	drawing.fill(Color.RED)
+	var face: SensorModels.Face = SensorModels.Face.new(Rect2(0.3, 0.1, 0.4, 0.8), 0.9)
+	face.left_eye = Vector2(0.4, 0.5)
+	face.right_eye = Vector2(0.6, 0.5)
+	face.top = Vector2(0.5, 0.1)
+	face.chin = Vector2(0.5, 0.9)
+	var faces: Array[SensorModels.Face] = [face]
+	var result: Image = MoodPhoto.compose(photo, drawing, faces)
+	var center: Vector2 = MoodPhoto.center(ArAnchor.of_face(face, Rect2(0, 0, 200, 100)))
+	assert_that(result.get_pixelv(Vector2i(center))).is_equal(Color.RED)
+	# Far from the face the photo stays as it was, and the original is not changed.
+	assert_that(result.get_pixel(5, 95)).is_equal(Color.BLACK)
+	assert_that(photo.get_pixelv(Vector2i(center))).is_equal(Color.BLACK)
+
+
+func test_mood_photo_without_faces_is_the_photo() -> void:
+	var photo: Image = Image.create_empty(64, 48, false, Image.FORMAT_RGB8)
+	photo.fill(Color.BLUE)
+	var drawing: Image = Image.create_empty(MoodCanvas.SIDE, MoodCanvas.SIDE, false, Image.FORMAT_RGBA8)
+	drawing.fill(Color.RED)
+	var faces: Array[SensorModels.Face] = []
+	var result: Image = MoodPhoto.compose(photo, drawing, faces)
+	assert_that(result.get_pixel(32, 24)).is_equal(Color.BLUE)
+	assert_bool(MoodPhoto.to_jpeg_base64(result).is_empty()).is_false()

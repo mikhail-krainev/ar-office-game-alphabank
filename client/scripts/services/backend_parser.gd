@@ -162,14 +162,18 @@ static func colleague(entry: Dictionary) -> BackendModels.Colleague:
 static func office_players(data: Dictionary) -> Array[BackendModels.OfficePlayer]:
 	var result: Array[BackendModels.OfficePlayer] = []
 	for entry: Dictionary in _dictionaries(data.get("players")):
-		var player: BackendModels.OfficePlayer = BackendModels.OfficePlayer.new()
-		player.colleague = colleague(entry)
-		player.streak = int(entry.get("streak", 0))
-		player.outfit = outfit(entry.get("outfit", {}))
-		player.has_mood = bool(entry.get("has_mood", false))
-		player.character_avatar = bool(entry.get("character_avatar", false))
-		result.append(player)
+		result.append(office_player(entry))
 	return result
+
+
+static func office_player(entry: Dictionary) -> BackendModels.OfficePlayer:
+	var player: BackendModels.OfficePlayer = BackendModels.OfficePlayer.new()
+	player.colleague = colleague(entry)
+	player.streak = int(entry.get("streak", 0))
+	player.outfit = outfit(entry.get("outfit", {}))
+	player.has_mood = bool(entry.get("has_mood", false))
+	player.character_avatar = bool(entry.get("character_avatar", false))
+	return player
 
 
 static func colleague_result(data: Dictionary, error: String) -> BackendModels.ColleagueResult:

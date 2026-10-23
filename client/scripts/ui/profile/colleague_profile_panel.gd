@@ -1,14 +1,18 @@
 class_name ColleagueProfilePanel
 extends ModalPanel
-## Mini profile of a colleague tapped on the office map: their avatar and character, name,
-## department, status and streak, and today's "Mood of the day" story when there is one. The story
-## plays like in messengers: full width, a bar runs out, then the profile comes back.
+## Mini profile of a colleague whose name, avatar or character the player tapped (the office map, a
+## task card, the inbox; opened through the ColleagueProfiles autoload): their avatar and character,
+## name, department, status and streak, and today's "Mood of the day" story when there is one. A tap
+## on the avatar plays the story like in messengers: full width, a bar runs out, then the profile
+## comes back. Stories are visible only while the player is in the office.
 
 const AVATAR_SIDE: float = 56.0
 const STORY_SECONDS: float = 5.0
-const STORY_SIDE: float = 192.0
+const STORY_HEIGHT: float = 300.0
 ## The colleague's character next to the avatar, in whole pixels.
 const FIGURE_SCALE: float = 1.5
+## Above task minigames (MinigamePanel), below the choice prompt.
+const PANEL_LAYER: int = 40
 
 var _player: BackendModels.OfficePlayer
 var _story_bar: ProgressBar
@@ -17,6 +21,24 @@ var _story_left: float = 0.0
 
 func _init() -> void:
 	super("COLLEAGUE_PROFILE_TITLE")
+	layer = PANEL_LAYER
+
+
+## The mini profile of a colleague known only by id: asks the server for it first.
+func open_user(user_id: String) -> void:
+	_player = null
+	show_panel()
+	set_title(tr("COLLEAGUE_PROFILE_TITLE"))
+	set_subtitle("")
+	content.add_child(make_text(tr("COLLEAGUE_PROFILE_LOADING"), 11, UiStyle.MUTED))
+	var player: BackendModels.OfficePlayer = await Backend.social.player_card(user_id)
+	if not visible or _player != null:
+		return
+	if player == null:
+		clear()
+		content.add_child(make_text(tr("COLLEAGUE_PROFILE_GONE"), 11, UiStyle.MUTED))
+		return
+	open(player)
 
 
 func open(player: BackendModels.OfficePlayer) -> void:
@@ -41,6 +63,15 @@ func _show_profile() -> void:
 		avatar.show_outfit(_player.outfit, colleague.user_id)
 	else:
 		avatar.show_avatar(colleague.avatar, colleague.user_id)
+	if _player.has_mood:
+		# Like in messengers: a ring around the avatar, a tap on it plays the story.
+		avatar.add_child(_story_ring())
+		avatar.mouse_filter = Control.MOUSE_FILTER_STOP
+		avatar.gui_input.connect(
+			func(event: InputEvent) -> void:
+				if Minigame.press_position(event) != null:
+					_show_story()
+		)
 	var figure: TextureRect = TextureRect.new()
 	figure.texture = _figure_texture()
 	figure.custom_minimum_size = Vector2(CharacterSprite.FRAME) * FIGURE_SCALE
@@ -72,6 +103,18 @@ func _show_profile() -> void:
 		content.add_child(make_text(tr("COLLEAGUE_NO_STORY"), 10, UiStyle.MUTED))
 
 
+## The story ring around the avatar (ColleagueWalker draws the same one on the map).
+func _story_ring() -> Control:
+	var ring: Control = Control.new()
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ring.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ring.draw.connect(
+		func() -> void:
+			ring.draw_arc(ring.size / 2.0, AVATAR_SIDE / 2.0 + 1.0, 0.0, TAU, 32, ColleagueWalker.STORY_RING, 2.0)
+	)
+	return ring
+
+
 ## The front frame of the colleague's character, as they dressed it.
 func _figure_texture() -> Texture2D:
 	var atlas: AtlasTexture = AtlasTexture.new()
@@ -101,8 +144,11 @@ func _show_story() -> void:
 	)
 	var picture: TextureRect = TextureRect.new()
 	picture.texture = ImageTexture.create_from_image(mood)
-	picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	picture.custom_minimum_size = Vector2(STORY_SIDE, STORY_SIDE)
+	# The drawing alone is pixel art; the photo is smoothed.
+	picture.texture_filter = (
+		CanvasItem.TEXTURE_FILTER_NEAREST if mood.get_width() <= MoodCanvas.SIDE else CanvasItem.TEXTURE_FILTER_LINEAR
+	)
+	picture.custom_minimum_size = Vector2(content_width, STORY_HEIGHT)
 	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	picture.mouse_filter = Control.MOUSE_FILTER_STOP

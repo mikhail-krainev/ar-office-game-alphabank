@@ -1,12 +1,13 @@
 class_name ColleagueCard
 extends PanelContainer
-## Who to find for a task: avatar, name, department and the room where they were seen last.
+## Who to find for a task: avatar, name, department and the room where they were seen last. A tap on
+## the card opens the colleague's mini profile.
 
 
 func _init(colleague: BackendModels.Colleague, width: float) -> void:
 	add_theme_stylebox_override("panel", UiStyle.panel(UiStyle.SHADE, 5, 6))
 	custom_minimum_size = Vector2(width, 0)
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ColleagueProfiles.make_tappable(self, colleague.user_id)
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE

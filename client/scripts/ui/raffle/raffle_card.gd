@@ -138,6 +138,7 @@ func _make_entrants(state: BackendModels.RaffleState) -> Control:
 		avatar.selected = entrant.user_id == Backend.get_user_id()
 		row.add_child(avatar)
 		avatar.show_avatar(entrant.avatar, entrant.user_id)
+		ColleagueProfiles.make_tappable(avatar, entrant.user_id)
 	if state.entrants.size() > MAX_ENTRANT_AVATARS:
 		row.add_child(UiStyle.make_label("+%d" % (state.entrants.size() - MAX_ENTRANT_AVATARS), 10, UiStyle.MUTED))
 	return column

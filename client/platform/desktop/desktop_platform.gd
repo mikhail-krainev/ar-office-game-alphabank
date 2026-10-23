@@ -159,6 +159,15 @@ func emit_speech(text: String) -> void:
 		speech_recognized.emit(text, true)
 
 
+func take_photo(long_side: int) -> Image:
+	if not _camera_running:
+		return null
+	var photo: Image = _render_frame()
+	var scale_factor: float = float(long_side) / maxi(FRAME_SIZE.x, FRAME_SIZE.y)
+	photo.resize(roundi(FRAME_SIZE.x * scale_factor), roundi(FRAME_SIZE.y * scale_factor), Image.INTERPOLATE_NEAREST)
+	return photo
+
+
 func _process(delta: float) -> void:
 	_update_tilt(delta)
 	_jerk = _jerk.move_toward(Vector3.ZERO, JERK_STRENGTH * delta * 8.0)

@@ -67,14 +67,16 @@ func get_image_rect() -> Rect2:
 	return Rect2((size - image_size) / 2.0, image_size)
 
 
-## This control in window pixels: the viewport is drawn integer-scaled and centred in the window.
+## This control in window pixels: the viewport is drawn scaled (by a whole number unless the stretch
+## is fractional, as in the web build) and centred in the window.
 func _window_rect() -> Rect2:
 	var window: Vector2 = Vector2(DisplayServer.window_get_size())
 	var visible: Vector2 = get_viewport().get_visible_rect().size
 	if visible.x <= 0.0 or visible.y <= 0.0:
 		return Rect2()
 	var fit: float = minf(window.x / visible.x, window.y / visible.y)
-	var scale_factor: float = floorf(fit) if fit >= 1.0 else fit
+	var integer: bool = get_tree().root.content_scale_stretch == Window.CONTENT_SCALE_STRETCH_INTEGER
+	var scale_factor: float = floorf(fit) if integer and fit >= 1.0 else fit
 	var offset: Vector2 = ((window - visible * scale_factor) / 2.0).floor()
 	var transform: Transform2D = get_global_transform_with_canvas()
 	var top_left: Vector2 = transform * Vector2.ZERO

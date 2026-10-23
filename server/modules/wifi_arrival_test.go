@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"image"
+	"image/jpeg"
 	"image/png"
 	"testing"
 )
@@ -34,5 +35,41 @@ func TestMoodDrawingMustBeASmallSquarePNG(t *testing.T) {
 		if _, problem := validMoodPNG(encoded); problem != "mood_invalid" {
 			t.Errorf("%s: problem = %q", name, problem)
 		}
+	}
+}
+
+func TestMoodPhotoIsOptionalAndMustBeASmallJPEG(t *testing.T) {
+	encode := func(width, height int) string {
+		var buffer bytes.Buffer
+		_ = jpeg.Encode(&buffer, image.NewRGBA(image.Rect(0, 0, width, height)), nil)
+		return base64.StdEncoding.EncodeToString(buffer.Bytes())
+	}
+	if data, problem := validMoodPhoto(""); data != nil || problem != "" {
+		t.Errorf("no photo must be fine: %v %q", data, problem)
+	}
+	if _, problem := validMoodPhoto(encode(240, 320)); problem != "" {
+		t.Errorf("a valid photo rejected: %s", problem)
+	}
+	var png64 bytes.Buffer
+	_ = png.Encode(&png64, image.NewRGBA(image.Rect(0, 0, 240, 320)))
+	cases := map[string]string{
+		"too big":   encode(moodPhotoMaxSide+1, 320),
+		"too small": encode(32, 32),
+		"png":       base64.StdEncoding.EncodeToString(png64.Bytes()),
+		"garbage":   "not base64!",
+	}
+	for name, encoded := range cases {
+		if _, problem := validMoodPhoto(encoded); problem != "mood_invalid" {
+			t.Errorf("%s: problem = %q", name, problem)
+		}
+	}
+}
+
+func TestStoriesEndWithTheWorkingDay(t *testing.T) {
+	if !storyOpen(testLimits, unixAt(monday, 19, 59, testOffset), testOffset) {
+		t.Error("a story must be open before the end of the task window")
+	}
+	if storyOpen(testLimits, unixAt(monday, 20, 0, testOffset), testOffset) {
+		t.Error("a story must close at the end of the task window")
 	}
 }

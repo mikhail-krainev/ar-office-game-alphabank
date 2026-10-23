@@ -60,7 +60,10 @@ func _make_item(item: BackendModels.InboxItem) -> Control:
 		row.add_child(avatar)
 		avatar.show_avatar(avatar_id)
 		text_width -= 34.0
-	row.add_child(make_text(NotificationTexts.inbox_text(item), 11, UiStyle.INK, text_width))
+	var text: Label = make_text(NotificationTexts.inbox_text(item), 11, UiStyle.INK, text_width)
+	row.add_child(text)
+	# The colleague's avatar and name open their mini profile.
+	ColleagueProfiles.make_tappable(row, str(item.params.get("from_id", "")))
 	if item.is_facts_quiz():
 		column.add_child(_make_quiz(item))
 	var footer: HBoxContainer = HBoxContainer.new()

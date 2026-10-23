@@ -1,9 +1,11 @@
 class_name MoodDoodleMinigame
 extends Minigame
 ## "Mood of the day": the player draws today's mood with a finger, then tries it on in the front
-## camera: the drawing sits on the forehead and turns with the head (AR, scripts/ar). The drawing goes
-## to the server as the proof and becomes the player's story for today: colleagues in the office see
-## it by tapping the avatar on the map. Without face detection the try-on step is skipped.
+## camera: the drawing sits on the forehead and turns with the head (AR, scripts/ar). "Take a photo"
+## completes the task: the still with the drawing on the forehead (MoodPhoto) and the drawing go to
+## the server and become the player's story until the end of the working day; colleagues in the
+## office see it in the player's mini profile. Without face detection the try-on step is skipped and
+## the drawing alone is the story.
 
 const SIDE: int = MoodCanvas.SIDE
 const CANVAS_SCALE: int = 3
@@ -18,10 +20,8 @@ const PALETTE: Array[Color] = [
 ]
 const SWATCH: float = 22.0
 const BRUSH: int = 2
-## The face must stay in the camera this long with the drawing on it before saving.
-const TRY_ON_SECONDS: float = 1.5
-## The drawing on the forehead is this many eye spans wide.
-const FOREHEAD_SCALE: float = 1.3
+## Long side of the photo in pixels (mood.go accepts up to 480).
+const PHOTO_LONG_SIDE: int = 320
 
 var _canvas: MoodCanvas = MoodCanvas.new()
 var _texture: ImageTexture
@@ -30,13 +30,13 @@ var _drawing: bool = false
 var _last_point: Vector2i = Vector2i(-1, -1)
 var _trying_on: bool = false
 var _faces: Array[SensorModels.Face] = []
-var _hold: float = 0.0
 var _ar_time: float = 0.0
 
 var _hint: Label
 var _status: Label
 var _tools: HBoxContainer
 var _next: Button
+var _shoot: Button
 var _view: CameraView
 
 
@@ -139,6 +139,12 @@ func _start_try_on() -> void:
 	_hint.text = tr("MG_MOOD_TRY_ON_HINT")
 	_view = add_camera_view(Rect2(40, 34, 240, 240))
 	_view.overlay = _draw_on_forehead
+	_shoot = UiStyle.make_button(tr("MG_MOOD_TAKE_PHOTO"), true, 12)
+	_shoot.custom_minimum_size = Vector2(AREA_SIZE.x - 16.0, 30)
+	_shoot.position = Vector2(8, STATUS_Y - 38)
+	_shoot.disabled = true
+	_shoot.pressed.connect(_take_photo)
+	add_child(_shoot)
 	PlatformServices.faces_detected.connect(_on_faces)
 	PlatformServices.start_camera(PlatformBackend.CameraMode.FACES, true)
 	queue_redraw()
@@ -153,15 +159,21 @@ func _process(delta: float) -> void:
 	_ar_time += delta
 	if not _trying_on or is_done():
 		return
-	_hold = _hold + delta if not _faces.is_empty() else 0.0
-	_status.text = (
-		tr("MG_MOOD_HOLD")
-		if _faces.is_empty()
-		else tr("MG_MOOD_KEEP") % ceili(maxf(0.0, TRY_ON_SECONDS - _hold))
-	)
-	if _hold >= TRY_ON_SECONDS:
-		_save()
+	_shoot.disabled = _faces.is_empty()
+	_status.text = tr("MG_MOOD_HOLD") if _faces.is_empty() else tr("MG_MOOD_READY")
 	_view.queue_redraw()
+
+
+## The still of the front camera with the drawing on the forehead completes the task.
+func _take_photo() -> void:
+	if _faces.is_empty() or is_done():
+		return
+	var still: Image = PlatformServices.take_photo(PHOTO_LONG_SIDE)
+	if still == null:
+		_hint.text = tr("MG_MOOD_PHOTO_FAILED")
+		return
+	proof["mood_photo"] = MoodPhoto.to_jpeg_base64(MoodPhoto.compose(still, _canvas.image, _faces))
+	_save()
 
 
 func _save() -> void:
@@ -173,11 +185,10 @@ func _save() -> void:
 func _draw_on_forehead(view: CameraView, image_rect: Rect2) -> void:
 	for face: SensorModels.Face in _faces:
 		var anchor: ArAnchor = ArAnchor.of_face(face, image_rect)
-		var width: float = anchor.eye_span() * FOREHEAD_SCALE
-		if width < 4.0:
+		var width: float = MoodPhoto.width(anchor)
+		if width < MoodPhoto.MIN_WIDTH:
 			continue
-		# Between the eye line and the top of the forehead, a little above the middle.
-		var at: Vector2 = anchor.top.lerp(anchor.eye_center(), 0.35)
+		var at: Vector2 = MoodPhoto.center(anchor)
 		view.draw_set_transform(at, anchor.roll())
 		var rect: Rect2 = Rect2(-Vector2(width, width) / 2.0, Vector2(width, width))
 		view.draw_rect(rect.grow(2.0), Color(ArPainter.NEON_PINK, 0.35), false, 2.0)

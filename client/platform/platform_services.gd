@@ -125,6 +125,12 @@ func show_camera_view(rect: Rect2) -> bool:
 	return _backend.show_camera_view(rect)
 
 
+## A still of the running camera (the long side in pixels), for a photo the player takes on purpose;
+## null when the camera shows nothing.
+func take_photo(long_side: int) -> Image:
+	return _backend.take_photo(long_side)
+
+
 # --- Audio -----------------------------------------------------------------------
 
 

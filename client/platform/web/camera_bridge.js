@@ -2,7 +2,8 @@
 // into the page with JavaScriptBridge.eval. Frames are processed here and only results go to Godot: a
 // small RGB preview, QR text, face boxes with the eye, forehead and chin points for AR stickers, pose
 // landmarks, marker ids, object labels (with a box when the detector found one), step count,
-// recognized speech. Raw camera frames never leave the browser.
+// recognized speech. Raw camera frames never leave the browser; the only exception is photo(), a
+// single still the player takes on purpose (the "Mood of the day" story).
 //
 // Libraries and models come from cdn.jsdelivr.net and storage.googleapis.com on first use (the phone
 // needs internet): jsQR for QR codes; MediaPipe Tasks Vision for faces and smiles (face landmarker with
@@ -229,6 +230,15 @@ window.alfaCamera = window.alfaCamera || (function () {
 		return context.getImageData(0, 0, width, height);
 	}
 
+	// One still of the camera for a photo the player takes on purpose: a base64 JPEG with the long side
+	// `longSide`, mirrored like the preview. '' while the camera shows nothing.
+	function photo(longSide) {
+		if (!state.video || !state.video.videoWidth) { return ''; }
+		state.photo = state.photo || document.createElement('canvas');
+		grab(state.photo, longSide, state.front);
+		return state.photo.toDataURL('image/jpeg', 0.9).split(',')[1] || '';
+	}
+
 	function sendPreview() {
 		var image = grab(state.preview, PREVIEW_LONG_SIDE, state.front);
 		var rgba = image.data;
@@ -452,6 +462,7 @@ window.alfaCamera = window.alfaCamera || (function () {
 		start: start,
 		stop: stop,
 		setView: setView,
+		photo: photo,
 		supported: supported,
 		requestPermission: requestPermission,
 		permission: function () { return state.cameraPermission; },

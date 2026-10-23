@@ -109,6 +109,7 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"get_facts":             rpcGetFacts,
 		"office_players":        rpcOfficePlayers,
 		"get_mood":              rpcGetMood,
+		"player_card":           rpcPlayerCard,
 		"set_facts":             rpcSetFacts,
 		"send_facts":            rpcSendFacts,
 		"answer_facts":          rpcAnswerFacts,

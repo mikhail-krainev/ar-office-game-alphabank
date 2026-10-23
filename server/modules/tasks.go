@@ -209,6 +209,8 @@ type taskProof struct {
 	Score         float64  `json:"score"`
 	// "Mood of the day": the drawing, a base64 PNG (mood.go).
 	MoodPNG string `json:"mood_png"`
+	// The photo with the drawing on the forehead, a base64 JPEG; empty without face detection.
+	MoodPhoto string `json:"mood_photo"`
 }
 
 // rpcCompleteTask: {"task_id", "success", "operation_key", "proof"} -> taskResult.
@@ -258,10 +260,13 @@ func rpcCompleteTask(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 				return nil, err
 			}
 		}
-		var mood []byte
+		var mood, moodPhoto []byte
 		if task.Minigame == moodMinigame {
 			// The drawing is the proof: without a valid one the task does not count.
 			if mood, result.Error = validMoodPNG(proof.MoodPNG); result.Error != "" {
+				return result, nil
+			}
+			if moodPhoto, result.Error = validMoodPhoto(proof.MoodPhoto); result.Error != "" {
 				return result, nil
 			}
 		}
@@ -288,7 +293,7 @@ func rpcCompleteTask(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 		}
 		tx.rememberMet(task, proof)
 		if mood != nil {
-			tx.saveMood(mood)
+			tx.saveMood(mood, moodPhoto)
 		}
 		tx.grantTask(tx.me, task, tx.today, reward)
 		result.Reward = reward
@@ -307,6 +312,7 @@ func parseProof(raw map[string]any) taskProof {
 	}
 	proof.Score, _ = raw["score"].(float64)
 	proof.MoodPNG, _ = raw["mood_png"].(string)
+	proof.MoodPhoto, _ = raw["mood_photo"].(string)
 	if ids, ok := raw["colleague_ids"].([]any); ok {
 		for _, id := range ids {
 			if text, ok := id.(string); ok {

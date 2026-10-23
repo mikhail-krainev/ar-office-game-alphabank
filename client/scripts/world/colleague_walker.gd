@@ -16,6 +16,8 @@ const AVATAR_RADIUS: float = 7.0
 const NAME_SIZE: int = 10
 const NAME_MAX: int = 14
 const STORY_RING: Color = Color("#ff2e88")
+## The name tag reacts to taps a little around it: a finger is wider than the 10 px text.
+const TAG_TAP_MARGIN: float = 6.0
 
 var player: BackendModels.OfficePlayer
 
@@ -64,8 +66,22 @@ func _on_custom_avatar_loaded(user_id: String) -> void:
 		queue_redraw()
 
 
+## The character or the name tag with the avatar.
 func is_hit(world_position: Vector2) -> bool:
-	return HIT_RECT.has_point(world_position - global_position)
+	var local: Vector2 = world_position - global_position
+	return HIT_RECT.has_point(local) or _tag_rect().grow(TAG_TAP_MARGIN).has_point(local)
+
+
+func _tag_text() -> String:
+	var text: String = player.colleague.name
+	return text.left(NAME_MAX - 1) + "…" if text.length() > NAME_MAX else text
+
+
+## The avatar circle and the name above the head, centred on the character.
+func _tag_rect() -> Rect2:
+	var text_width: float = ThemeDB.fallback_font.get_string_size(_tag_text(), HORIZONTAL_ALIGNMENT_LEFT, -1, NAME_SIZE).x
+	var tag_width: float = AVATAR_RADIUS * 2.0 + 3.0 + text_width
+	return Rect2(-tag_width / 2.0, TAG_Y - AVATAR_RADIUS, tag_width, AVATAR_RADIUS * 2.0)
 
 
 func _avatar_texture() -> Texture2D:
@@ -122,12 +138,8 @@ func _pick_walk() -> void:
 
 func _draw() -> void:
 	var font: Font = ThemeDB.fallback_font
-	var text: String = player.colleague.name
-	if text.length() > NAME_MAX:
-		text = text.left(NAME_MAX - 1) + "…"
-	var text_width: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, NAME_SIZE).x
-	var tag_width: float = AVATAR_RADIUS * 2.0 + 3.0 + text_width
-	var left: float = -tag_width / 2.0
+	var text: String = _tag_text()
+	var left: float = _tag_rect().position.x
 	var center: Vector2 = Vector2(left + AVATAR_RADIUS, TAG_Y)
 	if player.has_mood:
 		# A story ring like in messengers, breathing to invite a tap.
