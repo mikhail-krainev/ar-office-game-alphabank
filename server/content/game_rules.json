@@ -1,5 +1,5 @@
 {
-	"_comment": "Game rules of the server module. office: office id on the presence codes and its time zone (days, streaks and fines follow office time). attendance.fine_tiers: the n-th workday missed in a row costs `percent` of the balance, rounded up, never below zero; the first missed day only breaks the streak. photo.partner_bonus: coins the colleague gets for confirming a joint photo. facts.partner_bonus: coins the colleague gets for guessing the player's facts in Three truths, two lies. raffle: parking draw on the last Friday of every month. notifications.fun_windows: office-time windows for light-hearted nudges, outside working hours. limits: defaults of the working-time limits until the admin saves their own in the panel (task cooldown, hours when tasks count, continuous play before the warning, time to leave after it, rest, minutes without the office Wi-Fi after which a player counts as gone out). avatar_templates: ready-made profile pictures (client AvatarCatalog.TEMPLATES).",
+	"_comment": "Game rules of the server module. office: office id on the presence codes and its time zone (days, streaks and fines follow office time). attendance.fine_tiers: the n-th workday missed in a row costs `percent` of the balance, rounded up, never below zero; the first missed day only breaks the streak. photo.partner_bonus: coins the colleague gets for confirming a joint photo. facts.partner_bonus: coins the colleague gets for guessing the player's facts in Three truths, two lies. raffle: parking draw on the last Friday of every month. notifications.fun_windows: office-time windows for light-hearted nudges, outside working hours. limits: defaults of the working-time limits until the admin saves their own in the panel (task cooldown, hours when tasks count, continuous play before the warning, time to leave after it, rest, minutes without the office Wi-Fi after which a player counts as gone out). wheel: fortune wheel, one paid spin a day (wheel.go): price, item sectors rolled from the catalog every day, coin sectors, and the chance weight of a sector by its rarity. avatar_templates: ready-made profile pictures (client AvatarCatalog.TEMPLATES).",
 	"office": {
 		"id": "hq",
 		"utc_offset_minutes": 300
@@ -68,11 +68,31 @@
 		"away_minutes": 15
 	},
 	"economy": {
-		"welcome_bonus": 500,
-		"daily_coin_cap": 700,
+		"welcome_bonus": 300,
+		"daily_coin_cap": 600,
 		"max_score_bonus": 0.2,
-		"streak_multiplier_step": 0.1,
-		"max_streak_multiplier": 2.0
+		"streak_multiplier_step": 0.05,
+		"max_streak_multiplier": 1.5
+	},
+	"wheel": {
+		"spin_price": 300,
+		"item_sectors": 6,
+		"coin_sectors": [
+			{
+				"coins": 100,
+				"weight": 30
+			},
+			{
+				"coins": 500,
+				"weight": 6
+			}
+		],
+		"rarity_weights": {
+			"common": 14,
+			"rare": 6,
+			"epic": 1.5,
+			"legendary": 0.3
+		}
 	},
 	"avatar_templates": [
 		"me",

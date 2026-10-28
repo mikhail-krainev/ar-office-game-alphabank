@@ -92,6 +92,57 @@ static func purchase(data: Dictionary, error: String) -> BackendModels.PurchaseR
 	return result
 
 
+static func wheel(data: Dictionary) -> BackendModels.WheelState:
+	var state: BackendModels.WheelState = BackendModels.WheelState.new()
+	state.spin_price = int(data.get("spin_price", 0))
+	state.spins_left = int(data.get("spins_left", 0))
+	state.free_spin = bool(data.get("free_spin", false))
+	state.refresh_at = int(data.get("refresh_at", 0))
+	state.pending = wheel_pending(data.get("pending"))
+	for entry: Dictionary in _dictionaries(data.get("sectors")):
+		var sector: BackendModels.WheelSector = BackendModels.WheelSector.new()
+		sector.kind = str(entry.get("kind", "coins"))
+		sector.coins = int(entry.get("coins", 0))
+		sector.item_id = str(entry.get("item_id", ""))
+		sector.name = str(entry.get("name", ""))
+		sector.rarity = str(entry.get("rarity", ""))
+		sector.icon = int(entry.get("icon", -1))
+		sector.price = int(entry.get("price", 0))
+		sector.chance = float(entry.get("chance", 0.0))
+		sector.out_of_stock = bool(entry.get("out_of_stock", false))
+		sector.owned = bool(entry.get("owned", false))
+		state.sectors.append(sector)
+	return state
+
+
+## Null unless `data` is a pending wheel win.
+static func wheel_pending(data: Variant) -> BackendModels.WheelPending:
+	if not data is Dictionary:
+		return null
+	var entry: Dictionary = data
+	var pending: BackendModels.WheelPending = BackendModels.WheelPending.new()
+	pending.sector = int(entry.get("sector", -1))
+	pending.item_id = str(entry.get("item_id", ""))
+	pending.coins = int(entry.get("coins", 0))
+	pending.reason = str(entry.get("reason", ""))
+	return pending
+
+
+static func spin(data: Dictionary, error: String) -> BackendModels.SpinResult:
+	var result: BackendModels.SpinResult = BackendModels.SpinResult.new()
+	result.status = str(data.get("status", "failed"))
+	result.error = error if not error.is_empty() else str(data.get("error", ""))
+	if not error.is_empty():
+		result.status = "failed"
+	result.sector = int(data.get("sector", -1))
+	result.coins = int(data.get("coins", 0))
+	result.voucher = str(data.get("voucher", ""))
+	result.pending = wheel_pending(data.get("pending"))
+	result.balance = int(data.get("balance", -1))
+	result.spins_left = int(data.get("spins_left", 0))
+	return result
+
+
 static func shop(data: Dictionary) -> BackendModels.ShopState:
 	var state: BackendModels.ShopState = BackendModels.ShopState.new()
 	state.refresh_at = int(data.get("refresh_at", 0))
@@ -107,6 +158,9 @@ static func shop(data: Dictionary) -> BackendModels.ShopState:
 		offer.price = int(entry.get("price", 0))
 		offer.discount_percent = int(entry.get("discount_percent", 0))
 		offer.purchased = bool(entry.get("purchased", false))
+		offer.left = int(entry.get("left", -1))
+		offer.out_of_stock = bool(entry.get("out_of_stock", false))
+		offer.owned = bool(entry.get("owned", false))
 		state.offers.append(offer)
 	return state
 

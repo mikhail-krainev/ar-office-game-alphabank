@@ -103,6 +103,11 @@ class ShopOffer:
 	var price: int
 	var discount_percent: int
 	var purchased: bool
+	## Items left this week, -1 when unlimited; an item that ran out cannot be bought.
+	var left: int = -1
+	var out_of_stock: bool
+	## Customization the player already has: it is bought only once.
+	var owned: bool
 
 
 class ShopState:
@@ -111,6 +116,70 @@ class ShopState:
 	var offers: Array[ShopOffer] = []
 	## Unix time (seconds) when the assortment rotates.
 	var refresh_at: int = 0
+
+
+class WheelSector:
+	extends RefCounted
+
+	## "coins" or "item".
+	var kind: String
+	var coins: int
+	var item_id: String
+	var name: String
+	var rarity: String
+	## Column in shop_icons.png; -1 for coins.
+	var icon: int = -1
+	var price: int
+	## Chance of the sector in percent.
+	var chance: float
+	var out_of_stock: bool
+	var owned: bool
+
+	func is_coins() -> bool:
+		return kind == "coins"
+
+
+## A wheel win that could not be given (out of stock or already owned): the player exchanges it.
+class WheelPending:
+	extends RefCounted
+
+	var sector: int
+	var item_id: String
+	var coins: int
+	## "out_of_stock" or "owned".
+	var reason: String
+
+
+class WheelState:
+	extends RefCounted
+
+	var sectors: Array[WheelSector] = []
+	var spin_price: int
+	var spins_left: int
+	## The next spin is one given back for an exchanged win: it costs nothing.
+	var free_spin: bool
+	## Null when no win waits for the player's choice.
+	var pending: WheelPending
+	## Unix time (seconds) when the wheel gets new sectors.
+	var refresh_at: int = 0
+
+
+class SpinResult:
+	extends RefCounted
+
+	## granted, pending_approval, coins, choice, respin or failed.
+	var status: String = "failed"
+	var error: String = ""
+	## Sector the wheel stopped on; -1 when the spin failed.
+	var sector: int = -1
+	var coins: int
+	var voucher: String = ""
+	var pending: WheelPending
+	var balance: int = -1
+	var spins_left: int
+
+	func is_failed() -> bool:
+		return status == "failed"
 
 
 class PurchaseResult:

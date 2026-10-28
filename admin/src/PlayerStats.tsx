@@ -7,6 +7,8 @@ import {
   ACTIVITY_LABELS,
   LEDGER_LABELS,
   PHOTO_STATES,
+  REWARD_LOG_STATES,
+  REWARD_SOURCES,
   REWARD_STATES,
   ROOM_LABELS,
   SUSPICIOUS_ACTIONS,
@@ -597,6 +599,36 @@ function FraudTab({ stats, name }: { stats: Stats; name: (id: string) => string 
                   <td>{name(photo.partner)}</td>
                   <td>{label(PHOTO_STATES, photo.state)}</td>
                   <td className="num">{photo.reward}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <h3>Полученные награды</h3>
+      {stats.rewards.length === 0 ? (
+        <p className="muted">Наград пока нет.</p>
+      ) : (
+        <div className="table-wrap">
+          <table className="stats-table">
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Награда</th>
+                <th>Откуда</th>
+                <th>Статус</th>
+                <th className="num">Монеты</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.rewards.map((reward, i) => (
+                <tr key={`${reward.t}-${i}`}>
+                  <td className="nowrap">{formatDateTime(reward.t)}</td>
+                  <td>{reward.item_id === "coins" ? "Монеты" : name(reward.item_id)}</td>
+                  <td>{label(REWARD_SOURCES, reward.source)}</td>
+                  <td>{label(REWARD_LOG_STATES, reward.status)}</td>
+                  <td className="num">{reward.price}</td>
                 </tr>
               ))}
             </tbody>

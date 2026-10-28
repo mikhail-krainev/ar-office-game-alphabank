@@ -17,12 +17,18 @@ const SQUAT_SPEED: float = 2.5
 const STAND_KNEE_ANGLE: float = 175.0
 const SQUAT_KNEE_ANGLE: float = 75.0
 const SPEECH_DELAY: float = 0.6
+## Shoulder width of the emulated body, normalized.
+const SHOULDER_WIDTH: float = 0.16
 
 ## Degrees per second the arrow keys turn the emulated phone (get_rotation_rate).
 const EMULATED_TURN_SPEED: float = 70.0
 var tilt: Vector2 = Vector2.ZERO
 var face_count: int = 0
 var smiling: bool = false
+var winking: bool = false
+var mouth_open: bool = false
+## Arms of the emulated body (a PoseMatcher pose), &"" for arms down.
+var arm_pose: StringName = &""
 var marker_id: int = 0
 ## Object label the emulated camera "sees" in CameraMode.LABELS.
 var label_id: String = ""
@@ -231,8 +237,15 @@ func _pose() -> Dictionary:
 		&"left_knee": Vector3(knee.x, knee.y, 0.99),
 		&"left_ankle": Vector3(ankle.x, ankle.y, 0.99),
 		&"left_shoulder": Vector3(hip.x, hip.y - 0.3, 0.99),
-		&"nose": Vector3(hip.x, hip.y - 0.4, 0.99),
+		&"right_shoulder": Vector3(hip.x + SHOULDER_WIDTH, hip.y - 0.3, 0.99),
+		&"nose": Vector3(hip.x + SHOULDER_WIDTH / 2.0, hip.y - 0.3 - SHOULDER_WIDTH * PoseMatcher.NOSE_HEIGHT, 0.99),
 	}
+	var arms: Dictionary = PoseMatcher.target_points(
+		arm_pose, Vector2(hip.x, hip.y - 0.3), Vector2(hip.x + SHOULDER_WIDTH, hip.y - 0.3)
+	)
+	for joint: StringName in arms:
+		var point: Vector2 = arms[joint]
+		pose[joint] = Vector3(point.x, point.y, 0.99)
 	if _camera_front:
 		for landmark: StringName in pose:
 			var point: Vector3 = pose[landmark]
@@ -257,6 +270,9 @@ func _faces() -> Array[SensorModels.Face]:
 		if _camera_front:
 			bounds.position.x = 1.0 - bounds.end.x
 		var face: SensorModels.Face = SensorModels.Face.new(bounds, 0.95 if smiling else 0.05)
+		face.blink_left = 0.9 if winking else 0.05
+		face.blink_right = 0.05
+		face.jaw_open = 0.8 if mouth_open else 0.02
 		# Landmarks like the face landmarker sends, for the AR stickers.
 		var eye_y: float = bounds.position.y + bounds.size.y * 0.42
 		face.left_eye = Vector2(bounds.position.x + bounds.size.x * 0.2, eye_y)

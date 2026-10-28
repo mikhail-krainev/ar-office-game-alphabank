@@ -11,6 +11,10 @@ class Face:
 	var bounds: Rect2 = Rect2()
 	## Probability of a smile, 0..1, or -1 when the detector does not report it.
 	var smiling: float = -1.0
+	## Blendshape scores 0..1 of the eyes closing and the jaw opening, -1 when not reported.
+	var blink_left: float = -1.0
+	var blink_right: float = -1.0
+	var jaw_open: float = -1.0
 	## Points the AR stickers stand on (scripts/ar): the outer eye corners in screen order, the top of
 	## the forehead and the chin. Unknown (has_anchors() false) when the detector sends only the box.
 	var left_eye: Vector2 = Vector2.ZERO
@@ -46,6 +50,10 @@ const POSE_LANDMARKS: Array[StringName] = [
 	&"nose",
 	&"left_shoulder",
 	&"right_shoulder",
+	&"left_elbow",
+	&"right_elbow",
+	&"left_wrist",
+	&"right_wrist",
 	&"left_hip",
 	&"right_hip",
 	&"left_knee",
@@ -73,7 +81,8 @@ static func parse_pose(json: String) -> Dictionary:
 
 
 ## Faces JSON: {"faces": [{"x": 0.1, "y": 0.2, "w": 0.3, "h": 0.3, "smiling": 0.9,
-## "eyes": [lx, ly, rx, ry], "top": [x, y], "chin": [x, y]}, ...]}; the points are optional.
+## "eyes": [lx, ly, rx, ry], "top": [x, y], "chin": [x, y], "blink_left": 0.1, "blink_right": 0.1,
+## "jaw_open": 0.0}, ...]}; the points and the expression scores are optional.
 static func parse_faces(json: String) -> Array[Face]:
 	var result: Array[Face] = []
 	var parsed: Variant = JSON.parse_string(json)
@@ -93,6 +102,9 @@ static func parse_faces(json: String) -> Array[Face]:
 			float(face.get("h", 0))
 		)
 		var parsed_face: Face = Face.new(bounds, float(face.get("smiling", -1.0)))
+		parsed_face.blink_left = float(face.get("blink_left", -1.0))
+		parsed_face.blink_right = float(face.get("blink_right", -1.0))
+		parsed_face.jaw_open = float(face.get("jaw_open", -1.0))
 		var eyes: Array = _numbers(face.get("eyes"), 4)
 		var top: Array = _numbers(face.get("top"), 2)
 		var chin: Array = _numbers(face.get("chin"), 2)

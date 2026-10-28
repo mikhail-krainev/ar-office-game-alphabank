@@ -115,6 +115,11 @@ type PlayerState struct {
 	WifiArrivals map[string]int64 `json:"wifi_arrivals,omitempty"`
 	// Day of the last "Mood of the day" drawing (mood.go); 0 when there is none.
 	MoodDay int `json:"mood_day,omitempty"`
+	// Fortune wheel (wheel.go): day of the last paid spin, spins given back for exchanged wins, and
+	// a win waiting for the player's choice.
+	WheelDay        int           `json:"wheel_day,omitempty"`
+	WheelExtraSpins int           `json:"wheel_extra_spins,omitempty"`
+	WheelPending    *WheelPending `json:"wheel_pending,omitempty"`
 }
 
 func (s *PlayerState) normalize() {
@@ -249,6 +254,8 @@ type gameTx struct {
 	content *Content
 	// Parking draw read in this transaction (raffle.go).
 	draw *loadedDraw
+	// Reward stock read in this transaction (rewards.go).
+	loadedStock *loadedStock
 	// Admin limits and today's task pack, read once per transaction (limits.go).
 	loadedLimits *Limits
 	pack         map[string]bool
@@ -452,6 +459,16 @@ func (tx *gameTx) commit() error {
 		if err := tx.writeSystem(rafflesCollection, tx.draw.draw.ID, tx.draw.draw, tx.draw.version); err != nil {
 			return err
 		}
+	}
+	if tx.loadedStock != nil && tx.loadedStock.dirty {
+		value, err := json.Marshal(tx.loadedStock.stock)
+		if err != nil {
+			return err
+		}
+		tx.writes = append(tx.writes, &runtime.StorageWrite{
+			Collection: stockCollection, Key: stockKey, UserID: systemUserID, Value: string(value),
+			Version: tx.loadedStock.version, PermissionRead: permissionNone, PermissionWrite: permissionNone,
+		})
 	}
 	writes := append([]*runtime.StorageWrite{}, tx.writes...)
 	// Day bookkeeping changes the state on nearly every call, so every loaded state is written.

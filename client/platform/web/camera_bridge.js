@@ -32,7 +32,8 @@ window.alfaCamera = window.alfaCamera || (function () {
 	var MARKER_TAU = 2;
 	// MediaPipe pose landmark indices for the names in SensorModels.POSE_LANDMARKS.
 	var POSE_LANDMARKS = {
-		nose: 0, left_shoulder: 11, right_shoulder: 12, left_hip: 23, right_hip: 24,
+		nose: 0, left_shoulder: 11, right_shoulder: 12, left_elbow: 13, right_elbow: 14,
+		left_wrist: 15, right_wrist: 16, left_hip: 23, right_hip: 24,
 		left_knee: 25, right_knee: 26, left_ankle: 27, right_ankle: 28,
 	};
 	var PREVIEW_LONG_SIDE = 160;
@@ -314,6 +315,18 @@ window.alfaCamera = window.alfaCamera || (function () {
 		return found > 0 ? Math.min(1, total / found * 1.6) : -1;
 	}
 
+	// Scores of the blendshapes the face commands use ("Cat mask"): blinks and the open jaw.
+	function expressions(blendshapes) {
+		var result = {};
+		if (!blendshapes || !blendshapes.categories) { return result; }
+		blendshapes.categories.forEach(function (category) {
+			if (category.categoryName === 'eyeBlinkLeft') { result.blink_left = category.score; }
+			if (category.categoryName === 'eyeBlinkRight') { result.blink_right = category.score; }
+			if (category.categoryName === 'jawOpen') { result.jaw_open = category.score; }
+		});
+		return result;
+	}
+
 	// [x, y] of a face landmark, mirrored for the front camera like the preview.
 	function anchor(point) {
 		return point ? [state.front ? 1 - point.x : point.x, point.y] : null;
@@ -330,7 +343,10 @@ window.alfaCamera = window.alfaCamera || (function () {
 				minY = Math.min(minY, point.y); maxY = Math.max(maxY, point.y);
 			});
 			var x = state.front ? 1 - maxX : minX;
-			var face = { x: x, y: minY, w: maxX - minX, h: maxY - minY, smiling: smile((result.faceBlendshapes || [])[index]) };
+			var blendshapes = (result.faceBlendshapes || [])[index];
+			var face = { x: x, y: minY, w: maxX - minX, h: maxY - minY, smiling: smile(blendshapes) };
+			var shapes = expressions(blendshapes);
+			Object.keys(shapes).forEach(function (key) { face[key] = shapes[key]; });
 			var left = anchor(points[FACE_ANCHORS.leftEye]);
 			var right = anchor(points[FACE_ANCHORS.rightEye]);
 			if (left && right) {

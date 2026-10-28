@@ -4,7 +4,8 @@ extends Node
 ## (server/modules); the client never changes balance, unlocks or ownership itself. The game needs
 ## the network: a failed call returns a result with the error "network" and emits request_failed.
 ## Tasks, shop, wardrobe, garage and presence are here; the other groups are `social` (colleagues,
-## joint photos, inbox), `account` (profile page, status, avatar) and `raffle` (parking draw).
+## joint photos, inbox), `account` (profile page, status, avatar), `raffle` (parking draw) and
+## `wheel` (fortune wheel).
 
 signal balance_changed(balance: int)
 signal outfit_changed(outfit: Dictionary)
@@ -25,6 +26,7 @@ var server: ServerSession
 var social: BackendSocial
 var account: BackendAccount
 var raffle: BackendRaffle
+var wheel: BackendWheel
 ## When tasks count (cooldown, task hours); updated by list_tasks().
 var task_schedule: BackendModels.TaskSchedule = BackendModels.TaskSchedule.new()
 
@@ -39,7 +41,8 @@ func _ready() -> void:
 	social = BackendSocial.new(self)
 	account = BackendAccount.new(self)
 	raffle = BackendRaffle.new(self)
-	for api: Node in [social, account, raffle]:
+	wheel = BackendWheel.new(self)
+	for api: Node in [social, account, raffle, wheel]:
 		add_child(api)
 	if OS.is_debug_build() and OS.has_feature("pc"):
 		var keys: Node = load("res://scripts/services/dev_backend_keys.gd").new()

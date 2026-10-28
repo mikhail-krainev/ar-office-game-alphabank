@@ -464,3 +464,53 @@ COLLEAGUE_STORY_GONE,"История недоступна: истории кол
 COLLEAGUE_STORY_TITLE,Настроение дня · %s,Mood of the day · %s
 COLLEAGUE_PROFILE_LOADING,Загружаю профиль…,Loading the profile…
 COLLEAGUE_PROFILE_GONE,Профиль недоступен: коллега не из твоего офиса сегодня,The profile is unavailable: the colleague is not in your office today
+SHOP_TAB_WHEEL,КОЛЕСО,WHEEL
+SHOP_OUT_OF_STOCK,Нет в наличии,Out of stock
+SHOP_OWNED,Уже есть,Already yours
+SHOP_LEFT,Осталось: %d,Left: %d
+WHEEL_TITLE,Колесо фортуны,Fortune wheel
+WHEEL_HINT,"Один спин в день. Призы — монеты и награды из каталога, колесо меняется каждый день. Шансы честные и указаны ниже.","One spin a day. Prizes are coins and catalog rewards, the wheel changes every day. The chances are fair and listed below."
+WHEEL_SPIN,Крутить за %d,Spin for %d
+WHEEL_SPIN_FREE,Крутить бесплатно,Free spin
+WHEEL_COME_TOMORROW,Следующий спин завтра,Next spin tomorrow
+WHEEL_CHANCES,Шансы,Chances
+WHEEL_COINS,%d монет,%d coins
+WHEEL_WON,Выигрыш: %s!,You won: %s!
+WHEEL_WON_VOUCHER,Выигрыш: %s! Промокод: %s,You won: %s! Promo code: %s
+WHEEL_WON_PENDING,Выигрыш: %s! Заявка отправлена на подтверждение,You won: %s! Request sent for approval
+WHEEL_WON_COINS,Выигрыш: %d монет!,You won %d coins!
+WHEEL_WON_CHOICE,Выпало: %s — но выдать не получится,You landed on %s but it can't be given
+WHEEL_OUT_OF_STOCK,"Эта награда закончилась на этой неделе. Выбери: ещё один спин бесплатно или монеты по цене награды.","This reward is out of stock this week. Choose: a free spin or coins equal to its price."
+WHEEL_OWNED,"Эта вещь у тебя уже есть. Выбери: ещё один спин бесплатно или монеты по цене награды.","You already have this item. Choose: a free spin or coins equal to its price."
+WHEEL_TAKE_SPIN,Ещё спин,Spin again
+WHEEL_TAKE_COINS,Взять %d монет,Take %d coins
+WHEEL_GOT_COINS,Начислено %d монет,%d coins added
+WHEEL_GOT_SPIN,Спин возвращён: крути ещё раз,Spin returned: spin again
+ERROR_OUT_OF_STOCK,Награда закончилась на этой неделе,This reward is out of stock this week
+ERROR_ITEM_OWNED,Эта вещь у тебя уже есть,You already have this item
+ERROR_WHEEL_SPUN_TODAY,Сегодня колесо уже крутили,You've already spun the wheel today
+ERROR_WHEEL_CHOICE_PENDING,Сначала выбери: спин или монеты,First choose: a spin or coins
+ERROR_NO_WHEEL_CHOICE,Выбирать нечего,Nothing to choose
+ERROR_WHEEL_EMPTY,Колесо сегодня пустое,The wheel is empty today
+MG_POSE_HINT,"Телефон на стол, камерой к себе, отойди на пару шагов. Повтори позу золотого силуэта и задержись","Phone on the desk facing you, step back. Copy the gold figure's pose and hold it"
+MG_POSE_HANDS_UP,Руки вверх!,Hands up!
+MG_POSE_T_POSE,Руки в стороны,Arms out to the sides
+MG_POSE_LEFT_UP,Подними левую руку,Raise your left hand
+MG_POSE_RIGHT_UP,Подними правую руку,Raise your right hand
+MG_POSE_HANDS_ON_HEAD,Руки на голову,Hands on your head
+MG_POSE_NO_BODY,Не вижу тебя целиком,Can't see your whole body
+MG_POSE_HOLD,Держи!,Hold it!
+MG_POSE_COPY,Повторяй,Copy it
+MG_POSE_NICE,ЕСТЬ!,NICE!
+MG_CAT_MASK_HINT,Смотри в фронтальную камеру и выполняй команды кота,Look into the front camera and follow the cat's commands
+MG_CAT_MASK_FIND_FACE,Покажи лицо камере,Show your face to the camera
+MG_CAT_MASK_NO_FACE,Не вижу лица,Can't see your face
+MG_CAT_MASK_MEOW,МЯУ!,MEOW!
+MG_CAT_SMILE,Улыбнись!,Smile!
+MG_CAT_WINK,Подмигни!,Wink!
+MG_CAT_OPEN_MOUTH,Открой рот!,Open your mouth!
+MG_CAT_TILT_HEAD,Наклони голову!,Tilt your head!
+MG_PAPER_TOSS_HINT,"Найди урну, поворачиваясь с телефоном, и брось бумажку свайпом вверх","Find the bin by turning with the phone, then swipe up to throw"
+MG_PAPER_TOSS_WIND,Ветер %s %.1f,Wind %s %.1f
+MG_PAPER_TOSS_IN,ПОПАЛ!,IN!
+MG_PAPER_TOSS_MISS,МИМО,MISS

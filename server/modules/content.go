@@ -34,6 +34,8 @@ type CatalogItem struct {
 	Rarity      string `json:"rarity"`
 	Price       int    `json:"price"`
 	Icon        int    `json:"icon"`
+	// Items per week; the admin may override it in the panel (rewards.go). 0 = unlimited.
+	WeeklyStock int `json:"weekly_stock"`
 }
 
 type WardrobeUnlock struct {
@@ -98,8 +100,9 @@ type Rules struct {
 		StreakMultiplierStep float64 `json:"streak_multiplier_step"`
 		MaxStreakMultiplier  float64 `json:"max_streak_multiplier"`
 	} `json:"economy"`
-	Limits          Limits   `json:"limits"`
-	AvatarTemplates []string `json:"avatar_templates"`
+	Wheel           WheelRules `json:"wheel"`
+	Limits          Limits     `json:"limits"`
+	AvatarTemplates []string   `json:"avatar_templates"`
 }
 
 type Content struct {
@@ -147,6 +150,14 @@ func loadContent(dir string) (*Content, error) {
 	}
 	if err := validateLimits(content.Rules.Limits); err != nil {
 		return nil, fmt.Errorf("game_rules.json: limits: %w", err)
+	}
+	if err := validateWheel(&content.Rules.Wheel); err != nil {
+		return nil, fmt.Errorf("game_rules.json: wheel: %w", err)
+	}
+	for _, item := range catalog.Items {
+		if item.Price <= 0 || item.WeeklyStock < 0 || item.WeeklyStock > maxStock {
+			return nil, fmt.Errorf("shop_catalog.json: %s: bad price or weekly_stock", item.ID)
+		}
 	}
 	content.Tasks = tasks.Tasks
 	content.Catalog = catalog.Items

@@ -1,12 +1,13 @@
 class_name ShopPanel
 extends CanvasLayer
-## Reward shop with three tabs: the daily rotating rewards, the parking draw and the garage with car
-## models. Prices, discounts, ownership, tickets and the draw itself are decided by Backend.
+## Reward shop with four tabs: the daily rotating rewards, the fortune wheel, the parking draw and the
+## garage with car models. Prices, discounts, stock, ownership, spins, tickets and the draw itself are
+## decided by Backend.
 
-enum Tab { REWARDS, RAFFLE, GARAGE }
+enum Tab { REWARDS, WHEEL, RAFFLE, GARAGE }
 
-const TAB_KEYS: Dictionary[Tab, String] = {Tab.REWARDS: "SHOP_TAB_REWARDS", Tab.RAFFLE: "SHOP_TAB_RAFFLE", Tab.GARAGE: "SHOP_TAB_GARAGE"}
-const TITLE_KEYS: Dictionary[Tab, String] = {Tab.REWARDS: "SHOP_TITLE", Tab.RAFFLE: "RAFFLE_TITLE", Tab.GARAGE: "GARAGE_TITLE"}
+const TAB_KEYS: Dictionary[Tab, String] = {Tab.REWARDS: "SHOP_TAB_REWARDS", Tab.WHEEL: "SHOP_TAB_WHEEL", Tab.RAFFLE: "SHOP_TAB_RAFFLE", Tab.GARAGE: "SHOP_TAB_GARAGE"}
+const TITLE_KEYS: Dictionary[Tab, String] = {Tab.REWARDS: "SHOP_TITLE", Tab.WHEEL: "WHEEL_TITLE", Tab.RAFFLE: "RAFFLE_TITLE", Tab.GARAGE: "GARAGE_TITLE"}
 const PARKING_BLUE: Color = Color("#2f6fd0")
 
 const ICONS: Texture2D = preload("res://assets/ui/shop_icons.png")
@@ -14,6 +15,8 @@ const COIN_SHEET: Texture2D = preload("res://assets/ui/alfa_coin.png")
 const ICON_SIZE: int = 24
 const COLUMNS: int = 2
 const SIDE_MARGIN: float = 10.0
+## The card shows "N left" from this many items left this week.
+const LOW_STOCK: int = 5
 
 var _shop: BackendModels.ShopState
 var _tab: Tab = Tab.REWARDS
@@ -27,6 +30,7 @@ var _toast: Label
 var _toast_left: float = 0.0
 var _busy: bool = false
 var _width: float = 320.0
+var _wheel: BackendModels.WheelState
 var _raffle: BackendModels.RaffleState
 var _raffle_loaded_msec: int = 0
 var _countdown: Label
@@ -145,6 +149,16 @@ func _reload() -> void:
 		_content.add_child(grid)
 		for offer: BackendModels.ShopOffer in _shop.offers:
 			grid.add_child(_make_offer_card(offer))
+	elif _tab == Tab.WHEEL:
+		_refresh_label.text = ""
+		_wheel = await Backend.wheel.get_wheel()
+		if _tab != Tab.WHEEL:
+			return
+		var card: WheelCard = WheelCard.new()
+		card.build(_wheel, _width - 30.0)
+		card.message.connect(_show_toast)
+		card.changed.connect(_reload)
+		_content.add_child(card)
 	elif _tab == Tab.RAFFLE:
 		_refresh_label.text = ""
 		_raffle = await Backend.raffle.get_raffle()
@@ -231,12 +245,25 @@ func _make_offer_card(offer: BackendModels.ShopOffer) -> Control:
 		old_price.text = "[s]%d[/s] [color=#ef3124]−%d%%[/color]" % [offer.base_price, offer.discount_percent]
 		price_row.add_child(old_price)
 
-	var button: Button = UiStyle.make_button(tr("SHOP_BOUGHT") if offer.purchased else tr("SHOP_BUY"), not offer.purchased, 11)
-	button.disabled = offer.purchased
+	if offer.left > 0 and offer.left <= LOW_STOCK:
+		column.add_child(UiStyle.make_label(tr("SHOP_LEFT") % offer.left, 8, UiStyle.RED))
+	var can_buy: bool = not (offer.purchased or offer.out_of_stock or offer.owned)
+	var button: Button = UiStyle.make_button(_offer_button_text(offer), can_buy, 11)
+	button.disabled = not can_buy
 	button.custom_minimum_size = Vector2(0, 28)
 	button.pressed.connect(_on_buy.bind(offer))
 	column.add_child(button)
 	return card
+
+
+func _offer_button_text(offer: BackendModels.ShopOffer) -> String:
+	if offer.owned:
+		return tr("SHOP_OWNED")
+	if offer.purchased:
+		return tr("SHOP_BOUGHT")
+	if offer.out_of_stock:
+		return tr("SHOP_OUT_OF_STOCK")
+	return tr("SHOP_BUY")
 
 
 # --- Parking draw ----------------------------------------------------------------

@@ -26,6 +26,9 @@ const REQUIRED_FEATURES: Dictionary[String, Array] = {
 	"colleague_bingo": [PlatformBackend.Feature.QR_SCAN],
 	"two_truths": [PlatformBackend.Feature.QR_SCAN],
 	"bug_hunt": [PlatformBackend.Feature.CAMERA, PlatformBackend.Feature.ACCELEROMETER],
+	"paper_toss": [PlatformBackend.Feature.CAMERA, PlatformBackend.Feature.ACCELEROMETER],
+	"pose_match": [PlatformBackend.Feature.POSE_DETECTION],
+	"cat_mask": [PlatformBackend.Feature.FACE_DETECTION],
 	# Drawing works everywhere; the AR try-on on the forehead runs only with face detection.
 	"mood_doodle": [],
 }
@@ -260,6 +263,12 @@ static func create(kind: String) -> Minigame:
 			return BugHuntMinigame.new()
 		"mood_doodle":
 			return MoodDoodleMinigame.new()
+		"paper_toss":
+			return PaperTossMinigame.new()
+		"pose_match":
+			return PoseMatchMinigame.new()
+		"cat_mask":
+			return CatMaskMinigame.new()
 		# Screen-only fallbacks from the first prototype.
 		"coffee":
 			return CoffeeMinigame.new()

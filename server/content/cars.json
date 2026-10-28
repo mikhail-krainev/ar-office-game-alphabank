@@ -2,7 +2,7 @@
 	"_comment": "Server content: player cars. price 0 = owned from the start. Buying and selecting a car goes through the server.",
 	"cars": [
 		{"id": "vaz2104", "name": "ВАЗ 2104", "price": 0, "speed_kmh": 110, "description": "Семейная четвёрка. Надёжная, как бабушкин сервант."},
-		{"id": "bmw5", "name": "BMW 5", "price": 2500, "speed_kmh": 210, "description": "Серебристый седан для взрослых решений."},
-		{"id": "audi_rs6", "name": "Audi RS6 Avant", "price": 4000, "speed_kmh": 250, "description": "Универсал в сером мате, который обгоняет спорткары."}
+		{"id": "bmw5", "name": "BMW 5", "price": 5000, "speed_kmh": 210, "description": "Серебристый седан для взрослых решений."},
+		{"id": "audi_rs6", "name": "Audi RS6 Avant", "price": 9000, "speed_kmh": 250, "description": "Универсал в сером мате, который обгоняет спорткары."}
 	]
 }

@@ -2,7 +2,8 @@ class_name SensorEmulator
 extends CanvasLayer
 ## Debug overlay for DesktopPlatform. Visible while a sensor is running; lists the keys and offers
 ## buttons for input that has no natural key (QR codes, room emblems, recognized speech).
-## Keys: arrows tilt, Space jerk, W walk, S squat, F faces, G smile, 1-9 marker, 0 no marker.
+## Keys: arrows tilt, Space jerk, W walk, S squat, P arm pose, F faces, G smile, B wink, O open mouth,
+## 1-9 marker, 0 no marker.
 ## QR codes, room emblems and recognized objects are picked with the buttons on the panel.
 
 const PANEL_COLOR: Color = Color(0.08, 0.07, 0.1, 0.88)
@@ -68,12 +69,25 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			desktop.set("face_count", (int(desktop.get("face_count")) + 1) % (MAX_FACES + 1))
 		KEY_G:
 			desktop.set("smiling", not bool(desktop.get("smiling")))
+		KEY_B:
+			desktop.set("winking", not bool(desktop.get("winking")))
+		KEY_O:
+			desktop.set("mouth_open", not bool(desktop.get("mouth_open")))
+		KEY_P:
+			desktop.set("arm_pose", _next_arm_pose(desktop.get("arm_pose")))
 		KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9:
 			desktop.set("marker_id", key.physical_keycode - KEY_0)
 		_:
 			return
 	get_viewport().set_input_as_handled()
 	refresh()
+
+
+## Arms down, then every PoseMatcher pose in turn.
+static func _next_arm_pose(current: StringName) -> StringName:
+	var poses: Array[StringName] = [&""]
+	poses.append_array(PoseMatcher.POSES)
+	return poses[(poses.find(current) + 1) % poses.size()]
 
 
 func _process(_delta: float) -> void:
@@ -104,9 +118,13 @@ func _describe() -> String:
 	if bool(desktop.call("is_camera_running")):
 		match int(desktop.call("get_camera_mode")):
 			PlatformBackend.CameraMode.POSE:
-				lines.append("hold S: squat (depth %.1f)" % float(desktop.get("squat_depth")))
+				var arms: String = String(desktop.get("arm_pose"))
+				lines.append("hold S: squat (depth %.1f), P arms: %s" % [float(desktop.get("squat_depth")), arms if not arms.is_empty() else "down"])
 			PlatformBackend.CameraMode.FACES:
-				lines.append("F faces: %d, G smile: %s" % [int(desktop.get("face_count")), "yes" if desktop.get("smiling") else "no"])
+				lines.append("F faces: %d, G smile: %s, B wink: %s, O mouth: %s" % [
+					int(desktop.get("face_count")), "yes" if desktop.get("smiling") else "no",
+					"yes" if desktop.get("winking") else "no", "yes" if desktop.get("mouth_open") else "no",
+				])
 			PlatformBackend.CameraMode.MARKERS:
 				lines.append("1-9 marker, 0 none: %d" % int(desktop.get("marker_id")))
 			PlatformBackend.CameraMode.QR:

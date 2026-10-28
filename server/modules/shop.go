@@ -23,7 +23,7 @@ const (
 )
 
 var (
-	discounts     = []int{10, 15, 20, 25, 30, 50}
+	discounts     = []int{10, 15, 20, 25, 30}
 	rarityWeights = []struct {
 		rarity string
 		weight int
@@ -46,6 +46,11 @@ type shopOffer struct {
 	Price           int    `json:"price"`
 	DiscountPercent int    `json:"discount_percent"`
 	Purchased       bool   `json:"purchased"`
+	// Items left this week, -1 when unlimited; an item that ran out cannot be bought (rewards.go).
+	Left       int  `json:"left"`
+	OutOfStock bool `json:"out_of_stock"`
+	// Customization the player already has: it is bought only once.
+	Owned bool `json:"owned"`
 }
 
 func seededRand(text string) *rand.Rand {
@@ -93,14 +98,16 @@ func rollItem(rng *rand.Rand, catalog []CatalogItem, exclude map[string]bool) *C
 			break
 		}
 	}
-	// Fall back to more common rarities when the rolled pool is exhausted.
+	// Fall back to more common rarities when the rolled pool is exhausted, then to rarer ones, so a
+	// slot stays empty only when the whole catalog is used.
 	start := 0
 	for i, name := range rarityOrder {
 		if name == rarity {
 			start = i
 		}
 	}
-	for _, name := range rarityOrder[start:] {
+	order := append(append([]string{}, rarityOrder[start:]...), reversed(rarityOrder[:start])...)
+	for _, name := range order {
 		pool := []*CatalogItem{}
 		for i := range catalog {
 			if catalog[i].Rarity == name && !exclude[catalog[i].ID] {
@@ -114,12 +121,29 @@ func rollItem(rng *rand.Rand, catalog []CatalogItem, exclude map[string]bool) *C
 	return nil
 }
 
+func reversed(values []string) []string {
+	result := make([]string, len(values))
+	for i, value := range values {
+		result[len(values)-1-i] = value
+	}
+	return result
+}
+
 func rpcGetShop(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, _ string) (string, error) {
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
 		offers := dailyOffers(tx.content.Catalog, tx.today)
 		bought := dayList(tx.me.state.Purchases, tx.today)
+		stock, err := tx.stock()
+		if err != nil {
+			return nil, err
+		}
 		for i := range offers {
 			offers[i].Purchased = contains(bought, offers[i].OfferID)
+			offers[i].Owned = tx.ownsCosmetic(offers[i].ItemID)
+			if item := tx.content.catalogItem(offers[i].ItemID); item != nil {
+				offers[i].Left = stock.left(item)
+				offers[i].OutOfStock = offers[i].Left == 0
+			}
 		}
 		return map[string]any{"offers": offers, "refresh_at": unixAt(tx.today+1, 0, 0, tx.offset)}, nil
 	})
@@ -136,7 +160,8 @@ func failedPurchase(problem string, balance int64) purchaseResult {
 	return purchaseResult{Status: "failed", Error: problem, Balance: balance}
 }
 
-// rpcBuy: {"offer_id", "operation_key"}. Epic and legendary rewards wait for manual approval.
+// rpcBuy: {"offer_id", "operation_key"}. Epic and legendary rewards wait for manual approval;
+// customization the player already has and items out of stock are refused.
 func rpcBuy(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	var request struct {
 		OfferID      string `json:"offer_id"`
@@ -165,27 +190,29 @@ func rpcBuy(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.N
 			return failedPurchase("offer_expired", tx.me.balance), nil
 		case contains(dayList(state.Purchases, tx.today), offer.OfferID):
 			return failedPurchase("already_purchased", tx.me.balance), nil
+		case tx.ownsCosmetic(offer.ItemID):
+			return failedPurchase("item_owned", tx.me.balance), nil
 		case tx.me.balance < int64(offer.Price):
 			return failedPurchase("not_enough_coins", tx.me.balance), nil
 		}
+		item := tx.content.catalogItem(offer.ItemID)
+		if item == nil {
+			return failedPurchase("offer_expired", tx.me.balance), nil
+		}
+		taken, err := tx.takeStock(item)
+		if err != nil || !taken {
+			return failedPurchase("out_of_stock", tx.me.balance), err
+		}
 		addToDay(state.Purchases, tx.today, offer.OfferID)
-		if !contains(state.OwnedItems, offer.ItemID) {
-			state.OwnedItems = append(state.OwnedItems, offer.ItemID)
-		}
 		tx.credit(tx.me, -int64(offer.Price), "shop_purchase", offer.ItemID)
-		result := purchaseResult{Status: "granted", Balance: tx.me.balance}
-		if approvalRarities[offer.Rarity] {
-			result.Status = "pending_approval"
-			err := tx.writeSystem(rewardsCollection, randomKey(), map[string]any{
-				"user_id": tx.me.userID, "item_id": offer.ItemID, "price": offer.Price, "t": tx.now, "status": "pending",
-			}, "")
-			return result, err
-		}
-		if len(offer.ItemID) > 6 && offer.ItemID[:6] == "promo_" {
-			result.Voucher = fmt.Sprintf("ALFA-%04X-%04X", rand.IntN(0x10000), rand.IntN(0x10000))
-		}
-		return result, nil
+		result, err := tx.grantItem(item, rewardSourceShop, offer.Price)
+		result.Balance = tx.me.balance
+		return result, err
 	})
+}
+
+func newVoucher() string {
+	return fmt.Sprintf("ALFA-%04X-%04X", rand.IntN(0x10000), rand.IntN(0x10000))
 }
 
 // --- Wardrobe ----------------------------------------------------------------------

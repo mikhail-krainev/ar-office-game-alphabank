@@ -908,3 +908,8 @@ label.check input {
 .manager-head p {
   margin-bottom: 0;
 }
+
+.stock-input {
+  width: 5.5em;
+  text-align: right;
+}

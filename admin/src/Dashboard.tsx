@@ -10,8 +10,9 @@ import { LimitsPanel } from "./LimitsPanel";
 import { OfficesPanel } from "./OfficesPanel";
 import { ClockPanel } from "./ClockPanel";
 import { ManagersPanel } from "./ManagersPanel";
+import { RewardsPanel } from "./RewardsPanel";
 
-type Section = "access" | "managers" | "offices" | "stats" | "limits" | "clock";
+type Section = "access" | "managers" | "offices" | "stats" | "rewards" | "limits" | "clock";
 
 export interface DashboardActions {
   session: Session;
@@ -134,6 +135,9 @@ export function Dashboard({ session, onSessionLost }: { session: Session; onSess
         <button role="tab" aria-selected={section === "stats"} className={section === "stats" ? "tab active" : "tab"} onClick={() => setSection("stats")}>
           Статистика
         </button>
+        <button role="tab" aria-selected={section === "rewards"} className={section === "rewards" ? "tab active" : "tab"} onClick={() => setSection("rewards")}>
+          Награды
+        </button>
         <button role="tab" aria-selected={section === "limits"} className={section === "limits" ? "tab active" : "tab"} onClick={() => setSection("limits")}>
           Ограничения
         </button>
@@ -157,6 +161,7 @@ export function Dashboard({ session, onSessionLost }: { session: Session; onSess
         </>
       )}
       {section === "stats" && <StatsPanel actions={actions} />}
+      {section === "rewards" && <RewardsPanel actions={actions} />}
       {section === "limits" && <LimitsPanel actions={actions} />}
       {section === "clock" && clock?.enabled && <ClockPanel actions={actions} clock={clock} onChange={setClock} />}
     </div>

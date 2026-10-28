@@ -300,6 +300,7 @@ func playerStats(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runt
 		ledger   []ledgerEntry
 		flagged  []flaggedEntry
 		requests []rewardRequest
+		rewards  []rewardLogEntry
 	)
 	if err == nil {
 		ledger, err = loadLedger(ctx, db, userID)
@@ -309,6 +310,9 @@ func playerStats(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runt
 	}
 	if err == nil {
 		requests, err = loadRewardRequests(ctx, db, userID)
+	}
+	if err == nil {
+		rewards, err = loadRewardLog(ctx, db, userID)
 	}
 	if err != nil {
 		logger.Error("stats of %s: %v", userID, err)
@@ -333,7 +337,7 @@ func playerStats(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runt
 	}
 	return map[string]any{
 		"player": player, "days": days, "activity": activity, "ledger": ledger, "suspicious": flagged,
-		"reward_requests": requests, "photo_requests": photos, "names": names.names,
+		"reward_requests": requests, "rewards": rewards, "photo_requests": photos, "names": names.names,
 		"excused_days": sortedDays(state.ExcusedDays),
 	}, nil
 }

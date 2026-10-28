@@ -1,21 +1,21 @@
 {
-	"_comment": "Server content: reward catalog. icon = column in assets/ui/shop_icons.png. Epic and legendary purchases need manual approval. Merch also unlocks matching wardrobe items (see wardrobe.json).",
+	"_comment": "Server content: reward catalog. icon = column in assets/ui/shop_icons.png. Epic and legendary purchases need manual approval. weekly_stock = items per week, refilled every Monday, 0 = unlimited (the admin overrides it in the panel). Prices follow docs/economy.md: common about a day of tasks, rare 2-3 days, epic 1.5-2 weeks, legendary about two months. Merch also unlocks matching wardrobe items (see wardrobe.json); such customization is bought or won only once.",
 	"items": [
-		{"id": "sticker_pack", "name": "Стикерпак Альфа", "description": "Набор стикеров для ноутбука.", "rarity": "common", "price": 60, "icon": 3},
-		{"id": "mug", "name": "Кружка с логотипом", "description": "Для кофе, который ты сваришь команде.", "rarity": "common", "price": 120, "icon": 2},
-		{"id": "promo_coffee", "name": "Промокод на кофе", "description": "Бесплатный кофе в кофейне у офиса.", "rarity": "common", "price": 80, "icon": 6},
-		{"id": "tote", "name": "Шоппер", "description": "Хлопковая сумка с принтом.", "rarity": "common", "price": 150, "icon": 5},
-		{"id": "promo_taxi", "name": "Промокод на такси −20%", "description": "Чтобы добраться до офиса.", "rarity": "common", "price": 140, "icon": 9},
-		{"id": "cap", "name": "Кепка Альфа", "description": "Красная кепка. Открывает её и в гардеробе.", "rarity": "rare", "price": 220, "icon": 14},
-		{"id": "backpack", "name": "Рюкзак Альфа", "description": "Для ноутбука и печенек. Открывает его и в гардеробе.", "rarity": "rare", "price": 320, "icon": 15},
-		{"id": "tshirt", "name": "Футболка мерч", "description": "Белая футболка с красным знаком.", "rarity": "rare", "price": 300, "icon": 0},
-		{"id": "thermos", "name": "Термокружка", "description": "Держит тепло всю планёрку.", "rarity": "rare", "price": 260, "icon": 4},
-		{"id": "promo_food", "name": "Промокод на доставку еды", "description": "Обед за счёт коинов.", "rarity": "rare", "price": 250, "icon": 7},
-		{"id": "promo_cinema", "name": "Два билета в кино", "description": "На любой сеанс в выходные.", "rarity": "rare", "price": 350, "icon": 8},
-		{"id": "powerbank", "name": "Пауэрбанк", "description": "10 000 мА·ч фирменного заряда.", "rarity": "rare", "price": 380, "icon": 12},
-		{"id": "hoodie", "name": "Худи Альфа-Банк", "description": "Тёплое красное худи.", "rarity": "epic", "price": 700, "icon": 1},
-		{"id": "parking", "name": "Парковка на неделю", "description": "Место у входа на 5 рабочих дней.", "rarity": "epic", "price": 900, "icon": 13},
-		{"id": "day_off", "name": "1 выходной день", "description": "Дополнительный оплачиваемый выходной.", "rarity": "legendary", "price": 2500, "icon": 10},
-		{"id": "job_swap", "name": "День на любой должности", "description": "Поработай один день кем захочешь. Кроме директора.", "rarity": "legendary", "price": 3000, "icon": 11}
+		{"id": "sticker_pack", "name": "Стикерпак Альфа", "description": "Набор стикеров для ноутбука.", "rarity": "common", "price": 150, "icon": 3, "weekly_stock": 50},
+		{"id": "mug", "name": "Кружка с логотипом", "description": "Для кофе, который ты сваришь команде.", "rarity": "common", "price": 250, "icon": 2, "weekly_stock": 20},
+		{"id": "promo_coffee", "name": "Промокод на кофе", "description": "Бесплатный кофе в кофейне у офиса.", "rarity": "common", "price": 180, "icon": 6, "weekly_stock": 0},
+		{"id": "tote", "name": "Шоппер", "description": "Хлопковая сумка с принтом.", "rarity": "common", "price": 300, "icon": 5, "weekly_stock": 15},
+		{"id": "promo_taxi", "name": "Промокод на такси −20%", "description": "Чтобы добраться до офиса.", "rarity": "common", "price": 280, "icon": 9, "weekly_stock": 0},
+		{"id": "cap", "name": "Кепка Альфа", "description": "Красная кепка. Открывает её и в гардеробе.", "rarity": "rare", "price": 700, "icon": 14, "weekly_stock": 10},
+		{"id": "backpack", "name": "Рюкзак Альфа", "description": "Для ноутбука и печенек. Открывает его и в гардеробе.", "rarity": "rare", "price": 900, "icon": 15, "weekly_stock": 8},
+		{"id": "tshirt", "name": "Футболка мерч", "description": "Белая футболка с красным знаком.", "rarity": "rare", "price": 800, "icon": 0, "weekly_stock": 10},
+		{"id": "thermos", "name": "Термокружка", "description": "Держит тепло всю планёрку.", "rarity": "rare", "price": 750, "icon": 4, "weekly_stock": 10},
+		{"id": "promo_food", "name": "Промокод на доставку еды", "description": "Обед за счёт коинов.", "rarity": "rare", "price": 800, "icon": 7, "weekly_stock": 20},
+		{"id": "promo_cinema", "name": "Два билета в кино", "description": "На любой сеанс в выходные.", "rarity": "rare", "price": 1000, "icon": 8, "weekly_stock": 10},
+		{"id": "powerbank", "name": "Пауэрбанк", "description": "10 000 мА·ч фирменного заряда.", "rarity": "rare", "price": 1000, "icon": 12, "weekly_stock": 8},
+		{"id": "hoodie", "name": "Худи Альфа-Банк", "description": "Тёплое красное худи.", "rarity": "epic", "price": 2800, "icon": 1, "weekly_stock": 5},
+		{"id": "parking", "name": "Парковка на неделю", "description": "Место у входа на 5 рабочих дней.", "rarity": "epic", "price": 3200, "icon": 13, "weekly_stock": 2},
+		{"id": "day_off", "name": "1 выходной день", "description": "Дополнительный оплачиваемый выходной.", "rarity": "legendary", "price": 14000, "icon": 10, "weekly_stock": 1},
+		{"id": "job_swap", "name": "День на любой должности", "description": "Поработай один день кем захочешь. Кроме директора.", "rarity": "legendary", "price": 16000, "icon": 11, "weekly_stock": 1}
 	]
 }

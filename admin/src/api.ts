@@ -254,6 +254,44 @@ export interface RewardRequest {
   status: string;
 }
 
+/** A reward the player got from the shop or the fortune wheel (server/modules/rewards.go). */
+export interface RewardLogEntry {
+  t: number;
+  /** Catalog item id; "coins" for a coin prize of the wheel. */
+  item_id: string;
+  source: "shop" | "wheel";
+  /** Coins paid (a wheel item: the spin price), or coins won and received in an exchange. */
+  price: number;
+  /** granted, pending_approval, coins, exchanged_coins or exchanged_respin. */
+  status: string;
+}
+
+/** Weekly stock and sales of one catalog item (admin_get_rewards). */
+export interface RewardStock {
+  id: string;
+  name: string;
+  rarity: string;
+  price: number;
+  /** Customization: bought or won only once per player. */
+  cosmetic: boolean;
+  /** 0 = unlimited. */
+  weekly_stock: number;
+  default_stock: number;
+  /** Left this week; -1 when unlimited. */
+  left: number;
+  from_shop: number;
+  from_wheel: number;
+  this_week: number;
+}
+
+export interface RewardsOverview {
+  items: RewardStock[];
+  /** Day number of this week's Monday: the stock was refilled then. */
+  week_start: number;
+  /** Wheel wins of items out of stock or already owned, exchanged for coins or a spin back. */
+  wheel_exchanged: number;
+}
+
 export interface PhotoRequest {
   id: string;
   day: number;
@@ -271,6 +309,7 @@ export interface PlayerStats {
   ledger: LedgerEntry[];
   suspicious: FlaggedEntry[];
   reward_requests: RewardRequest[];
+  rewards: RewardLogEntry[];
   photo_requests: PhotoRequest[];
   excused_days: number[];
   /** Display names of the task, item, car and user ids above. */
@@ -392,6 +431,9 @@ export const api = {
   listManagers: (s: Session) => call<{ managers: Manager[] }>(s, "admin_list_managers").then((r) => r.managers),
   createManager: (s: Session, manager: NewManager) => call<Manager>(s, "admin_create_manager", manager),
   updateManager: (s: Session, user_id: string, scope: ManagerScope) => call(s, "admin_update_manager", { user_id, scope }),
+  getRewards: (s: Session) => call<RewardsOverview>(s, "admin_get_rewards"),
+  setRewardStock: (s: Session, item_id: string, weekly_stock: number, left: number) =>
+    call(s, "admin_set_reward_stock", { item_id, weekly_stock, left }),
   getClock: (s: Session) => call<Clock>(s, "admin_get_clock"),
   setClock: (s: Session, shift_seconds: number) => call<Clock>(s, "admin_set_clock", { shift_seconds }),
 };

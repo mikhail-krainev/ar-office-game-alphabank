@@ -29,6 +29,9 @@ export const LEDGER_LABELS: Record<string, string> = {
   shop_purchase: "Покупка в магазине",
   car_purchase: "Покупка машины",
   raffle_ticket: "Билет розыгрыша",
+  wheel_spin: "Спин колеса фортуны",
+  wheel_coins: "Монеты с колеса фортуны",
+  wheel_exchange: "Обмен выигрыша колеса на монеты",
   dev_grant: "Начисление (режим разработки)",
 };
 
@@ -76,6 +79,8 @@ export const ROOM_LABELS: Record<string, string> = {
   pa_coffee: "Кофе-поинт",
   pa_open_space: "Опенспейс (ПА)",
   pa_workshop: "Мастерская (ПА)",
+  pa_data_lab: "Дата-лаб (ПА)",
+  pa_hall: "Холл (ПА)",
 };
 
 export const PHOTO_STATES: Record<string, string> = {
@@ -89,6 +94,26 @@ export const REWARD_STATES: Record<string, string> = {
   pending: "ждёт подтверждения",
   approved: "выдано",
   rejected: "отклонено",
+};
+
+export const REWARD_SOURCES: Record<string, string> = {
+  shop: "магазин",
+  wheel: "колесо",
+};
+
+export const REWARD_LOG_STATES: Record<string, string> = {
+  granted: "выдано",
+  pending_approval: "ждёт подтверждения",
+  coins: "монеты",
+  exchanged_coins: "обменяно на монеты",
+  exchanged_respin: "возвращён спин",
+};
+
+export const RARITY_LABELS: Record<string, string> = {
+  common: "обычная",
+  rare: "редкая",
+  epic: "эпическая",
+  legendary: "легендарная",
 };
 
 export function label(labels: Record<string, string>, id: string): string {
