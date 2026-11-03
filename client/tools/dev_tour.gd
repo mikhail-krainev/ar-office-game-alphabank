@@ -151,11 +151,27 @@ func _home_interior_tour() -> void:
 	if state.free_copies("plant_small") == 0 and Backend.get_balance() >= state.find_item("plant_small").price:
 		await panel.call("_buy", BackendHome.KIND_ITEM, "plant_small", "")
 		state = decorator.state
+	var layout: HomeLayout = decorator.get("_layout")
 	if state.free_copies("plant_small") > 0:
 		panel.visible = false
 		decorator.call("_start_placing", "plant_small")
 		await _wait(0.8)
 		await _shot("hi4_placing")
+	elif not layout.decor_props().is_empty():
+		# No coins for a new item: rearrange one the player already has.
+		panel.visible = false
+		decorator.call("_start_arranging")
+		await _wait(0.8)
+		await _shot("hi4_arranging")
+		decorator.call("_pick_up", layout.decor_props()[0])
+		await _wait(0.6)
+		await _shot("hi4_placing")
+	if decorator.get("_mode") == HomeDecorator.Mode.PLACING:
+		# On the spot in front of the wardrobe the item does not fit: the preview turns red.
+		decorator.set("_cell", layout.interactables[1].stand_cell)
+		decorator.call("_update_ghost")
+		await _wait(0.4)
+		await _shot("hi5_placing_blocked")
 		var free_cell: Vector2i = _free_cell(decorator, "plant_small")
 		decorator.set("_cell", free_cell)
 		decorator.call("_update_ghost")
@@ -171,6 +187,13 @@ func _home_interior_tour() -> void:
 	await decorator.call("_apply_palette", "scandi")
 	panel.visible = false
 	await _wait(1.0)
+	# The office network screen as it covers the office scene (the home itself stays open).
+	PlayTime.office_mode = true
+	PlayTime.check_now()
+	await _wait(1.5)
+	await _shot("hi9_office_network")
+	PlayTime.office_mode = false
+	await _wait(0.5)
 	home.call("_go_to_office")
 	await _wait(2.0)
 	await _shot("hi8_trip")
@@ -183,7 +206,7 @@ func _free_cell(decorator: HomeDecorator, item_id: String) -> Vector2i:
 	var map: WorldMap = decorator.get("_map")
 	var origin: Vector2i = map.world_to_cell(player.global_position)
 	var occupied: Array[Vector2i] = [origin]
-	for radius: int in range(1, 8):
+	for radius: int in range(2, 8):
 		for dy: int in range(-radius, radius + 1):
 			for dx: int in range(-radius, radius + 1):
 				var cell: Vector2i = origin + Vector2i(dx, dy)

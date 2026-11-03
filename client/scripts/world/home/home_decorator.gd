@@ -12,6 +12,9 @@ enum Mode { IDLE, PLACING, ARRANGING }
 
 const FIT: Color = Color(0.55, 1.0, 0.6, 0.8)
 const NO_FIT: Color = Color(1.0, 0.35, 0.35, 0.7)
+## The cells under the preview, so the spot reads even behind the character.
+const CELLS_FIT: Color = Color(0.3, 0.9, 0.45, 0.35)
+const CELLS_NO_FIT: Color = Color(0.95, 0.25, 0.25, 0.35)
 const TAP_SLOP: float = 10.0
 const BAR_MARGIN: float = 10.0
 
@@ -26,6 +29,7 @@ var _player: Player
 var _panel: HomePanel
 var _focus: Node2D
 var _ghost: Sprite2D
+var _cells: ColorRect
 var _item_id: String = ""
 var _cell: Vector2i = Vector2i.ZERO
 ## The placed prop being moved, taken out of the layout until it is put down again.
@@ -57,6 +61,11 @@ func setup(p_state: BackendHome.State, layout: HomeLayout, map: WorldMap, entiti
 	_panel.state_changed.connect(func(fresh: BackendHome.State) -> void: state = fresh)
 	_focus = Node2D.new()
 	_map.add_child(_focus)
+	_cells = ColorRect.new()
+	_cells.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_cells.z_index = 9
+	_cells.visible = false
+	_map.add_child(_cells)
 	_build_bar()
 
 
@@ -160,6 +169,10 @@ func _update_ghost() -> void:
 	_map.place_prop_sprite(_ghost, _item_id, _cell)
 	var error: String = _placement_error()
 	_ghost.modulate = FIT if error.is_empty() else NO_FIT
+	_cells.position = Vector2(_cell * MapLayout.TILE_SIZE)
+	_cells.size = Vector2(PropCatalog.footprint(_item_id) * MapLayout.TILE_SIZE)
+	_cells.color = CELLS_FIT if error.is_empty() else CELLS_NO_FIT
+	_cells.visible = true
 	_place_button.disabled = not error.is_empty()
 	_hint.text = tr("HOME_PLACE_HINT") if error.is_empty() else tr(error)
 	_focus.global_position = _map.to_global(Vector2(_cell * MapLayout.TILE_SIZE))
@@ -198,6 +211,7 @@ func _finish() -> void:
 	if _ghost != null:
 		_ghost.queue_free()
 		_ghost = null
+	_cells.visible = false
 	_mode = Mode.IDLE
 	_bar.visible = false
 	_camera.target = _player
