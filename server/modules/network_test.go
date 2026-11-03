@@ -48,12 +48,12 @@ func TestInOfficeNetwork(t *testing.T) {
 }
 
 func TestGameRpcsNeedTheOfficeNetwork(t *testing.T) {
-	for _, id := range []string{"login", "list_tasks", "complete_task", "play_heartbeat", "get_shop", "get_inbox"} {
+	for _, id := range []string{"list_tasks", "complete_task", "play_heartbeat", "get_shop", "buy", "answer_facts", "respond_photo_request", "office_access"} {
 		if !gameRpc(id) {
 			t.Errorf("%s must need the office network", id)
 		}
 	}
-	for _, id := range []string{"get_profile", "list_departments", "admin_list_users", "dev_skip_day", "get_notification_plan", "kiosk_codes"} {
+	for _, id := range []string{"get_profile", "list_departments", "admin_list_users", "dev_skip_day", "get_notification_plan", "kiosk_codes", "login", "get_wardrobe", "buy_car", "get_home", "buy_home", "save_home"} {
 		if gameRpc(id) {
 			t.Errorf("%s must work from anywhere", id)
 		}

@@ -170,6 +170,18 @@ func _floor(style: int, variant: int) -> void:
 				c.line(4, 22, 13, 27, Palette.shade(concrete, 0.08))
 			c.hline(0, S - 1, S, Palette.shade(concrete, 0.12))
 			c.vline(S - 1, 0, S, Palette.shade(concrete, 0.12))
+		OfficeTiles.Style.GRASS:
+			var grass: Color = Color("#6fae4f")
+			c.rect(0, 0, S, S, grass)
+			for i: int in 70 + variant * 10:
+				var x: int = rng.randi_range(0, S - 1)
+				var y: int = rng.randi_range(1, S - 1)
+				var blade: Color = Palette.light(grass, 0.12) if rng.randf() < 0.5 else Palette.shade(grass, 0.12)
+				c.px(x, y, blade)
+				c.px(x, y - 1, Palette.light(blade, 0.06))
+			if variant == 2:
+				c.px(9, 12, Color("#f7f2d0"))
+				c.px(22, 25, Color("#f7c948"))
 		OfficeTiles.Style.DOOR:
 			c.rect(0, 0, S, S, Color("#cfc8bd"))
 			c.hline(0, 1, S, Color("#b3aa9d"))
@@ -207,6 +219,8 @@ func _face(style: int, upper: bool) -> void:
 			wall = Color("#e4e8e8")
 		OfficeTiles.Style.CONCRETE:
 			wall = Color("#3a3f48")
+		OfficeTiles.Style.GRASS:
+			wall = Color("#e9e7e2")
 	c.rect(0, 0, S, S, wall)
 	if style == OfficeTiles.Style.BEDROOM:
 		for x: int in range(0, S, 8):
@@ -232,6 +246,17 @@ func _face(style: int, upper: bool) -> void:
 		if upper:
 			c.hline(0, 1, S, Color("#ff4fa3"))
 			c.hline(0, 2, S, Color(1.0, 0.31, 0.64, 0.35))
+		return
+	if style == OfficeTiles.Style.GRASS:
+		# The back facade of the house seen from the yard: white render with floor-to-ceiling glass.
+		var glass: Color = Color("#9cc3d3")
+		c.rect(3, 0 if not upper else 6, S - 6, S if not upper else S - 6, glass)
+		c.vline(15, 0, S, Color("#7d8a90"))
+		c.line(5, S - 2 if not upper else S - 1, 12, 8, Color(1, 1, 1, 0.35))
+		if not upper:
+			c.rect(0, 28, S, 4, Color("#8c8f93"))
+		else:
+			c.hline(0, 3, S, Color("#cfcbc4"))
 		return
 	if style == OfficeTiles.Style.CONCRETE:
 		for y: int in range(3, S, 8):

@@ -120,6 +120,12 @@ func (tx *gameTx) profile() profileData {
 // rpcLogin: the start of a game session. The first login pays the welcome bonus; the answer carries
 // the fines and the lost streak since the previous login for the morning card, once.
 func rpcLogin(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, _ string) (string, error) {
+	// Login works from anywhere (the home location); it checks the office network itself, which also
+	// follows the Wi-Fi of another office (network.go).
+	inOffice, err := callerInOfficeNetwork(ctx, logger, db, nk)
+	if err != nil {
+		return "", err
+	}
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
 		state := tx.me.state
 		welcome := 0
@@ -131,8 +137,10 @@ func rpcLogin(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime
 			tx.credit(tx.me, int64(welcome), "welcome_bonus", "welcome")
 		}
 		state.LastLoginDay = tx.today
-		// Login is an office-network RPC: opening the game in the office Wi-Fi is an arrival.
-		tx.noteWifiArrival()
+		// Opening the game in the office Wi-Fi is an arrival; at home it is not.
+		if inOffice {
+			tx.noteWifiArrival()
+		}
 		tx.logActivity(tx.me, activityLogin, nil)
 		if err := tx.tick(); err != nil {
 			return nil, err

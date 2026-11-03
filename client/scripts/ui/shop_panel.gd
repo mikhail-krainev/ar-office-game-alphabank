@@ -111,7 +111,11 @@ func is_open() -> bool:
 	return visible
 
 
-func open(tab: Tab = Tab.REWARDS) -> void:
+## `only_tab`: hide the other tabs, e.g. the garage at home, where the office tabs do not work
+## outside the office network.
+func open(tab: Tab = Tab.REWARDS, only_tab: bool = false) -> void:
+	for index: int in _tab_buttons.size():
+		_tab_buttons[index].visible = not only_tab or index == tab
 	var safe: Rect2 = PlatformServices.get_safe_rect()
 	_width = safe.size.x - SIDE_MARGIN * 2.0
 	_panel.custom_minimum_size = Vector2(_width, 0)

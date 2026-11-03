@@ -10,6 +10,8 @@ extends Node
 ## --only=colleagues runs only the entry-code reminder, colleagues on the office map, the mini profile
 ## with the mood story, "Bug hunt" and "Mood of the day": other players must be in the office then.
 ## --only=ar runs only the AR stickers in the photo task and squats.
+## --only=home runs only the home: the interior catalog, placing an item, the palette and, outside
+## the office Wi-Fi, the screen that waits for it on the trip to the office.
 
 var _out: String = ""
 var _shot_scale: float = 0.5
@@ -69,6 +71,10 @@ func _start() -> void:
 		await _ar_tour()
 		tree.quit()
 		return
+	if _only == "home":
+		await _home_interior_tour()
+		tree.quit()
+		return
 	await _morning_tour()
 	await _home_tour()
 	await _commute_tour()
@@ -124,6 +130,66 @@ func _home_tour() -> void:
 	await _teleport(home, _find(layout, "sink").stand_cell)
 	await _wait(1.0)
 	await _shot("h10_bathroom_remark")
+
+
+func _home_interior_tour() -> void:
+	get_tree().change_scene_to_file("res://scenes/home/home.tscn")
+	await _wait(3.0)
+	await _shot("hi1_home")
+	var home: Node = get_tree().current_scene
+	var decorator: HomeDecorator = home.get("_decorator")
+	home.call("_open_interior")
+	await _wait(0.8)
+	await _shot("hi2_apartments")
+	var panel: HomePanel = decorator.get("_panel")
+	for tab: HomePanel.Tab in [HomePanel.Tab.FURNITURE, HomePanel.Tab.POSTERS, HomePanel.Tab.PALETTES]:
+		panel.call("_select_tab", tab)
+		await _wait(0.6)
+		await _shot("hi3_tab_%d" % tab)
+	# The cheapest plant: bought when the player has the coins, then placed next to the character.
+	var state: BackendHome.State = decorator.state
+	if state.free_copies("plant_small") == 0 and Backend.get_balance() >= state.find_item("plant_small").price:
+		await panel.call("_buy", BackendHome.KIND_ITEM, "plant_small", "")
+		state = decorator.state
+	if state.free_copies("plant_small") > 0:
+		panel.visible = false
+		decorator.call("_start_placing", "plant_small")
+		await _wait(0.8)
+		await _shot("hi4_placing")
+		var free_cell: Vector2i = _free_cell(decorator, "plant_small")
+		decorator.set("_cell", free_cell)
+		decorator.call("_update_ghost")
+		await _wait(0.4)
+		await _shot("hi5_placing_fits")
+		await decorator.call("_on_place")
+		await _wait(0.8)
+		await _shot("hi6_placed")
+	panel.visible = false
+	await decorator.call("_apply_palette", "original")
+	await _wait(1.0)
+	await _shot("hi7_palette_original")
+	await decorator.call("_apply_palette", "scandi")
+	panel.visible = false
+	await _wait(1.0)
+	home.call("_go_to_office")
+	await _wait(2.0)
+	await _shot("hi8_trip")
+
+
+## A floor cell near the character where `item_id` fits, or the character's cell.
+func _free_cell(decorator: HomeDecorator, item_id: String) -> Vector2i:
+	var layout: HomeLayout = decorator.get("_layout")
+	var player: Player = decorator.get("_player")
+	var map: WorldMap = decorator.get("_map")
+	var origin: Vector2i = map.world_to_cell(player.global_position)
+	var occupied: Array[Vector2i] = [origin]
+	for radius: int in range(1, 8):
+		for dy: int in range(-radius, radius + 1):
+			for dx: int in range(-radius, radius + 1):
+				var cell: Vector2i = origin + Vector2i(dx, dy)
+				if HomeDecor.placement_error(layout, item_id, cell, null, occupied).is_empty():
+					return cell
+	return origin
 
 
 func _commute_tour() -> void:

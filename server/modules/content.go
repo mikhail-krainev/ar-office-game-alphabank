@@ -111,6 +111,7 @@ type Content struct {
 	Wardrobe []WardrobeEntry
 	Cars     []Car
 	FunTexts []string
+	Home     HomeContent
 	Rules    Rules
 }
 
@@ -138,6 +139,7 @@ func loadContent(dir string) (*Content, error) {
 		"cars.json":          &cars,
 		"notifications.json": &notifications,
 		"game_rules.json":    &content.Rules,
+		"home.json":          &content.Home,
 	}
 	for name, target := range files {
 		data, err := os.ReadFile(filepath.Join(dir, name))
@@ -153,6 +155,9 @@ func loadContent(dir string) (*Content, error) {
 	}
 	if err := validateWheel(&content.Rules.Wheel); err != nil {
 		return nil, fmt.Errorf("game_rules.json: wheel: %w", err)
+	}
+	if err := validateHome(&content.Home); err != nil {
+		return nil, fmt.Errorf("home.json: %w", err)
 	}
 	for _, item := range catalog.Items {
 		if item.Price <= 0 || item.WeeklyStock < 0 || item.WeeklyStock > maxStock {

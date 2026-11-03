@@ -44,31 +44,66 @@ func populate_props(entities: Node2D) -> void:
 	_prop_texture = load(PropCatalog.TEXTURE_PATH)
 	var manifest: Variant = JSON.parse_string(FileAccess.get_file_as_string(PropCatalog.MANIFEST_PATH))
 	_prop_regions = manifest if manifest is Dictionary else {}
+	_add_prop_sprites(entities)
+
+
+## The layout's props changed (the home interior): rebuilds the sprites and the walk grid.
+func rebuild_props(entities: Node2D) -> void:
+	for sprite: Sprite2D in _prop_sprites.values():
+		sprite.queue_free()
+	_prop_sprites.clear()
+	_grid.fill_solid_region(_grid.region, false)
+	_build_grid()
+	_add_prop_sprites(entities)
+
+
+## A sprite of `prop_id` placed at `cell` like a map prop, for previews; null when it has no art.
+func make_prop_sprite(prop_id: String, cell: Vector2i) -> Sprite2D:
+	if not _prop_regions.has(prop_id):
+		return null
+	var sprite: Sprite2D = Sprite2D.new()
+	var atlas: AtlasTexture = AtlasTexture.new()
+	var region: Array = _prop_regions[prop_id]
+	atlas.atlas = _prop_texture
+	atlas.region = Rect2(region[0], region[1], region[2], region[3])
+	sprite.texture = atlas
+	sprite.centered = false
+	place_prop_sprite(sprite, prop_id, cell)
+	return sprite
+
+
+## Positions a prop sprite of `prop_id` on `cell` (parent-local: the map shares the world origin).
+func place_prop_sprite(sprite: Sprite2D, prop_id: String, cell: Vector2i) -> void:
+	var size: Vector2 = Vector2(PropCatalog.sprite_size(prop_id))
+	var area: Vector2 = Vector2(PropCatalog.footprint(prop_id) * MapLayout.TILE_SIZE)
+	var origin: Vector2 = Vector2(cell * MapLayout.TILE_SIZE)
+	if PropCatalog.kind(prop_id) == PropCatalog.Kind.FURNITURE:
+		sprite.position = origin + Vector2(area.x / 2.0, area.y)
+		sprite.offset = Vector2(-roundf(size.x / 2.0), -size.y)
+	else:
+		sprite.position = origin + ((area - size) / 2.0).floor()
+		sprite.offset = Vector2.ZERO
+
+
+## Recolours floors and walls with a home palette (HomePalettes); null restores the original tiles.
+func set_surface_material(material: Material) -> void:
+	_floor_layer.material = material
+	_wall_layer.material = material
+
+
+func _add_prop_sprites(entities: Node2D) -> void:
 	for prop: MapLayout.Prop in layout.props:
 		if not _prop_regions.has(prop.id):
 			push_error("Prop '%s' is missing from the atlas manifest" % prop.id)
 			continue
-		var sprite: Sprite2D = Sprite2D.new()
-		var atlas: AtlasTexture = AtlasTexture.new()
-		var region: Array = _prop_regions[prop.id]
-		atlas.atlas = _prop_texture
-		atlas.region = Rect2(region[0], region[1], region[2], region[3])
-		sprite.texture = atlas
-		sprite.centered = false
+		var sprite: Sprite2D = make_prop_sprite(prop.id, prop.cell)
 		sprite.name = "%s_%d_%d" % [prop.id, prop.cell.x, prop.cell.y]
-		var size: Vector2 = Vector2(PropCatalog.sprite_size(prop.id))
-		var area: Vector2 = Vector2(PropCatalog.footprint(prop.id) * MapLayout.TILE_SIZE)
-		var origin: Vector2 = Vector2(prop.cell * MapLayout.TILE_SIZE)
 		match PropCatalog.kind(prop.id):
 			PropCatalog.Kind.FURNITURE:
-				sprite.position = origin + Vector2(area.x / 2.0, area.y)
-				sprite.offset = Vector2(-roundf(size.x / 2.0), -size.y)
 				entities.add_child(sprite)
 			PropCatalog.Kind.WALL:
-				sprite.position = origin + ((area - size) / 2.0).floor()
 				_wall_decor.add_child(sprite)
 			PropCatalog.Kind.DECAL:
-				sprite.position = origin + ((area - size) / 2.0).floor()
 				_decals.add_child(sprite)
 		_prop_sprites[_prop_key(prop.id, prop.cell)] = sprite
 		if PropCatalog.is_blocking(prop.id):
@@ -188,3 +223,5 @@ func _build_grid() -> void:
 		for x: int in layout.size.x:
 			if not layout.is_walkable_cell(Vector2i(x, y)):
 				_grid.set_point_solid(Vector2i(x, y))
+	for rect: Rect2i in layout.solid_rects:
+		_grid.fill_solid_region(rect, true)

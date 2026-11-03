@@ -54,6 +54,7 @@ var _colleagues: OfficeColleagues
 
 
 func _ready() -> void:
+	PlayTime.office_mode = true
 	var floor_id: StringName = OfficeFloors.current
 	var by_lift: bool = OfficeFloors.arrived_by_lift
 	_setup_world(OfficeFloors.create_layout(floor_id))
@@ -96,6 +97,11 @@ func _ready() -> void:
 	if not by_lift and await _auto_check_in():
 		return
 	_resume_after_lift()
+
+
+func _exit_tree() -> void:
+	# Home and the intros work outside the office network.
+	PlayTime.office_mode = false
 
 
 func _process(delta: float) -> void:

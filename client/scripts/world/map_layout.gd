@@ -51,6 +51,8 @@ var props: Array[Prop] = []
 ## Empty when the floor has no lift.
 var elevator: Rect2i = Rect2i()
 var elevator_cell: Vector2i = Vector2i.ZERO
+## Floor cells blocked by something that is not a prop, e.g. the car parked in the home garage.
+var solid_rects: Array[Rect2i] = []
 
 var _cells: PackedInt32Array = PackedInt32Array()
 

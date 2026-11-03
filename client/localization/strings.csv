@@ -16,7 +16,7 @@ HOME_ROOM_KITCHEN,Кухня,Kitchen
 HUD_TITLE,АЛЬФА ОФИС,ALFA OFFICE
 HUD_HINT,"Персонаж живёт сам. Выбери задание в списке справа или нажми на красную метку",The character lives by itself. Pick a task in the list on the right or tap a red marker
 HUD_HOME_TITLE,ДОМА,AT HOME
-HUD_HOME_HINT,"Утро дома. Кнопки внизу: гардероб, гараж и поездка в офис","Morning at home. The buttons below: wardrobe, garage and the trip to the office"
+HUD_HOME_HINT,"Утро дома. Кнопки внизу: гардероб, гараж, интерьер и поездка в офис","Morning at home. The buttons below: wardrobe, garage, interior and the trip to the office"
 HUD_BLOCKED,Туда не пройти,Can't go there
 HUD_TASKS,ЗАДАНИЯ,TASKS
 HUD_SHOP,МАГАЗИН,SHOP
@@ -394,7 +394,7 @@ PLAY_BLOCKED_TEXT,"На сегодня вы провели слишком мно
 PLAY_DEFERRED_NOTICE,Время в игре вышло. Спокойно доиграйте мини-игру: после неё или после выхода из неё включится режим отдыха.,Your play time is up. Finish the minigame calmly: the rest starts once it ends or you leave it.
 PLAY_TASKS_AFTER_REST,Время в игре вышло: новые задания после отдыха,Your play time is up: new tasks after the rest
 NETWORK_TITLE,ТОЛЬКО В ОФИСЕ,OFFICE ONLY
-NETWORK_TEXT,"В игру можно войти, только находясь в офисе и подключившись к корпоративной сети Wi-Fi. В мобильном интернете и дома игра недоступна.",The game works only on the office Wi-Fi. Connect to the corporate network: it is not available on mobile internet or at home.
+NETWORK_TEXT,"Офис с заданиями работает только в корпоративной сети Wi-Fi. Подключись к ней, чтобы продолжить.",The office with the tasks works only on the corporate Wi-Fi. Connect to it to go on.
 NETWORK_RETRY,Проверить снова,Check again
 HUD_GO_HOME_QUESTION,"Поехать домой? Визит в офис уже засчитан, а невыполненные задания просто останутся на сегодня","Go home? Your office visit already counts, open tasks just stay undone for today"
 HUD_GO_HOME_CONFIRM,Домой,Go home
@@ -514,3 +514,52 @@ MG_PAPER_TOSS_HINT,"Найди урну, поворачиваясь с теле�
 MG_PAPER_TOSS_WIND,Ветер %s %.1f,Wind %s %.1f
 MG_PAPER_TOSS_IN,ПОПАЛ!,IN!
 MG_PAPER_TOSS_MISS,МИМО,MISS
+HUD_INTERIOR,Интерьер,Interior
+HOME_ROOM_STUDIO,Студия,Studio
+HOME_ROOM_KITCHEN_LIVING,Кухня-гостиная,Kitchen and living room
+HOME_ROOM_STUDY,Кабинет,Study
+HOME_ROOM_SPA,Спа-ванная,Spa bathroom
+HOME_ROOM_GARAGE,Гараж,Garage
+HOME_ROOM_YARD,Задний двор,Backyard
+OFFICE_WAIT_TITLE,ОФИС ЕЩЁ ЗАКРЫТ,THE OFFICE IS NOT OPEN YET
+OFFICE_WAIT_TEXT,"Локация офиса с заданиями откроется, когда ты приедешь в офис и подключишься к корпоративной сети Wi-Fi. А пока можно побыть дома: переодеться, выбрать машину и обустроить квартиру.","The office with the tasks opens when you come to the office and join the corporate Wi-Fi. Until then stay home: change clothes, pick a car and decorate the apartment."
+OFFICE_WAIT_CHECKING,Проверяем сеть…,Checking the network…
+OFFICE_WAIT_STILL_CLOSED,Пока не видим Wi-Fi офиса. Проверим ещё раз через пару секунд,No office Wi-Fi yet. We'll check again in a few seconds
+OFFICE_WAIT_STAY,Остаться дома,Stay home
+HOME_TITLE,Интерьер,Interior
+HOME_TAB_APARTMENTS,Жильё,Homes
+HOME_TAB_FURNITURE,Мебель,Furniture
+HOME_TAB_POSTERS,Постеры,Posters
+HOME_TAB_PALETTES,Палитра,Palette
+HOME_ARRANGE,Переставить предметы,Rearrange items
+HOME_ARRANGE_HINT,"Коснись купленного предмета, чтобы переставить или убрать его. Двигай экран пальцем",Tap an item you bought to move or put it away. Drag to look around
+HOME_PLACE_HINT,"Коснись пола или стены, чтобы выбрать место. Двигай экран пальцем",Tap the floor or a wall to pick the spot. Drag to look around
+HOME_LIVING_HERE,Ты живёшь здесь,You live here
+HOME_MOVE_IN,Переехать,Move in
+HOME_BUY_FOR,Купить за %d,Buy for %d
+HOME_OWNED,"Есть: %d, свободно: %d","Owned: %d, free: %d"
+HOME_PLACE,Поставить,Place
+HOME_PUT_DOWN,Поставить,Put here
+HOME_PUT_AWAY,Убрать,Put away
+HOME_CANCEL,Отмена,Cancel
+HOME_DONE,Готово,Done
+HOME_PALETTE_ON,Сейчас,Current
+HOME_PALETTE_APPLY,Применить,Apply
+HOME_BOUGHT_APARTMENT,"Новое жильё твоё! Переезжай, когда захочешь",The new home is yours! Move in whenever you like
+HOME_BOUGHT_ITEM,"Куплено! Поставь предмет, где тебе нравится",Bought! Place it wherever you like
+HOME_BOUGHT_PALETTE,Палитра куплена. Примени её,Palette bought. Apply it
+DECOR_ERROR_WALL,Постеры вешаются только на стену,Posters go on a wall only
+DECOR_ERROR_FLOOR,Мебель ставится только на пол комнаты,Furniture goes on the floor of a room only
+DECOR_ERROR_TAKEN,Здесь уже что-то стоит,Something is already here
+DECOR_ERROR_BLOCKS,Так перекроется проход или нужное место,That would block the way or a spot you use
+ERROR_HOME_ALREADY_OWNED,Это уже твоё,You already own it
+ERROR_UNKNOWN_APARTMENT,Такого жилья нет,No such home
+ERROR_UNKNOWN_PALETTE,Такой палитры нет,No such palette
+ERROR_UNKNOWN_KIND,Такую покупку сделать нельзя,This can't be bought
+ERROR_TOO_MANY_COPIES,Больше таких предметов купить нельзя,You can't buy more of these
+ERROR_APARTMENT_NOT_OWNED,Сначала купи это жильё,Buy this home first
+ERROR_PALETTE_NOT_OWNED,Сначала купи эту палитру,Buy this palette first
+ERROR_ITEM_NOT_OWNED,Свободных экземпляров нет: купи ещё один,No free copies: buy one more
+ERROR_OUT_OF_BOUNDS,Предмет не помещается в квартиру,The item does not fit in the apartment
+ERROR_TOO_MANY_ITEMS,В квартире больше нет места для предметов,There is no room for more items
+ERROR_DUPLICATE_ITEM,Здесь уже стоит такой предмет,The same item already stands here

@@ -120,6 +120,8 @@ type PlayerState struct {
 	WheelDay        int           `json:"wheel_day,omitempty"`
 	WheelExtraSpins int           `json:"wheel_extra_spins,omitempty"`
 	WheelPending    *WheelPending `json:"wheel_pending,omitempty"`
+	// The apartment, its look and the interior bought for it (home.go).
+	Home HomeState `json:"home"`
 }
 
 func (s *PlayerState) normalize() {
@@ -170,6 +172,7 @@ func (s *PlayerState) normalize() {
 	if s.Avatar == "" {
 		s.Avatar = defaultAvatar
 	}
+	s.Home.normalize()
 }
 
 // dayList returns the per-day list `lists[day]`.

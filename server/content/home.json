@@ -1,0 +1,52 @@
+{
+	"_comment": "Server content: the player's home. width/height = map size in cells of the client layout (client/scripts/world/home/apartment_layouts.gd), price 0 = owned from the start, palette = the design the apartment comes with (free with it). Palettes recolour the floors and walls (client/scripts/world/home/home_palettes.gd), 'original' is free for everyone. Items are prop ids of client PropCatalog: kind furniture stands on the floor (rugs too), kind poster hangs on a wall. A bought item can stand in one place at a time across all apartments; max_owned limits the copies of one item.",
+	"max_owned": 10,
+	"max_placed": 80,
+	"apartments": [
+		{"id": "studio20", "name": "Студия 20 м²", "area": 20, "price": 0, "width": 14, "height": 12, "palette": "scandi", "description": "Светлая студия в скандинавском стиле: кровать, кухня и рабочее место в одной комнате."},
+		{"id": "flat40", "name": "Квартира 40 м²", "area": 40, "price": 4500, "width": 16, "height": 18, "palette": "japandi", "description": "Спальня и кухня-гостиная в стиле джапанди: тёплое дерево и тишина."},
+		{"id": "flat60", "name": "Квартира 60 м²", "area": 60, "price": 10000, "width": 20, "height": 20, "palette": "loft", "description": "Лофт с кабинетом: кирпич, бетон и большая кухня."},
+		{"id": "loft120", "name": "Пентхаус 120 м²", "area": 120, "price": 22000, "width": 22, "height": 27, "palette": "miami", "description": "Неоновый пентхаус в духе ночного Майами: спальня, спа-ванная, гостиная и кухня."},
+		{"id": "house240", "name": "Дом 240 м²", "area": 240, "price": 48000, "width": 26, "height": 38, "palette": "minimal", "description": "Частный минималистичный дом: камин в гостиной, задний двор с бассейном и гараж для машины."}
+	],
+	"palettes": [
+		{"id": "original", "name": "Как задумано", "price": 0},
+		{"id": "scandi", "name": "Скандинавия", "price": 400},
+		{"id": "japandi", "name": "Джапанди", "price": 500},
+		{"id": "loft", "name": "Лофт", "price": 500},
+		{"id": "minimal", "name": "Минимализм", "price": 600},
+		{"id": "memphis", "name": "Мемфис", "price": 700},
+		{"id": "miami", "name": "Неоновый Майами", "price": 800},
+		{"id": "deco", "name": "Ар-деко", "price": 900}
+	],
+	"items": [
+		{"id": "plant_small", "name": "Фикус", "kind": "furniture", "price": 90},
+		{"id": "cactus", "name": "Кактус", "kind": "furniture", "price": 120},
+		{"id": "plant_big", "name": "Монстера", "kind": "furniture", "price": 160},
+		{"id": "floor_lamp", "name": "Торшер", "kind": "furniture", "price": 200},
+		{"id": "bean_bag", "name": "Кресло-мешок", "kind": "furniture", "price": 250},
+		{"id": "coffee_table", "name": "Журнальный столик", "kind": "furniture", "price": 300},
+		{"id": "armchair", "name": "Кресло", "kind": "furniture", "price": 380},
+		{"id": "bookshelf", "name": "Книжный шкаф", "kind": "furniture", "price": 420},
+		{"id": "guitar", "name": "Гитара", "kind": "furniture", "price": 450},
+		{"id": "speaker", "name": "Колонка", "kind": "furniture", "price": 500},
+		{"id": "record_player", "name": "Проигрыватель винила", "kind": "furniture", "price": 650},
+		{"id": "egg_chair", "name": "Кресло-яйцо", "kind": "furniture", "price": 900},
+		{"id": "sofa_red", "name": "Красный диван", "kind": "furniture", "price": 950},
+		{"id": "sofa_green", "name": "Зелёный диван", "kind": "furniture", "price": 950},
+		{"id": "aquarium", "name": "Аквариум", "kind": "furniture", "price": 1300},
+		{"id": "ping_pong", "name": "Теннисный стол", "kind": "furniture", "price": 1400},
+		{"id": "arcade_cabinet", "name": "Игровой автомат", "kind": "furniture", "price": 1600},
+		{"id": "rug_bedroom", "name": "Ковёр «Песок»", "kind": "furniture", "price": 300},
+		{"id": "rug_living", "name": "Ковёр «Ёлочка»", "kind": "furniture", "price": 400},
+		{"id": "rug_lounge", "name": "Ковёр «Лаунж»", "kind": "furniture", "price": 450},
+		{"id": "frame_picture", "name": "Фото в рамке", "kind": "poster", "price": 100},
+		{"id": "poster_alfa", "name": "Плакат Альфа", "kind": "poster", "price": 120},
+		{"id": "poster_band", "name": "Плакат группы", "kind": "poster", "price": 150},
+		{"id": "poster_synthwave", "name": "Плакат «Закат»", "kind": "poster", "price": 200},
+		{"id": "poster_palms", "name": "Плакат «Пальмы»", "kind": "poster", "price": 200},
+		{"id": "poster_tiger", "name": "Плакат «Тигр»", "kind": "poster", "price": 250},
+		{"id": "neon_heart", "name": "Неоновое сердце", "kind": "poster", "price": 350},
+		{"id": "art_abstract", "name": "Абстракция на холсте", "kind": "poster", "price": 400}
+	]
+}

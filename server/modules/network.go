@@ -79,10 +79,32 @@ func (tx *gameTx) networkError() (string, error) {
 	return "office_network_required", nil
 }
 
-// The whole game opens only in the office network: at home or on mobile internet every game RPC
-// answers office_network_required, so nobody plays at home or on the way to the shop. Accounts and
-// the admin panel work from anywhere, and so do these game RPCs:
+// The office part of the game opens only in the office network: at home or on mobile internet every
+// office RPC (tasks, codes, colleagues, rewards) answers office_network_required, so nobody earns
+// coins at home or on the way to the shop. Accounts and the admin panel work from anywhere, and so
+// do these game RPCs:
 var anywhereRpcs = map[string]bool{
+	// The home location: the apartment, the wardrobe and the garage. Nothing here earns coins, it
+	// only spends them, so the player looks around and dresses up before the trip. login records the
+	// Wi-Fi arrival only from the office network (account.go).
+	"login":          true,
+	"get_my_profile": true,
+	"get_wardrobe":   true,
+	"save_outfit":    true,
+	"get_garage":     true,
+	"buy_car":        true,
+	"select_car":     true,
+	"get_home":       true,
+	"buy_home":       true,
+	"save_home":      true,
+	// The profile corner at home: reading the inbox and the profile page, the status and the avatar.
+	// Answers in the inbox that pay coins (photos, "Three truths") stay office RPCs.
+	"get_inbox":        true,
+	"mark_inbox_read":  true,
+	"get_profile_page": true,
+	"set_status":       true,
+	"set_avatar":       true,
+	"upload_avatar":    true,
 	// Called when the game goes to the background, to plan reminders such as "check in today".
 	"get_notification_plan": true,
 	// Public pictures of colleagues.
@@ -202,4 +224,10 @@ func (tx *gameTx) presenceError() (string, error) {
 		return "presence_required", nil
 	}
 	return tx.networkError()
+}
+
+// rpcOfficeAccess: {} -> ok. An office RPC with nothing to do: the trip from home to the office asks
+// it first, and outside the office network the client shows the waiting screen instead of the office.
+func rpcOfficeAccess(_ context.Context, _ runtime.Logger, _ *sql.DB, _ runtime.NakamaModule, _ string) (string, error) {
+	return encodeResponse(okResult)
 }

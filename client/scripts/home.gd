@@ -1,9 +1,13 @@
 extends WorldScene
-## The player's apartment after breakfast. The character lives by itself: walks between objects and
-## comments on them. The player changes the outfit (wardrobe), picks a car (garage) and leaves with
-## "Go to the office": the character then walks out through the front door.
+## The player's apartment after breakfast: the one the player lives in (Backend.home), with the
+## interior they placed and their palette. The character lives by itself: walks between objects and
+## comments on them. The player changes the outfit (wardrobe), picks a car (garage), decorates the
+## apartment (HomeDecorator) and leaves with "Go to the office": the character then walks out
+## through the front door. Home works outside the office network; the trip to the office does not:
+## without the office Wi-Fi it waits on OfficeWaitScreen, and the player may stay home.
 
 const COMMUTE_SCENE: String = "res://scenes/intro/commute_intro.tscn"
+const HOME_SCENE: String = "res://scenes/home/home.tscn"
 const REMARKS_PATH: String = "res://data/home_remarks.json"
 const REMARK_COOLDOWN: float = 9.0
 const FADE_TIME: float = 0.4
@@ -19,6 +23,9 @@ var _busy: bool = false
 var _leaving: bool = false
 var _corner: PlayerCorner
 var _office_button: Button
+var _decorator: HomeDecorator
+var _wait_screen: OfficeWaitScreen
+var _car: VehicleSprite
 
 @onready var _wardrobe: WardrobePanel = $WardrobePanel
 @onready var _shop_panel: ShopPanel = $ShopPanel
@@ -26,27 +33,21 @@ var _office_button: Button
 
 
 func _ready() -> void:
-	var layout: HomeLayout = HomeLayout.new()
-	_setup_world(layout)
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(REMARKS_PATH))
-	_remarks = parsed if parsed is Dictionary else {}
-	for use: HomeLayout.Interactable in layout.interactables:
-		_cooldowns[use.id] = 0.0
-		if not _remarks.has(use.id):
-			push_warning("No home remarks for '%s'" % use.id)
-	# The player starts next to the breakfast table.
-	_cooldowns["table"] = REMARK_COOLDOWN
+	_fade.color.a = 1.0
 	_hud.set_title(tr("HUD_HOME_TITLE"))
 	_hud.set_hint(tr("HUD_HOME_HINT"))
 	_corner = PlayerCorner.attach(self, _hud)
 	_hud.add_action(tr("HUD_WARDROBE"), false).pressed.connect(_open_wardrobe)
 	_hud.add_action(tr("HUD_GARAGE"), false).pressed.connect(_open_garage)
+	_hud.add_action(tr("HUD_INTERIOR"), false).pressed.connect(_open_interior)
 	_office_button = _hud.add_wide_action(tr("HUD_GO_OFFICE"))
 	_office_button.pressed.connect(_go_to_office)
-	_player.face(Vector2.UP)
-	_fade.color.a = 1.0
+	_wait_screen = OfficeWaitScreen.new()
+	add_child(_wait_screen)
 	if Backend.profile == null:
 		await Backend.login()
+	var home: BackendHome.State = await Backend.home.get_home()
+	_build_home(home)
 	_update_room()
 	var tween: Tween = create_tween()
 	tween.tween_property(_fade, "color:a", 0.0, FADE_TIME)
@@ -54,7 +55,38 @@ func _ready() -> void:
 	_player.say(_pick("greeting"))
 
 
+## The apartment from the server; without an answer, the bare studio (the trip still works).
+func _build_home(home: BackendHome.State) -> void:
+	var layout: HomeLayout = ApartmentLayouts.create(home.apartment if home.ok else ApartmentLayouts.STUDIO)
+	if home.ok:
+		layout.set_decor(home.placed)
+	_setup_world(layout)
+	_map.set_surface_material(HomePalettes.material(home.palette))
+	_player.face(Vector2.UP)
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(REMARKS_PATH))
+	_remarks = parsed if parsed is Dictionary else {}
+	for use: HomeLayout.Interactable in layout.interactables:
+		_cooldowns[use.id] = 0.0
+		if not _remarks.has(use.id):
+			push_warning("No home remarks for '%s'" % use.id)
+	# The player starts after breakfast: no remark about the kitchen table right away.
+	_cooldowns["table"] = REMARK_COOLDOWN
+	if layout.car_rect.has_area():
+		_car = VehicleSprite.new()
+		_car.position = layout.car_origin
+		_entities.add_child(_car)
+		_car.setup(Backend.get_car_id())
+		Backend.car_changed.connect(func(car_id: String) -> void: _car.setup(car_id))
+	_decorator = HomeDecorator.new()
+	add_child(_decorator)
+	_decorator.setup(home if home.ok else null, layout, _map, _entities, _camera, _player)
+	_decorator.move_requested.connect(_move_to)
+
+
 func _process(delta: float) -> void:
+	if _map.layout == null:
+		# The apartment is still loading from the server.
+		return
 	super(delta)
 	for id: String in _cooldowns:
 		_cooldowns[id] = maxf(0.0, _cooldowns[id] - delta)
@@ -65,6 +97,7 @@ func _is_modal_open() -> bool:
 	return (
 		_busy or _leaving or _wardrobe.is_open() or _shop_panel.is_open()
 		or (_corner != null and _corner.is_open())
+		or (_decorator != null and _decorator.is_active())
 	)
 
 
@@ -100,7 +133,33 @@ func _open_garage() -> void:
 		return
 	_stop_player()
 	_player.say(_pick("keys"))
-	_shop_panel.open(ShopPanel.Tab.GARAGE)
+	# Only the garage: the office tabs of the shop need the office Wi-Fi.
+	_shop_panel.open(ShopPanel.Tab.GARAGE, true)
+
+
+func _open_interior() -> void:
+	if _is_modal_open() or _decorator == null:
+		return
+	if _decorator.state == null:
+		_hud.flash_message(tr("ERROR_SERVER"))
+		return
+	_stop_player()
+	_decorator.open_catalog()
+
+
+## Moving to another owned apartment: the scene reloads with it.
+func _move_to(apartment_id: String) -> void:
+	_busy = true
+	var moved: BackendHome.State = await Backend.home.move(apartment_id)
+	if not moved.ok:
+		_busy = false
+		_hud.flash_message(tr("ERROR_" + (moved.error if not moved.error.is_empty() else "server").to_upper()))
+		return
+	_leaving = true
+	var tween: Tween = create_tween()
+	tween.tween_property(_fade, "color:a", 1.0, FADE_TIME)
+	await tween.finished
+	get_tree().change_scene_to_file(HOME_SCENE)
 
 
 ## Remarks when the player steps onto an object's spot, at most once per cooldown.
@@ -120,9 +179,21 @@ func _check_proximity() -> void:
 	_near_id = near_id
 
 
-## The "Go to the office" button: the character walks out through the front door, then the commute.
+## The "Go to the office" button: the office opens only in the office Wi-Fi; then the character
+## walks out through the front door, and the commute starts.
 func _go_to_office() -> void:
 	if _is_modal_open():
+		return
+	_busy = true
+	_office_button.disabled = true
+	var open: bool = await Backend.home.office_open()
+	if not open:
+		_stop_player()
+		open = await _wait_screen.wait()
+	_office_button.disabled = false
+	_busy = false
+	if not open:
+		_player.say(_pick("stay_home"))
 		return
 	_leaving = true
 	_marker.hide_marker()

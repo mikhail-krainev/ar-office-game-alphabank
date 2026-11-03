@@ -6,9 +6,11 @@ extends Node
 ## now") means the rest screen until the rest ends; playing past the countdown locks the game until
 ## tomorrow. A task minigame is never interrupted: when the limit comes during one, a small notice
 ## says the rest starts after it, and it does as soon as the minigame ends.
-## Outside the office network the server refuses the game; then a screen asks to connect to the
-## office Wi-Fi and checks again by itself. The same screen waits before the sign-in while the server
-## cannot be reached at all. The server decides everything; this only shows it.
+## Outside the office network the server refuses the office part of the game; then a screen asks to
+## connect to the office Wi-Fi and checks again by itself, but only over the office scene
+## (`office_mode`): the home location stays open outside the network, and the trip to the office
+## waits for the Wi-Fi on its own screen (home.gd). The same screen waits before the sign-in while the server cannot
+## be reached at all. The server decides everything; this only shows it.
 
 ## Emitted when the player may play (again): after the rest or when nothing stops them.
 signal released
@@ -43,6 +45,17 @@ var _beat_again: bool = false
 ## wait_for_server() shows the office network screen before the sign-in.
 var _waiting_server: bool = false
 var _retry_requested: bool = false
+## The office scene is on screen. Only there losing the office network covers the game: home,
+## the intros and the outro work outside it. Set by the office scene, cleared when it leaves.
+var office_mode: bool = false:
+	set(value):
+		office_mode = value
+		if not _off_network:
+			return
+		if value:
+			_overlay.show_network()
+		else:
+			_overlay.hide_screen()
 
 
 func _ready() -> void:
@@ -55,18 +68,17 @@ func _ready() -> void:
 	Backend.office_network_required.connect(_on_network_lost)
 
 
-## Before entering the game: one heartbeat, then waits while the player has to rest or is outside
-## the office network. A game locked for the day keeps the lock screen up until the next day.
+## Before entering the game: one heartbeat, then waits while the player has to rest. A game locked
+## for the day keeps the lock screen up until the next day. Outside the office network nothing waits:
+## the game starts at home, and only the trip to the office needs the office Wi-Fi.
 func wait_until_allowed() -> void:
 	if _beating:
 		await checked
 	else:
 		await _beat()
-	if (
-		_off_network
-		or _state == BackendModels.PlayStatus.State.RESTING
-		or _state == BackendModels.PlayStatus.State.BLOCKED
-	):
+	if _off_network:
+		return
+	if _state == BackendModels.PlayStatus.State.RESTING or _state == BackendModels.PlayStatus.State.BLOCKED:
 		await released
 
 
@@ -242,7 +254,8 @@ func _on_network_lost() -> void:
 		_off_network = true
 		_overlay.hide_warning()
 		_overlay.hide_deferred_notice()
-		_overlay.show_network()
+		if office_mode:
+			_overlay.show_network()
 	_beat_left = NETWORK_POLL_SECONDS
 
 

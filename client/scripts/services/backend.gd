@@ -5,7 +5,8 @@ extends Node
 ## the network: a failed call returns a result with the error "network" and emits request_failed.
 ## Tasks, shop, wardrobe, garage and presence are here; the other groups are `social` (colleagues,
 ## joint photos, inbox), `account` (profile page, status, avatar), `raffle` (parking draw) and
-## `wheel` (fortune wheel).
+## `wheel` (fortune wheel), `home` (apartment and interior). The home location (apartment, wardrobe,
+## garage) works outside the office network too; the rest of the game only in the office Wi-Fi.
 
 signal balance_changed(balance: int)
 signal outfit_changed(outfit: Dictionary)
@@ -27,6 +28,7 @@ var social: BackendSocial
 var account: BackendAccount
 var raffle: BackendRaffle
 var wheel: BackendWheel
+var home: BackendHome
 ## When tasks count (cooldown, task hours); updated by list_tasks().
 var task_schedule: BackendModels.TaskSchedule = BackendModels.TaskSchedule.new()
 
@@ -42,7 +44,8 @@ func _ready() -> void:
 	account = BackendAccount.new(self)
 	raffle = BackendRaffle.new(self)
 	wheel = BackendWheel.new(self)
-	for api: Node in [social, account, raffle, wheel]:
+	home = BackendHome.new(self)
+	for api: Node in [social, account, raffle, wheel, home]:
 		add_child(api)
 	if OS.is_debug_build() and OS.has_feature("pc"):
 		var keys: Node = load("res://scripts/services/dev_backend_keys.gd").new()
