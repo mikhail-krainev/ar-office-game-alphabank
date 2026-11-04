@@ -74,7 +74,7 @@ func storyOpen(limits Limits, now, offset int64) bool {
 }
 
 func (tx *gameTx) storiesOpen() (bool, error) {
-	if devMode && tx.me.state.DevNoTaskLimits {
+	if taskLimitsOff(tx.me.state) {
 		return true, nil
 	}
 	limits, err := tx.limits()

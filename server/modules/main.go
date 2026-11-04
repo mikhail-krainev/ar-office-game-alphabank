@@ -20,6 +20,9 @@ var (
 	gameContent *Content
 	// DEV_MODE=true: dev RPCs and the per-player dev clock. Never on a real server.
 	devMode bool
+	// APP_ENV=dev: the local development environment. The admin console runs every command there
+	// (coins, tasks, presence, time); anything else is prod, where it only shows data.
+	devEnv bool
 	// Signs the office entry and exit codes; only the server knows it.
 	presenceSecret string
 )
@@ -41,7 +44,9 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		return errors.New("set PRESENCE_SECRET (16+ characters)")
 	}
 	devMode = env["DEV_MODE"] == "true"
-	testClock = env["TEST_CLOCK"] == "true"
+	devEnv = env["APP_ENV"] == appEnvDev
+	// The console moves the game time in the dev environment, so the test clock is on there.
+	testClock = env["TEST_CLOCK"] == "true" || devEnv
 	// OFFICE_NETWORKS only seeds the network of the default office; the admin edits offices in the panel.
 	if _, err := parseOfficeNetworks(env["OFFICE_NETWORKS"]); err != nil {
 		return err
@@ -76,6 +81,8 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"admin_list_managers":     rpcAdminListManagers,
 		"admin_create_manager":    rpcAdminCreateManager,
 		"admin_update_manager":    rpcAdminUpdateManager,
+		"admin_console_info":      rpcAdminConsoleInfo,
+		"admin_console":           rpcAdminConsole,
 		// Manager panel: from anywhere, each call checks the manager's scope (managers.go).
 		"manager_get_scope":      rpcManagerGetScope,
 		"manager_stats_overview": rpcManagerStatsOverview,
@@ -145,6 +152,9 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		if err := registerDevRpcs(initializer); err != nil {
 			return err
 		}
+	}
+	if devEnv {
+		logger.Warn("APP_ENV=dev: the admin console runs every command, including coins and time")
 	}
 	if testClock {
 		logger.Warn("TEST_CLOCK is on: the admin can move the game time forward")

@@ -216,25 +216,36 @@ func rpcDevPlayState(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 		return "", err
 	}
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
-		limits, err := tx.limits()
-		if err != nil {
-			return nil, err
-		}
-		play := &tx.me.state.Play
-		switch request.State {
-		case playOK:
-			*play = PlaySession{}
-		case playWarning:
-			*play = PlaySession{Seconds: limits.PlayLimitMinutes * 60, LastBeat: tx.now, WarnedAt: tx.now}
-		case playDeferred:
-			*play = PlaySession{Seconds: limits.PlayLimitMinutes * 60, LastBeat: tx.now, WarnedAt: tx.now, RestPending: true, DeferUntil: tx.now + defaultMinigameSeconds}
-		case playResting:
-			*play = PlaySession{LastBeat: tx.now, RestUntil: tx.now + int64(limits.RestMinutes)*60}
-		case playBlocked:
-			*play = PlaySession{LastBeat: tx.now, BlockedDay: tx.today}
-		default:
-			return nil, errInvalidPayload
-		}
-		return currentPlayStatus(play, tx.now, tx.offset, limits), nil
+		return tx.setPlayState(request.State)
 	})
+}
+
+// setPlayState puts the play-time limit of tx.me into `state` right away (dev RPC and admin console).
+func (tx *gameTx) setPlayState(state string) (playStatus, error) {
+	limits, err := tx.limits()
+	if err != nil {
+		return playStatus{}, err
+	}
+	play := &tx.me.state.Play
+	switch state {
+	case playOK:
+		*play = PlaySession{}
+	case playWarning:
+		*play = PlaySession{Seconds: limits.PlayLimitMinutes * 60, LastBeat: tx.now, WarnedAt: tx.now}
+	case playDeferred:
+		*play = PlaySession{Seconds: limits.PlayLimitMinutes * 60, LastBeat: tx.now, WarnedAt: tx.now, RestPending: true, DeferUntil: tx.now + defaultMinigameSeconds}
+	case playResting:
+		*play = PlaySession{LastBeat: tx.now, RestUntil: tx.now + int64(limits.RestMinutes)*60}
+	case playBlocked:
+		*play = PlaySession{LastBeat: tx.now, BlockedDay: tx.today}
+	default:
+		return playStatus{}, errInvalidPayload
+	}
+	return currentPlayStatus(play, tx.now, tx.offset, limits), nil
+}
+
+// taskLimitsOff: the task hours and the pause between tasks are off for the player (dev RPC with
+// DEV_MODE, admin console with APP_ENV=dev).
+func taskLimitsOff(state *PlayerState) bool {
+	return (devMode || devEnv) && state.DevNoTaskLimits
 }

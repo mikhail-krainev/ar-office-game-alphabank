@@ -38,6 +38,9 @@ if grep -q '^DEV_MODE=true' "$root/server/.env"; then
 	echo "WARNING: DEV_MODE=true in server/.env. Dev RPCs hand out the office entry code to any player" >&2
 	echo "         and let players move their clock and add coins. Set DEV_MODE=false for a real test." >&2
 fi
+if ! grep -q '^APP_ENV=prod' "$root/server/.env"; then
+	echo "Note: APP_ENV is not prod. The admin console runs every command (coins, tasks, time); the test clock is on." >&2
+fi
 if grep -q '^TEST_CLOCK=true' "$root/server/.env"; then
 	echo "Note: TEST_CLOCK=true in server/.env. The admin panel can move the game time forward (tab \"Время\")." >&2
 fi

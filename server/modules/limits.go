@@ -206,7 +206,7 @@ func cooldownLeft(lastTaskAt, now int64, limits Limits) int64 {
 
 // taskTimeError: "" or why the task cannot count right now. The check-in always counts.
 func (tx *gameTx) taskTimeError(task *Task) (string, error) {
-	if task.Minigame == presenceMinigame || (devMode && tx.me.state.DevNoTaskLimits) {
+	if task.Minigame == presenceMinigame || taskLimitsOff(tx.me.state) {
 		return "", nil
 	}
 	limits, err := tx.limits()
@@ -243,7 +243,7 @@ func (tx *gameTx) taskSchedule() (taskSchedule, error) {
 		WindowEnd:       limits.TaskWindowEnd,
 		InWindow:        inTaskWindow(limits, tx.now, tx.offset),
 	}
-	if devMode && tx.me.state.DevNoTaskLimits {
+	if taskLimitsOff(tx.me.state) {
 		schedule.NextTaskIn, schedule.InWindow = 0, true
 	}
 	return schedule, nil

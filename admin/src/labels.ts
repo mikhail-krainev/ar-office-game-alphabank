@@ -18,6 +18,7 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   play_warning: "Предупреждение о времени в игре",
   play_rest: "Ушёл на отдых",
   play_blocked: "Игра закрыта до завтра",
+  admin_console: "Команда админ-консоли",
 };
 
 export const LEDGER_LABELS: Record<string, string> = {
@@ -33,6 +34,7 @@ export const LEDGER_LABELS: Record<string, string> = {
   wheel_coins: "Монеты с колеса фортуны",
   wheel_exchange: "Обмен выигрыша колеса на монеты",
   dev_grant: "Начисление (режим разработки)",
+  admin_console: "Админ-консоль",
 };
 
 export const SUSPICIOUS_LABELS: Record<string, string> = {
@@ -99,6 +101,7 @@ export const REWARD_STATES: Record<string, string> = {
 export const REWARD_SOURCES: Record<string, string> = {
   shop: "магазин",
   wheel: "колесо",
+  admin_console: "админ-консоль",
 };
 
 export const REWARD_LOG_STATES: Record<string, string> = {

@@ -289,18 +289,10 @@ func runPlayerTx(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runt
 // runUserTx runs `fn` with `userID` as tx.me; admin RPCs use it to change a player's state safely.
 func runUserTx(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, userID string, fn func(tx *gameTx) (any, error)) (string, error) {
 	for attempt := 1; ; attempt++ {
-		tx := &gameTx{ctx: ctx, logger: logger, db: db, nk: nk, others: map[string]*playerDoc{}, content: gameContent}
-		var err error
-		tx.me, err = tx.loadPlayer(userID)
+		tx, err := newGameTx(ctx, logger, db, nk, userID)
 		if err != nil {
 			return "", err
 		}
-		tx.offset = gameContent.officeOffset()
-		tx.now = gameNow()
-		if devMode {
-			tx.now += int64(tx.me.state.DevDayShift) * secondsPerDay
-		}
-		tx.today = dayOf(tx.now, tx.offset)
 		result, err := fn(tx)
 		if err != nil {
 			return "", err
@@ -314,6 +306,24 @@ func runUserTx(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtim
 			return "", errInternal
 		}
 	}
+}
+
+// newGameTx loads `userID` as tx.me at the current game time. Only runUserTx commits it; the admin
+// console also reads a player through it without saving anything.
+func newGameTx(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, userID string) (*gameTx, error) {
+	tx := &gameTx{ctx: ctx, logger: logger, db: db, nk: nk, others: map[string]*playerDoc{}, content: gameContent}
+	var err error
+	tx.me, err = tx.loadPlayer(userID)
+	if err != nil {
+		return nil, err
+	}
+	tx.offset = gameContent.officeOffset()
+	tx.now = gameNow()
+	if devMode {
+		tx.now += int64(tx.me.state.DevDayShift) * secondsPerDay
+	}
+	tx.today = dayOf(tx.now, tx.offset)
+	return tx, nil
 }
 
 // banned: the ban is in the game state or on the account (bans made before the state recorded it).

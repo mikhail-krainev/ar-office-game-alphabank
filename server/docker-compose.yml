@@ -36,6 +36,8 @@ services:
       ADMIN_USERNAME: ${ADMIN_USERNAME:?set ADMIN_USERNAME in .env}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
       PRESENCE_SECRET: ${PRESENCE_SECRET:?set PRESENCE_SECRET in .env}
+      # dev until the first real deploy; set APP_ENV=prod in .env there (admin console: view only).
+      APP_ENV: ${APP_ENV:-dev}
       DEV_MODE: ${DEV_MODE:-false}
       TEST_CLOCK: ${TEST_CLOCK:-false}
       OFFICE_NETWORKS: ${OFFICE_NETWORKS:-}
@@ -55,6 +57,7 @@ services:
         --runtime.env "ADMIN_USERNAME=$$ADMIN_USERNAME"
         --runtime.env "ADMIN_PASSWORD=$$ADMIN_PASSWORD"
         --runtime.env "PRESENCE_SECRET=$$PRESENCE_SECRET"
+        --runtime.env "APP_ENV=$$APP_ENV"
         --runtime.env "DEV_MODE=$$DEV_MODE"
         --runtime.env "TEST_CLOCK=$$TEST_CLOCK"
         --runtime.env "OFFICE_NETWORKS=$$OFFICE_NETWORKS"

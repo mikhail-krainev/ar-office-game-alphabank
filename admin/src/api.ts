@@ -406,6 +406,28 @@ export async function signOut(session: Session): Promise<void> {
   await client.sessionLogout(session, session.token, session.refresh_token).catch(() => undefined);
 }
 
+/** A command of the admin console (server/modules/console.go). */
+export interface ConsoleCommand {
+  name: string;
+  args: string;
+  help: string;
+  /** Changes the game: runs only with APP_ENV=dev on the server. */
+  dev: boolean;
+}
+
+export interface ConsoleInfo {
+  env: "dev" | "prod";
+  test_clock: boolean;
+  commands: ConsoleCommand[];
+}
+
+export interface ConsoleResult {
+  ok: boolean;
+  output: string;
+  /** Error key of a game rule that refused the command (messages.ts). */
+  error?: string;
+}
+
 export const api = {
   listOffices: (s: Session) => call<{ offices: Office[] }>(s, "admin_list_offices").then((r) => r.offices),
   createOffice: (s: Session, office: OfficeFields) => call<Office>(s, "admin_create_office", office),
@@ -436,6 +458,8 @@ export const api = {
     call(s, "admin_set_reward_stock", { item_id, weekly_stock, left }),
   getClock: (s: Session) => call<Clock>(s, "admin_get_clock"),
   setClock: (s: Session, shift_seconds: number) => call<Clock>(s, "admin_set_clock", { shift_seconds }),
+  consoleInfo: (s: Session) => call<ConsoleInfo>(s, "admin_console_info"),
+  consoleRun: (s: Session, line: string) => call<ConsoleResult>(s, "admin_console", { line }),
 };
 
 /** The manager's panel: only the scope the admin gave, checked again by the server on every call. */

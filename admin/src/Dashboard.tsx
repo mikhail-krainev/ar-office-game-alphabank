@@ -11,8 +11,9 @@ import { OfficesPanel } from "./OfficesPanel";
 import { ClockPanel } from "./ClockPanel";
 import { ManagersPanel } from "./ManagersPanel";
 import { RewardsPanel } from "./RewardsPanel";
+import { ConsolePanel } from "./ConsolePanel";
 
-type Section = "access" | "managers" | "offices" | "stats" | "rewards" | "limits" | "clock";
+type Section = "access" | "managers" | "offices" | "stats" | "rewards" | "limits" | "clock" | "console";
 
 export interface DashboardActions {
   session: Session;
@@ -146,6 +147,9 @@ export function Dashboard({ session, onSessionLost }: { session: Session; onSess
             Время
           </button>
         )}
+        <button role="tab" aria-selected={section === "console"} className={section === "console" ? "tab active" : "tab"} onClick={() => setSection("console")}>
+          Консоль
+        </button>
       </nav>
       {section === "access" && (
         <>
@@ -163,6 +167,7 @@ export function Dashboard({ session, onSessionLost }: { session: Session; onSess
       {section === "stats" && <StatsPanel actions={actions} />}
       {section === "rewards" && <RewardsPanel actions={actions} />}
       {section === "limits" && <LimitsPanel actions={actions} />}
+      {section === "console" && <ConsolePanel actions={actions} />}
       {section === "clock" && clock?.enabled && <ClockPanel actions={actions} clock={clock} onChange={setClock} />}
     </div>
   );

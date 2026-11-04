@@ -2,11 +2,12 @@ extends WorldScene
 ## Office gameplay on the current floor (OfficeFloors): the character lives by itself (walks between
 ## rooms, chats with colleagues), the player picks tasks with minigames, opens the reward shop, the
 ## inbox and the profile. A task is taken in its room: when the last room code is another room, the
-## game asks to scan the code of the task's room first. Then the minigame starts right away: the
-## player does it in the real office, so the character does not walk anywhere.
+## game asks to scan the code of the task's room first. Then the minigame starts right away, on any
+## floor: the player does it in the real office, so the character does not walk or ride anywhere.
 ## After the check-in the player can go home at any time: tasks only add coins and gifts.
-## "QR" scans a room door emblem (RoomEmblems; the character walks to that room, on any floor), the
-## office screen code (starts the check-in) or a colleague's profile code.
+## "QR" scans a room door emblem (RoomEmblems): the room's open task starts right away, several open
+## tasks show as a list, and with none the character walks to that room (on any floor). It also scans
+## the office screen code (starts the check-in) or a colleague's profile code.
 ## On arrival from the commute the entry code scan opens by itself until the player checks in.
 ## Right after the check-in the game asks for the facts of "Three truths, two lies" when that task is
 ## in today's pack. Colleagues in the office now walk on the map in their own outfits
@@ -307,10 +308,6 @@ func _take_task(task: BackendModels.TaskInfo) -> bool:
 		_hud.flash_message(tr("ERROR_" + taken.error.to_upper()))
 		return false
 	task.taken = true
-	if OfficeFloors.floor_of_room(task.room) != OfficeFloors.current:
-		# The room is on another floor: the game follows the player there, the task waits taken.
-		_move_to_room(task.room)
-		return false
 	return true
 
 
@@ -397,8 +394,7 @@ func _scan_code() -> void:
 		QrPayload.Kind.ROOM:
 			var room_id: StringName = StringName(payload.value)
 			if await _enter_room(room_id):
-				_hint_room_tasks(room_id)
-				_move_to_room(room_id)
+				_start_room_tasks(room_id)
 		QrPayload.Kind.PRESENCE:
 			await _start_check_in(payload.value)
 		QrPayload.Kind.CHECKOUT:
@@ -446,13 +442,21 @@ func _move_to_room(room_id: StringName) -> void:
 	_walk_to_room(room_id)
 
 
-## After a room code: tells how many open tasks of today can be taken in this room.
-func _hint_room_tasks(room_id: StringName) -> void:
-	var count: int = _tasks.filter(
+## After a room code: the room's only open task of today starts right away (the server takes it,
+## since the last room code is its room), several open tasks show as a list to pick from. Only a
+## room without open tasks sends the character walking there.
+func _start_room_tasks(room_id: StringName) -> void:
+	var room_tasks: Array[BackendModels.TaskInfo] = []
+	room_tasks.assign(_tasks.filter(
 		func(task: BackendModels.TaskInfo) -> bool: return task.room == room_id and not task.is_closed() and not task.is_check_in()
-	).size()
-	if count > 0:
-		_hud.flash_message(tr("QR_ROOM_TASKS") % count)
+	))
+	if room_tasks.is_empty():
+		_move_to_room(room_id)
+	elif room_tasks.size() == 1:
+		await _go_to_task(room_tasks[0])
+	else:
+		_hud.flash_message(tr("QR_ROOM_TASKS") % room_tasks.size())
+		_task_panel.open(room_tasks, Backend.profile)
 
 
 ## The entry code was scanned outside the task. The first entry of the day is the check-in task

@@ -405,7 +405,7 @@ TASK_ROOM_QUESTION,"Задание ждёт в комнате «%s». Приди
 TASK_ROOM_SCAN,Сканировать,Scan
 TASK_ROOM_CANCEL,Не сейчас,Not now
 TASK_ROOM_WRONG_CODE,Это другая эмблема. Нужна эмблема комнаты «%s»,That's another emblem. Scan the emblem of the room «%s»
-QR_ROOM_TASKS,Заданий в этой комнате: %d. Открой список и возьми,Tasks in this room: %d. Open the list to take one
+QR_ROOM_TASKS,"Заданий в этой комнате: %d. Выбери, какое начать",Tasks in this room: %d. Pick one to start
 ERROR_WRONG_ROOM,Сначала отсканируй QR-код комнаты задания,Scan the QR code of the task's room first
 ERROR_TASK_NOT_TAKEN,Сначала возьми задание в его комнате,Take the task in its room first
 FACTS_TITLE,"Три правды, две лжи","Three truths, two lies"

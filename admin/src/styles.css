@@ -913,3 +913,85 @@ label.check input {
   width: 5.5em;
   text-align: right;
 }
+
+/* Admin console: a dark terminal inside the light panel, like the console of a Source game. */
+
+.console {
+  --console-bg: #11161c;
+  --console-text: #d6dde4;
+  --console-muted: #7d8a97;
+  --console-input: #f5c26b;
+  --console-error: #ff7a70;
+  display: flex;
+  flex-direction: column;
+  height: min(60vh, 560px);
+  min-height: 280px;
+  background: var(--console-bg);
+  color: var(--console-text);
+  border-radius: 10px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  cursor: text;
+}
+
+.console-output {
+  flex: 1;
+  overflow: auto;
+  padding: 12px 14px;
+}
+
+.console-line {
+  margin: 0 0 6px;
+  font: inherit;
+  white-space: pre;
+}
+
+.console-line.input {
+  color: var(--console-input);
+}
+
+.console-line.error {
+  color: var(--console-error);
+  white-space: pre-wrap;
+}
+
+.console-line.info {
+  color: var(--console-muted);
+  white-space: pre-wrap;
+}
+
+.console-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid #26303a;
+  color: var(--console-input);
+}
+
+.console-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--console-text);
+  font: inherit;
+  outline: none;
+  box-shadow: none;
+}
+
+.console-suggestions {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.console-suggestions li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
