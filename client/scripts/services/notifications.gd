@@ -46,6 +46,8 @@ var _entry_reminded_on: String = ""
 var _entry_notified_on: String = ""
 ## The game is on screen. The system notification is for when it is not (another app or tab).
 var _focused: bool = true
+## The office scene is open (set_office_open); the in-game entry code banner shows only there.
+var _office_open: bool = false
 
 var _layer: CanvasLayer
 var _banner: PanelContainer
@@ -139,14 +141,29 @@ func set_entry_code_needed(needed: bool) -> void:
 		return
 	entry_code_needed = needed
 	entry_code_needed_changed.emit(needed)
-	var today: String = Time.get_date_string_from_system()
 	if not needed:
 		return
 	if not _focused:
 		_notify_entry_code()
-	elif _entry_reminded_on != today:
-		_entry_reminded_on = today
-		_show_banner(NotificationTexts.title(), tr("REMIND_ENTRY_CODE"), ENTRY_CODE_KIND)
+	else:
+		_remind_entry_code()
+
+
+## The office scene is on screen. The in-game reminder waits for it: at home and in the intro
+## cutscenes the player is not in the game's office yet, and the banner would cover the scene.
+func set_office_open(open: bool) -> void:
+	_office_open = open
+	if open:
+		_remind_entry_code()
+
+
+## The in-game banner about the entry code, once a day, only in the office scene.
+func _remind_entry_code() -> void:
+	var today: String = Time.get_date_string_from_system()
+	if not entry_code_needed or not _office_open or _entry_reminded_on == today:
+		return
+	_entry_reminded_on = today
+	_show_banner(NotificationTexts.title(), tr("REMIND_ENTRY_CODE"), ENTRY_CODE_KIND)
 
 
 ## The system notification about the entry code, once a day, while the game is in the background.

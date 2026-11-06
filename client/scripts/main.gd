@@ -106,14 +106,18 @@ func _ready() -> void:
 	_update_room()
 	Notifications.set_entry_code_needed(Backend.profile != null and Backend.profile.needs_entry_code)
 	_show_entry_reminder(Notifications.entry_code_needed)
+	# The banner comes after the arrival scan, so it never covers the camera.
 	if not by_lift and await _auto_check_in():
+		Notifications.set_office_open(true)
 		return
+	Notifications.set_office_open(true)
 	_resume_after_lift()
 
 
 func _exit_tree() -> void:
 	# Home and the intros work outside the office network.
 	PlayTime.office_mode = false
+	Notifications.set_office_open(false)
 	ColleagueProfiles.message_handler = Callable()
 
 
