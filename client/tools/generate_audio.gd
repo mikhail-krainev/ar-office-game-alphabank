@@ -24,7 +24,17 @@ func _init() -> void:
 	_save("clink", _clink())
 	_save("chime", _chime())
 	_save("door_slide", _door_slide())
+	_save_life_sounds()
 	quit()
+
+
+## Home, office and commute-stop sounds (LocationLife, the commute errands). A separate seed keeps
+## the sounds above unchanged when this list grows.
+func _save_life_sounds() -> void:
+	var synth: LifeSoundSynth = LifeSoundSynth.new()
+	synth.rng.seed = 4242
+	for sound: String in LifeSoundSynth.SOUNDS:
+		_save(sound, synth.make(sound))
 
 
 func _save(sound: String, samples: PackedFloat32Array) -> void:

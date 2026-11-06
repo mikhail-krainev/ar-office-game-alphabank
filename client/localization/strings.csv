@@ -577,3 +577,11 @@ ERROR_ITEM_NOT_OWNED,Свободных экземпляров нет: купи 
 ERROR_OUT_OF_BOUNDS,Предмет не помещается в квартиру,The item does not fit in the apartment
 ERROR_TOO_MANY_ITEMS,В квартире больше нет места для предметов,There is no room for more items
 ERROR_DUPLICATE_ITEM,Здесь уже стоит такой предмет,The same item already stands here
+INTRO_STOP_COFFEE,ПО ПУТИ ЗА КОФЕ. БЕЗ НЕГО НИКАК.,COFFEE TO GO. NO WAY WITHOUT IT.
+INTRO_STOP_COFFEE_WAIT,ОЧЕРЕДЬ...,QUEUE...
+INTRO_STOP_GAS,ЗАПРАВКА. ПОЛНЫЙ БАК.,GAS STATION. FILL HER UP.
+INTRO_STOP_GROCERY,МАГАЗИН. ВОДА И БАНАНЫ НА ДЕНЬ.,THE SHOP. WATER AND BANANAS FOR THE DAY.
+INTRO_STOP_GROCERY_EVENING,МАГАЗИН. ЧТО-НИБУДЬ НА УЖИН.,THE SHOP. SOMETHING FOR DINNER.
+INTRO_STOP_GROCERY_WAIT,НА КАССЕ...,AT THE TILL...
+INTRO_STOP_RESTAURANT,УЖИН В РЕСТОРАНЕ. ЗАСЛУЖИЛ.,DINNER OUT. EARNED IT.
+INTRO_STOP_RESTAURANT_WAIT,ЧАС СПУСТЯ...,AN HOUR LATER...

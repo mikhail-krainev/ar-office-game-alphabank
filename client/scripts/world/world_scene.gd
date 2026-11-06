@@ -18,6 +18,8 @@ var _current_room_id: StringName = &""
 var _autopilot_left: float = 1.5
 ## An activity coroutine is running.
 var _autopilot_busy: bool = false
+## Windows, ambience and footsteps around the player.
+var _life: LocationLife
 
 @onready var _map: WorldMap = $WorldMap
 @onready var _entities: Node2D = $Entities
@@ -35,6 +37,9 @@ func _setup_world(layout: MapLayout) -> void:
 	_camera.set_bounds(_map.get_bounds(), CAMERA_MARGIN)
 	_camera.snap_to_target()
 	_map.populate_props(_entities)
+	_life = LocationLife.new()
+	add_child(_life)
+	_life.setup(_map, _player, _life_place(), _is_modal_open)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -52,6 +57,11 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	_update_autopilot(delta)
 	_update_room()
+
+
+## Which ambience the scene has: the office by default, the apartment overrides it.
+func _life_place() -> LocationLife.Place:
+	return LocationLife.Place.OFFICE
 
 
 ## Overridden by scenes with modal UI; input to the map and the autopilot pause while it returns true.

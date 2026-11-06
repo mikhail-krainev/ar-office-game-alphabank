@@ -7,7 +7,7 @@ const PADDING: int = 2
 
 
 func _init() -> void:
-	var painter: IntroScenePainter = IntroScenePainter.new()
+	var painter: IntroScenePainter = ErrandScenePainter.new()
 	for id: String in IntroArt.IMAGES:
 		_save(painter.paint(id), IntroArt.path(id))
 	_build_vehicles()

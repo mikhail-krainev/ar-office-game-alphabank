@@ -9,3 +9,5 @@ var shake: float = 0.0
 var car_id: String = VehicleCatalog.DEFAULT_CAR
 var car_name: String = ""
 var car_speed_kmh: int = 110
+## The evening sequence (home from the office): stops look like late evening.
+var evening: bool = false

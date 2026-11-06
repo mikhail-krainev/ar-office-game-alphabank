@@ -93,6 +93,10 @@ func _process(delta: float) -> void:
 	_check_proximity()
 
 
+func _life_place() -> LocationLife.Place:
+	return LocationLife.Place.HOME
+
+
 func _is_modal_open() -> bool:
 	return (
 		_busy or _leaving or _wardrobe.is_open() or _shop_panel.is_open()
@@ -114,6 +118,7 @@ func _run_activity() -> void:
 	if await _auto_walk(use.stand_cell):
 		var target: Vector2 = _map.cell_to_world(use.prop_cell)
 		_player.face(target - _player.global_position if target.distance_to(_player.global_position) > 1.0 else Vector2.UP)
+		_life.play_use(use.id, target)
 		await _auto_wait(randf_range(2.0, 4.0))
 
 

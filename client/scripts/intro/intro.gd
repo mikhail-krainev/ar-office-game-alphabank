@@ -50,13 +50,7 @@ var _scale: float = 1.0
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	match sequence:
-		Sequence.MORNING:
-			_scene_scripts = [WakeScene, StreakScene, BathroomScene, BreakfastScene]
-		Sequence.COMMUTE:
-			_scene_scripts = [ParkingScene, AutobahnScene, TrafficScene, ArrivalScene]
-		Sequence.EVENING:
-			_scene_scripts = [LeaveOfficeScene, NightCityScene, HomeArrivalScene, SleepScene]
+	_scene_scripts = _plan_shots()
 	var background: ColorRect = ColorRect.new()
 	background.color = BACKGROUND
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -83,6 +77,20 @@ func _ready() -> void:
 	_context.car_name = _context.profile.car_name
 	_context.car_speed_kmh = _context.profile.car_speed_kmh
 	_next_scene()
+
+
+## The morning at home is always the same; the trips vary (CommutePlan).
+func _plan_shots() -> Array[Script]:
+	if sequence == Sequence.MORNING:
+		return [WakeScene, StreakScene, BathroomScene, BreakfastScene]
+	var direction: String = "evening" if sequence == Sequence.EVENING else "morning"
+	_context.evening = sequence == Sequence.EVENING
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.randomize()
+	var last_stop: String = CommutePlan.load_last_stop(direction)
+	var shots: Array[Script] = CommutePlan.evening(rng, last_stop) if _context.evening else CommutePlan.morning(rng, last_stop)
+	CommutePlan.save_last_stop(direction, CommutePlan.stop_of(shots))
+	return shots
 
 
 func _gui_input(event: InputEvent) -> void:

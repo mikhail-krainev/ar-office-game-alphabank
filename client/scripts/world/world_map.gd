@@ -14,6 +14,8 @@ var layout: MapLayout
 @onready var _wall_decor: Node2D = $WallDecor
 
 var _grid: AStarGrid2D = AStarGrid2D.new()
+## Animated things drawn over the wall decor, e.g. the street behind the windows (WindowView).
+var _overlays: Node2D
 var _prop_texture: Texture2D
 var _prop_regions: Dictionary = {}
 ## "id@x,y" -> sprite, for tap hit tests.
@@ -30,6 +32,9 @@ func build(p_layout: MapLayout) -> void:
 		layer.tile_set = tile_set
 	_build_tiles()
 	_build_grid()
+	_overlays = Node2D.new()
+	_overlays.name = "Overlays"
+	add_child(_overlays)
 	for entrance: Rect2i in layout.entrances:
 		var glass: ColorRect = ColorRect.new()
 		glass.color = ENTRANCE_GLASS
@@ -83,6 +88,11 @@ func place_prop_sprite(sprite: Sprite2D, prop_id: String, cell: Vector2i) -> voi
 	else:
 		sprite.position = origin + ((area - size) / 2.0).floor()
 		sprite.offset = Vector2.ZERO
+
+
+## Adds a node drawn over the wall props, above the ones rebuilt later (rebuild_props()).
+func add_overlay(node: CanvasItem) -> void:
+	_overlays.add_child(node)
 
 
 ## Recolours floors and walls with a home palette (HomePalettes); null restores the original tiles.

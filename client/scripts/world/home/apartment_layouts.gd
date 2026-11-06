@@ -54,6 +54,12 @@ static func _studio20(layout: HomeLayout) -> void:
 		["towel_rail", 10, 1], ["mirror_bath", 11, 1],
 		["toilet", 10, 3], ["bath_sink", 11, 3], ["washing_machine", 12, 3], ["bathtub", 10, 6],
 	])
+	# Lived-in details: everyday things lying around, so the rooms do not look like a showroom.
+	layout.add_props([
+		["wall_sconce", 5, 2], ["bath_shelf", 11, 2],
+		["slippers", 3, 5], ["sneakers", 5, 4], ["laundry_basket", 1, 7], ["backpack", 3, 9], ["bin_small", 7, 6],
+		["bin_small", 12, 5],
+	])
 	_uses(layout, [
 		["bed", "remark", "bed_double", 1, 3, 2, 6], ["wardrobe", "wardrobe", "wardrobe", 3, 3, 3, 4],
 		["keys", "garage", "key_hook", 5, 1, 5, 3], ["door", "door", "front_door", 6, 1, 6, 3],
@@ -80,6 +86,13 @@ static func _flat40(layout: HomeLayout) -> void:
 		["window", 1, 10], ["tv", 6, 10], ["key_hook", 9, 10], ["front_door", 10, 10], ["coat_rack", 14, 10],
 		["doormat", 10, 12], ["tv_console", 6, 12], ["sofa_back", 6, 15], ["bookshelf", 1, 12], ["plant_big", 1, 16],
 		["fridge", 14, 13], ["stove", 14, 14], ["counter_kettle", 14, 15], ["cafe_table", 11, 15],
+	])
+	# Lived-in details: everyday things lying around, so the rooms do not look like a showroom.
+	layout.add_props([
+		["photo_collage", 3, 1], ["wall_shelf", 6, 2], ["bath_shelf", 12, 2], ["wall_sconce", 3, 11],
+		["slippers", 3, 6], ["laundry_basket", 8, 5], ["dryer_rack", 6, 7], ["bin_small", 14, 5],
+		["sneakers", 12, 13], ["rug_round", 6, 14], ["side_table", 9, 15], ["book_stack", 2, 13], ["cat_bed", 1, 15],
+		["backpack", 3, 12], ["bin_small", 14, 16],
 	])
 	_uses(layout, [
 		["bed", "remark", "bed_double", 3, 3, 4, 6], ["wardrobe", "wardrobe", "wardrobe", 7, 3, 7, 4],
@@ -117,6 +130,14 @@ static func _flat60(layout: HomeLayout) -> void:
 		["shoe_rack", 9, 12], ["plant_big", 11, 18],
 		["window", 13, 10], ["kitchen_cabinets", 17, 10], ["kitchen_cabinets", 18, 10],
 		["fridge", 13, 12], ["stove", 17, 12], ["counter_sink", 18, 12], ["cafe_table", 15, 15], ["trash_bin", 18, 18],
+	])
+	# Lived-in details: everyday things lying around, so the rooms do not look like a showroom.
+	layout.add_props([
+		["photo_collage", 3, 1], ["wall_sconce", 5, 2], ["slippers", 2, 6], ["laundry_basket", 7, 5],
+		["floor_fan", 1, 7], ["bath_shelf", 10, 2], ["bin_small", 12, 8], ["wall_shelf", 16, 2], ["boxes_stack", 18, 6],
+		["book_stack", 17, 5], ["backpack", 16, 3], ["wall_sconce", 5, 11], ["plant_hanging", 6, 11],
+		["rug_round", 5, 15], ["side_table", 5, 17], ["cat_bed", 10, 16], ["sneakers", 9, 13], ["vacuum", 11, 17],
+		["spice_rack", 17, 11], ["counter_dishes", 18, 13],
 	])
 	_uses(layout, [
 		["bed", "remark", "bed_double", 2, 3, 3, 6], ["wardrobe", "wardrobe", "wardrobe", 6, 3, 6, 4],
@@ -157,6 +178,14 @@ static func _loft120(layout: HomeLayout) -> void:
 		["window", 14, 17], ["kitchen_cabinets", 18, 17], ["kitchen_cabinets", 19, 17], ["kitchen_cabinets", 20, 17],
 		["fridge", 14, 19], ["microwave", 15, 19], ["stove", 18, 19], ["counter_sink", 19, 19], ["counter_kettle", 20, 19],
 		["cafe_table", 16, 22], ["trash_bin", 20, 25], ["plant_small", 14, 25],
+	])
+	# Lived-in details: everyday things lying around, so the rooms do not look like a showroom.
+	layout.add_props([
+		["photo_collage", 5, 1], ["wall_sconce", 1, 2], ["slippers", 2, 6], ["book_stack", 5, 3],
+		["laundry_basket", 10, 4], ["floor_fan", 10, 7], ["bath_shelf", 16, 2], ["bin_small", 19, 3],
+		["dryer_rack", 18, 8], ["umbrella_stand", 18, 14], ["sneakers", 4, 14], ["wall_sconce", 13, 12],
+		["wall_sconce", 17, 12], ["wall_shelf", 8, 18], ["plant_hanging", 11, 18], ["side_table", 6, 24],
+		["cat_bed", 1, 22], ["backpack", 9, 20], ["boxes_stack", 1, 19], ["spice_rack", 18, 18], ["bin_small", 15, 25],
 	])
 	_uses(layout, [
 		["bed", "remark", "bed_double", 2, 3, 3, 6], ["wardrobe", "wardrobe", "wardrobe", 8, 3, 8, 4],
@@ -211,6 +240,15 @@ static func _house240(layout: HomeLayout) -> void:
 		["counter_kettle", 24, 19], ["cafe_table", 19, 23], ["trash_bin", 24, 27], ["plant_small", 16, 27],
 		["tree", 1, 32], ["tree", 22, 33], ["pool", 9, 32], ["lounger", 15, 32], ["lounger", 17, 32],
 		["bbq_grill", 20, 35],
+	])
+	# Lived-in details: everyday things lying around, so the rooms do not look like a showroom.
+	layout.add_props([
+		["wall_shelf", 6, 1], ["boxes_stack", 8, 3], ["bike", 1, 10], ["recycle_bins", 6, 9],
+		["photo_collage", 13, 1], ["slippers", 12, 6], ["laundry_basket", 17, 6], ["floor_fan", 10, 3],
+		["ironing_board", 16, 9], ["bath_shelf", 20, 2], ["dryer_rack", 19, 9], ["bin_small", 22, 3],
+		["umbrella_stand", 19, 14], ["sneakers", 17, 15], ["wall_sconce", 6, 12], ["wall_sconce", 23, 12],
+		["photo_collage", 9, 18], ["plant_hanging", 13, 18], ["side_table", 5, 24], ["cat_bed", 4, 20],
+		["book_stack", 13, 19], ["spice_rack", 22, 18], ["counter_dishes", 21, 19],
 	])
 	_uses(layout, [
 		["garage_car", "remark", "garage_door", 2, 1, 4, 9],

@@ -22,6 +22,7 @@ func _init() -> void:
 	]
 	entrances = [Rect2i(23, 27, 2, 1)]
 	_add_props()
+	_add_details()
 	finalize()
 
 
@@ -154,3 +155,34 @@ func _add_props() -> void:
 			add_prop("office_chair", desk_x, row_y + 1)
 	add_prop("plant_big", 48, 26)
 	add_prop("plant_big", 62, 26)
+
+
+## Everyday office things around the furniture: bins, binders, the notice board, coats and bikes.
+func _add_details() -> void:
+	add_prop("ac_unit", 11, 1)
+	add_prop("coat_stand", 12, 4)
+	add_prop("bin_office", 8, 6)
+	add_prop("notice_board", 16, 1)
+	add_prop("ac_unit", 20, 1)
+	add_prop("binder_shelf", 29, 2)
+	add_prop("bin_office", 19, 4)
+	add_prop("bin_office", 25, 7)
+	add_prop("paper_box", 31, 3)
+	add_prop("water_bottles", 33, 6)
+	add_prop("recycle_bins", 31, 9)
+	add_prop("coat_stand", 14, 9)
+	add_prop("ac_unit", 37, 1)
+	add_prop("flipchart", 45, 5)
+	add_prop("bin_office", 36, 8)
+	add_prop("first_aid", 20, 11)
+	add_prop("exit_sign", 26, 11)
+	add_prop("exit_sign", 42, 11)
+	add_prop("first_aid", 9, 17)
+	add_prop("recycle_bins", 10, 18)
+	add_prop("coat_stand", 17, 18)
+	add_prop("umbrella_stand", 30, 18)
+	add_prop("plant_hanging", 38, 16)
+	add_prop("book_stack", 45, 19)
+	add_prop("bike", 60, 17)
+	add_prop("coat_stand", 62, 18)
+	add_prop("bin_office", 52, 20)

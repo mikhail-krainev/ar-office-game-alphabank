@@ -21,6 +21,7 @@ func _init() -> void:
 	add_elevator(4, 16)
 	spawn_cell = elevator_cell
 	_add_props()
+	_add_details()
 	finalize()
 
 
@@ -111,3 +112,23 @@ func _add_props() -> void:
 	add_prop("bean_bag", 40, 22)
 	add_prop("bean_bag", 41, 24)
 	add_prop("plant_big", 28, 24)
+
+
+## Everyday office things around the furniture: servers, binders, bins, a bike in the lift hall.
+func _add_details() -> void:
+	add_prop("ac_unit", 8, 1)
+	add_prop("ac_unit", 21, 1)
+	add_prop("binder_shelf", 15, 2)
+	add_prop("bin_office", 4, 6)
+	add_prop("paper_box", 24, 9)
+	add_prop("coat_stand", 1, 10)
+	add_prop("server_rack", 42, 5)
+	add_prop("server_rack", 42, 6)
+	add_prop("notice_board", 41, 1)
+	add_prop("exit_sign", 24, 12)
+	add_prop("first_aid", 25, 12)
+	add_prop("bike", 2, 24)
+	add_prop("umbrella_stand", 11, 19)
+	add_prop("recycle_bins", 24, 18)
+	add_prop("flipchart", 41, 20)
+	add_prop("bin_office", 30, 22)

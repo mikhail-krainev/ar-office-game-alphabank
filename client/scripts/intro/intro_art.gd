@@ -25,6 +25,10 @@ const IMAGES: Dictionary[String, Vector2i] = {
 	"city_near": Vector2i(320, 92),
 	"city_road": Vector2i(320, 36),
 	"office_exterior": Vector2i(320, 180),
+	"coffee_shop": Vector2i(320, 180),
+	"grocery": Vector2i(320, 180),
+	"restaurant": Vector2i(320, 180),
+	"gas_station": Vector2i(320, 180),
 }
 
 ## Top edge of each repeating layer on the stage.

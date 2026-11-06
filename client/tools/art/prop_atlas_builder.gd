@@ -10,7 +10,10 @@ var manifest: Dictionary = {}
 
 
 func build() -> void:
-	var painters: Array[PropPainterBase] = [OfficePropPainter.new(), HospitalityPropPainter.new(), PartyPropPainter.new(), HomePropPainter.new(), AnalyticsPropPainter.new(), HomeDecorPropPainter.new()]
+	var painters: Array[PropPainterBase] = [
+		OfficePropPainter.new(), HospitalityPropPainter.new(), PartyPropPainter.new(), HomePropPainter.new(),
+		AnalyticsPropPainter.new(), HomeDecorPropPainter.new(), LivedInPropPainter.new(), OfficeDetailPropPainter.new(),
+	]
 	var ids: Array = PropCatalog.DEFS.keys()
 	ids.sort_custom(func(a: String, b: String) -> bool: return PropCatalog.sprite_size(a).y > PropCatalog.sprite_size(b).y)
 
