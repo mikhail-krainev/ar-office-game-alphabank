@@ -25,6 +25,8 @@ export interface Office {
   city: string;
   /** CIDR prefixes of the office Wi-Fi; empty = the network is not checked. */
   networks: string[];
+  /** IANA time zone ("Asia/Yekaterinburg"); "" = the default zone of the server rules. */
+  timezone: string;
   /** Own working-time limits; absent = the defaults. */
   limits?: Limits;
 }
@@ -33,6 +35,16 @@ export interface OfficeFields {
   name: string;
   city: string;
   networks: string[];
+  timezone: string;
+}
+
+/** A message of an office or department chat (server/modules/chat.go). */
+export interface ChatMessage {
+  id: string;
+  sender_id: string;
+  name: string;
+  text: string;
+  at: number;
 }
 
 export interface Department {
@@ -443,6 +455,10 @@ export const api = {
   updateOffice: (s: Session, id: string, office: OfficeFields) => call<Office>(s, "admin_update_office", { id, ...office }),
   getGraffiti: (s: Session, office_id: string) => call<GraffitiWall>(s, "admin_get_graffiti", { office_id }),
   clearGraffiti: (s: Session, office_id: string) => call<{ ok: boolean }>(s, "admin_clear_graffiti", { office_id }),
+  getChatMessages: (s: Session, office_id: string, department_id: string) =>
+    call<{ messages: ChatMessage[] }>(s, "admin_chat_messages", { office_id, department_id }).then((r) => r.messages),
+  deleteChatMessage: (s: Session, office_id: string, department_id: string, message_id: string) =>
+    call<object>(s, "admin_chat_delete", { office_id, department_id, message_id }),
   listDepartments: (s: Session) => call<{ departments: Department[] }>(s, "list_departments").then((r) => r.departments),
   createDepartment: (s: Session, name: string, office_id: string) =>
     call<Department>(s, "admin_create_department", { name, office_id }),

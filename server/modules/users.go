@@ -65,8 +65,11 @@ func validTripEnd(until, today int) bool {
 	return until >= today && until-today <= maxTripDays
 }
 
-func officeToday() int {
-	return dayOf(gameNow(), gameContent.officeOffset())
+// officeToday: the current day of the player by the zone of their home office (or of the office of
+// today's trip).
+func officeToday(metadata accountMetadata) int {
+	today, _ := metadata.localDay(gameNow())
+	return today
 }
 
 // rpcAdminListUsers: -> {"users": [userView]}, the admin and the players, newest first.
@@ -105,8 +108,9 @@ func rpcAdminListUsers(ctx context.Context, logger runtime.Logger, db *sql.DB, n
 		user.DepartmentID = parsed.DepartmentID
 		if parsed.Role == rolePlayer {
 			user.OfficeID = parsed.homeOffice()
-			user.Trip = tripOf(parsed, officeToday())
-			user.GuestOfficeID = parsed.guestOffice(officeToday())
+			today := officeToday(parsed)
+			user.Trip = tripOf(parsed, today)
+			user.GuestOfficeID = parsed.guestOffice(today)
 		}
 		user.Banned = disabled.Unix() > 0
 		user.CreatedAt = created.Unix()
@@ -275,8 +279,12 @@ func rpcAdminSetTrip(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 	if err := decodePayload(payload, &request); err != nil {
 		return "", err
 	}
-	today := officeToday()
+	today := 0
 	metadata, err := updateMetadata(ctx, db, request.UserID, asPlayer(func(metadata *accountMetadata) error {
+		// The trip dates follow the player's home office zone.
+		home := *metadata
+		home.Trip = nil
+		today = officeToday(home)
 		if request.OfficeID == "" {
 			metadata.Trip = nil
 			return nil

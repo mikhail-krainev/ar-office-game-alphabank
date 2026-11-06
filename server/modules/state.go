@@ -319,12 +319,11 @@ func newGameTx(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtim
 	if err != nil {
 		return nil, err
 	}
-	tx.offset = gameContent.officeOffset()
 	tx.now = gameNow()
 	if devMode {
 		tx.now += int64(tx.me.state.DevDayShift) * secondsPerDay
 	}
-	tx.today = dayOf(tx.now, tx.offset)
+	tx.today, tx.offset = tx.me.metadata.localDay(tx.now)
 	return tx, nil
 }
 

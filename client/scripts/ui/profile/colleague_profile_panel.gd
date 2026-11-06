@@ -101,6 +101,16 @@ func _show_profile() -> void:
 		content.add_child(story)
 	else:
 		content.add_child(make_text(tr("COLLEAGUE_NO_STORY"), 10, UiStyle.MUTED))
+	if ColleagueProfiles.message_handler.is_valid():
+		var write: Button = UiStyle.make_button(tr("COLLEAGUE_WRITE"), false, 12)
+		write.custom_minimum_size = Vector2(0, 32)
+		write.pressed.connect(_write.bind(colleague.user_id, colleague.name))
+		content.add_child(write)
+
+
+func _write(user_id: String, colleague_name: String) -> void:
+	close_panel()
+	ColleagueProfiles.message_handler.call(user_id, colleague_name)
 
 
 ## The story ring around the avatar (ColleagueWalker draws the same one on the map).

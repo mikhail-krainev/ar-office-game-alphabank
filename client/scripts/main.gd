@@ -25,6 +25,8 @@ const NPC_SCRIPT: GDScript = preload("res://scripts/npc/npc.gd")
 const EVENING_SCENE: String = "res://scenes/intro/evening_outro.tscn"
 const OFFICE_SCENE: String = "res://scenes/main.tscn"
 const FADE_TIME: float = 0.5
+## How often the chat button asks the server for unread messages.
+const MESSAGES_POLL_SECONDS: float = 15.0
 ## The player fades out over this time while stepping through the entrance.
 const EXIT_FADE: float = 0.45
 ## The walk to the exit can cross the whole floor, so the player hurries.
@@ -46,6 +48,9 @@ var _facts_panel: FactsPanel
 ## "Scan the entry code" while the game is open in the office Wi-Fi without it.
 var _entry_button: Button
 var _colleagues: OfficeColleagues
+var _chat: ChatPanel
+var _chat_button: Button
+var _chat_poll_left: float = 0.0
 
 @onready var _task_panel: TaskPanel = $TaskPanel
 @onready var _shop_panel: ShopPanel = $ShopPanel
@@ -74,6 +79,12 @@ func _ready() -> void:
 	_hud.add_action(tr("HUD_TASKS"), true).pressed.connect(_open_tasks)
 	_hud.add_action(tr("HUD_SCAN"), false).pressed.connect(_scan_code)
 	_hud.add_action(tr("HUD_SHOP"), false).pressed.connect(_open_shop)
+	_chat_button = _hud.add_action(tr("HUD_CHAT"), false)
+	_chat_button.pressed.connect(_open_chat)
+	_chat = ChatPanel.new()
+	add_child(_chat)
+	Backend.chat.unread_changed.connect(_on_chat_unread_changed)
+	ColleagueProfiles.message_handler = _chat.open_direct
 	_corner = PlayerCorner.attach(self, _hud)
 	_facts_panel = FactsPanel.new()
 	add_child(_facts_panel)
@@ -103,10 +114,12 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	# Home and the intros work outside the office network.
 	PlayTime.office_mode = false
+	ColleagueProfiles.message_handler = Callable()
 
 
 func _process(delta: float) -> void:
 	super(delta)
+	_poll_chat(delta)
 	if _pending_room != &"" and not _is_modal_open():
 		var room_id: StringName = _pending_room
 		_pending_room = &""
@@ -118,11 +131,34 @@ func _is_modal_open() -> bool:
 		_busy or _leaving or _task_panel.is_open() or _shop_panel.is_open()
 		or _minigame_panel.is_open() or _choice.is_open() or (_corner != null and _corner.is_open())
 		or (_facts_panel != null and _facts_panel.is_open())
-		or ColleagueProfiles.is_open()
+		or ColleagueProfiles.is_open() or _chat.is_open()
 	)
 
 
-## Only task markers and colleagues react to taps: the character is not steered.
+# --- Chat ---------------------------------------------------------------------------
+
+
+func _open_chat() -> void:
+	if _busy or _leaving:
+		return
+	_stop_player()
+	_chat.open()
+
+
+## The unread badge on the chat button follows the server every MESSAGES_POLL_SECONDS.
+func _poll_chat(delta: float) -> void:
+	_chat_poll_left -= delta
+	if _chat_poll_left > 0.0 or _chat.is_open():
+		return
+	_chat_poll_left = MESSAGES_POLL_SECONDS
+	Backend.chat.overview()
+
+
+func _on_chat_unread_changed(count: int) -> void:
+	_chat_button.text = tr("HUD_CHAT") if count <= 0 else "%s %d" % [tr("HUD_CHAT"), mini(count, 99)]
+
+
+## Task markers and colleagues react to taps first; a tap on the floor walks the character there.
 func _on_tap(world_position: Vector2) -> void:
 	for pin: TaskPin in _pins.values():
 		if pin.visible and pin.is_hit(world_position):
@@ -131,6 +167,8 @@ func _on_tap(world_position: Vector2) -> void:
 	var colleague: BackendModels.OfficePlayer = _colleagues.hit(world_position)
 	if colleague != null:
 		ColleagueProfiles.open(colleague)
+		return
+	super(world_position)
 
 
 func _refresh_tasks() -> void:

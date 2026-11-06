@@ -51,7 +51,10 @@ func mark_inbox_read() -> void:
 ## Everyone in the player's office now, except the player, for the office map.
 func office_players() -> Array[BackendModels.OfficePlayer]:
 	var response: ServerSession.RpcResult = await _backend.call_rpc("office_players")
-	return BackendParser.office_players(response.data) if response.ok else []
+	if not response.ok:
+		var none: Array[BackendModels.OfficePlayer] = []
+		return none
+	return BackendParser.office_players(response.data)
 
 
 ## Mini profile of a colleague of the player's office today, or null when the server does not know

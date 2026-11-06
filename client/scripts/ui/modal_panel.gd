@@ -17,6 +17,7 @@ var _title: Label
 var _subtitle: Label
 var _scroll: TouchScroll
 var _header: HBoxContainer
+var _column: VBoxContainer
 
 
 func _init(title_key: String = "") -> void:
@@ -42,6 +43,7 @@ func _init(title_key: String = "") -> void:
 	var column: VBoxContainer = VBoxContainer.new()
 	column.add_theme_constant_override("separation", 6)
 	_panel.add_child(column)
+	_column = column
 	_header = HBoxContainer.new()
 	_header.add_theme_constant_override("separation", 6)
 	column.add_child(_header)
@@ -71,13 +73,14 @@ func is_open() -> bool:
 	return visible
 
 
-## Sizes the panel to the safe area, clears the content and shows the panel.
-func show_panel() -> void:
+## Sizes the panel to the safe area, clears the content and shows the panel. `reserved_height`
+## leaves room for a footer under the content.
+func show_panel(reserved_height: float = 0.0) -> void:
 	var safe: Rect2 = PlatformServices.get_safe_rect()
 	var width: float = safe.size.x - SIDE_MARGIN * 2.0
 	_panel.custom_minimum_size = Vector2(width, 0)
 	content_width = width - 24.0
-	_scroll.custom_minimum_size = Vector2(0, minf(MAX_SCROLL_HEIGHT, safe.size.y - 130.0))
+	_scroll.custom_minimum_size = Vector2(0, minf(MAX_SCROLL_HEIGHT, safe.size.y - 130.0) - reserved_height)
 	clear()
 	visible = true
 
@@ -101,6 +104,24 @@ func set_title(text: String) -> void:
 func set_subtitle(text: String) -> void:
 	_subtitle.text = text
 	_subtitle.visible = not text.is_empty()
+
+
+## A control under the scrolling content that stays in place (a message input).
+func add_footer(control: Control) -> void:
+	_column.add_child(control)
+
+
+## Shows the end of the content once the layout settles (the newest chat message).
+func scroll_to_end() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_scroll.scroll_vertical = int(_scroll.get_v_scroll_bar().max_value)
+
+
+## The scroll is near its end, so new content may follow it there.
+func is_scrolled_to_end(slack: float = 24.0) -> bool:
+	var bar: VScrollBar = _scroll.get_v_scroll_bar()
+	return _scroll.scroll_vertical + _scroll.size.y >= bar.max_value - slack
 
 
 ## Extra control in the header, left of the close button.

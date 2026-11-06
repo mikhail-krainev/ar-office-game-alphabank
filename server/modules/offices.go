@@ -35,6 +35,8 @@ type Office struct {
 	Name     string   `json:"name"`
 	City     string   `json:"city"`
 	Networks []string `json:"networks"`
+	// IANA time zone of the office ("Asia/Yekaterinburg"); empty = the zone of game_rules.json.
+	Timezone string `json:"timezone"`
 	// Working-time limits of the office; nil = the defaults from game_rules.json.
 	Limits *Limits `json:"limits,omitempty"`
 }
@@ -43,6 +45,7 @@ type officeValue struct {
 	Name     string   `json:"name"`
 	City     string   `json:"city"`
 	Networks []string `json:"networks"`
+	Timezone string   `json:"timezone,omitempty"`
 	Limits   *Limits  `json:"limits,omitempty"`
 }
 
@@ -104,7 +107,8 @@ func decodeOffice(id, raw string) (Office, bool) {
 	if value.Networks == nil {
 		value.Networks = []string{}
 	}
-	return Office{ID: id, Name: value.Name, City: value.City, Networks: value.Networks, Limits: value.Limits}, true
+	rememberOfficeZone(id, value.Timezone)
+	return Office{ID: id, Name: value.Name, City: value.City, Networks: value.Networks, Timezone: value.Timezone, Limits: value.Limits}, true
 }
 
 func listOffices(ctx context.Context, nk runtime.NakamaModule) ([]Office, error) {
@@ -160,7 +164,7 @@ func findOffice(ctx context.Context, nk runtime.NakamaModule, id string) (*Offic
 
 // writeOffice stores an office. version "*" writes only when the key does not exist yet.
 func writeOffice(ctx context.Context, nk runtime.NakamaModule, office Office, version string) error {
-	value, err := json.Marshal(officeValue{Name: office.Name, City: office.City, Networks: office.Networks, Limits: office.Limits})
+	value, err := json.Marshal(officeValue{Name: office.Name, City: office.City, Networks: office.Networks, Timezone: office.Timezone, Limits: office.Limits})
 	if err != nil {
 		return errInternal
 	}
@@ -168,6 +172,9 @@ func writeOffice(ctx context.Context, nk runtime.NakamaModule, office Office, ve
 		Collection: officesCollection, Key: office.ID, UserID: systemUserID, Value: string(value), Version: version,
 		PermissionRead: permissionNone, PermissionWrite: permissionNone,
 	}})
+	if err == nil {
+		rememberOfficeZone(office.ID, office.Timezone)
+	}
 	return err
 }
 
@@ -220,7 +227,7 @@ func seedOffices(ctx context.Context, logger runtime.Logger, nk runtime.NakamaMo
 		if err != nil {
 			return err
 		}
-		office := Office{ID: defaultOfficeID(), Name: "Главный офис", City: "Екатеринбург", Networks: []string{}}
+		office := Office{ID: defaultOfficeID(), Name: "Главный офис", City: "Екатеринбург", Networks: []string{}, Timezone: gameContent.Rules.Office.Timezone}
 		for _, prefix := range prefixes {
 			office.Networks = append(office.Networks, prefix.String())
 		}
@@ -292,9 +299,11 @@ type officeRequest struct {
 	Name     string   `json:"name"`
 	City     string   `json:"city"`
 	Networks []string `json:"networks"`
+	Timezone string   `json:"timezone"`
 }
 
-// clean checks the name, the city (may be empty) and the networks of an office request.
+// clean checks the name, the city (may be empty), the networks and the time zone (may be empty) of an
+// office request.
 func (r officeRequest) clean() (Office, error) {
 	name, err := normalizeName(r.Name)
 	if err != nil {
@@ -310,7 +319,13 @@ func (r officeRequest) clean() (Office, error) {
 	if err != nil {
 		return Office{}, err
 	}
-	return Office{ID: r.ID, Name: name, City: city, Networks: networks}, nil
+	timezone := strings.TrimSpace(r.Timezone)
+	if timezone != "" {
+		if _, ok := loadZone(timezone); !ok {
+			return Office{}, errInvalidTimezone
+		}
+	}
+	return Office{ID: r.ID, Name: name, City: city, Networks: networks, Timezone: timezone}, nil
 }
 
 // rpcAdminListOffices: -> {"offices": [Office]}.
@@ -325,7 +340,7 @@ func rpcAdminListOffices(ctx context.Context, _ runtime.Logger, _ *sql.DB, nk ru
 	return encodeResponse(map[string]any{"offices": offices, "default_limits": gameContent.Rules.Limits})
 }
 
-// rpcAdminCreateOffice: {"name", "city", "networks"} -> the new office.
+// rpcAdminCreateOffice: {"name", "city", "networks", "timezone"} -> the new office.
 func rpcAdminCreateOffice(ctx context.Context, logger runtime.Logger, _ *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	if err := requireAdmin(ctx, nk); err != nil {
 		return "", err
@@ -362,7 +377,7 @@ func rpcAdminCreateOffice(ctx context.Context, logger runtime.Logger, _ *sql.DB,
 	return encodeResponse(office)
 }
 
-// rpcAdminUpdateOffice: {"id", "name", "city", "networks"} -> the office. The limits stay.
+// rpcAdminUpdateOffice: {"id", "name", "city", "networks", "timezone"} -> the office. The limits stay.
 func rpcAdminUpdateOffice(ctx context.Context, logger runtime.Logger, _ *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	if err := requireAdmin(ctx, nk); err != nil {
 		return "", err
@@ -394,6 +409,6 @@ func rpcAdminUpdateOffice(ctx context.Context, logger runtime.Logger, _ *sql.DB,
 		logger.Error("update office %s: %v", office.ID, err)
 		return "", errInternal
 	}
-	logger.Info("office %s changed: %q, networks %v", office.ID, office.Name, office.Networks)
+	logger.Info("office %s changed: %q, networks %v, zone %q", office.ID, office.Name, office.Networks, office.Timezone)
 	return encodeResponse(office)
 }

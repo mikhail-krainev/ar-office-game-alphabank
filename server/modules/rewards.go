@@ -299,7 +299,8 @@ func adminStock(ctx context.Context, nk runtime.NakamaModule) (*loadedStock, int
 	if err != nil {
 		return nil, 0, err
 	}
-	today := dayOf(gameNow(), gameContent.officeOffset())
+	now := gameNow()
+	today := dayOf(now, defaultOfficeOffset(now))
 	loaded.stock.refill(gameContent.Catalog, today)
 	return loaded, today, nil
 }

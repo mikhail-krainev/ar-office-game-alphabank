@@ -54,6 +54,9 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 	if err := registerAuthHooks(initializer); err != nil {
 		return err
 	}
+	if err := registerChatHooks(initializer); err != nil {
+		return err
+	}
 	rpcs := map[string]rpcFunc{
 		// Account and admin: from anywhere.
 		"get_profile":             rpcGetProfile,
@@ -85,6 +88,8 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"admin_console":           rpcAdminConsole,
 		"admin_get_graffiti":      rpcAdminGetGraffiti,
 		"admin_clear_graffiti":    rpcAdminClearGraffiti,
+		"admin_chat_messages":     rpcAdminChatMessages,
+		"admin_chat_delete":       rpcAdminChatDelete,
 		// Manager panel: from anywhere, each call checks the manager's scope (managers.go).
 		"manager_get_scope":      rpcManagerGetScope,
 		"manager_stats_overview": rpcManagerStatsOverview,
@@ -141,6 +146,9 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"buy_raffle_ticket":     rpcBuyRaffleTicket,
 		"play_heartbeat":        rpcPlayHeartbeat,
 		"play_rest":             rpcPlayRest,
+		"chat_overview":         rpcChatOverview,
+		"chat_history":          rpcChatHistory,
+		"chat_send":             rpcChatSend,
 	}
 	for id, fn := range rpcs {
 		if gameRpc(id) && !selfCheckedRpcs[id] {

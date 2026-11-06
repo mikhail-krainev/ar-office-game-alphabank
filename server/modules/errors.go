@@ -14,6 +14,7 @@ const (
 	codeFailedPrecondition = 9
 	codeAlreadyExists      = 6
 	codePermissionDenied   = 7
+	codeResourceExhausted  = 8
 	codeInternal           = 13
 	codeUnauthenticated    = 16
 )
@@ -31,6 +32,7 @@ var (
 	errOfficeExists       = runtime.NewError("office_exists", codeAlreadyExists)
 	errOfficeNotFound     = runtime.NewError("office_not_found", codeNotFound)
 	errInvalidNetworks    = runtime.NewError("invalid_networks", codeInvalidArgument)
+	errInvalidTimezone    = runtime.NewError("invalid_timezone", codeInvalidArgument)
 	errDepartmentOffice   = runtime.NewError("department_not_in_office", codeInvalidArgument)
 	errInvalidTrip        = runtime.NewError("invalid_trip", codeInvalidArgument)
 	errUnauthenticated    = runtime.NewError("unauthenticated", codeUnauthenticated)

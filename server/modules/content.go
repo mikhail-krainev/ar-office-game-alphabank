@@ -67,6 +67,7 @@ type FineTier struct {
 type Rules struct {
 	Office struct {
 		ID               string `json:"id"`
+		Timezone         string `json:"timezone"`
 		UTCOffsetMinutes int    `json:"utc_offset_minutes"`
 	} `json:"office"`
 	Attendance struct {
@@ -153,6 +154,11 @@ func loadContent(dir string) (*Content, error) {
 	if err := validateLimits(content.Rules.Limits); err != nil {
 		return nil, fmt.Errorf("game_rules.json: limits: %w", err)
 	}
+	if zone := content.Rules.Office.Timezone; zone != "" {
+		if _, ok := loadZone(zone); !ok {
+			return nil, fmt.Errorf("game_rules.json: office.timezone: unknown zone %q", zone)
+		}
+	}
 	if err := validateWheel(&content.Rules.Wheel); err != nil {
 		return nil, fmt.Errorf("game_rules.json: wheel: %w", err)
 	}
@@ -230,8 +236,4 @@ func (c *Content) isAvatarTemplate(id string) bool {
 		}
 	}
 	return false
-}
-
-func (c *Content) officeOffset() int64 {
-	return int64(c.Rules.Office.UTCOffsetMinutes) * 60
 }

@@ -158,7 +158,7 @@ func callerInOfficeNetwork(ctx context.Context, logger runtime.Logger, db *sql.D
 		// Game RPCs refuse other accounts themselves (not_player).
 		return true, nil
 	}
-	today := officeToday()
+	today := officeToday(metadata)
 	officeID, _ := metadata.placement(today)
 	office, err := readOffice(ctx, nk, officeID)
 	if err != nil {

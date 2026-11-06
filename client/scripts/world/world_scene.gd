@@ -1,8 +1,9 @@
 class_name WorldScene
 extends Node2D
-## Shared gameplay on a 3/4 map: player, camera, tap marker and HUD. The player does not steer the
-## character: it lives by itself (the autopilot walks it around, scenes add their own activities in
-## _run_activity()), and taps on the map only reach scene objects such as task markers.
+## Shared gameplay on a 3/4 map: player, camera, tap marker and HUD. A tap on the map walks the
+## character there (scenes first offer the tap to their own objects such as task markers). Once the
+## player has not touched the screen for MANUAL_CONTROL_SECONDS, the character lives by itself again:
+## the autopilot walks it around, scenes add their own activities in _run_activity().
 ## Expects children WorldMap, TapMarker, Entities/Player, GameCamera, Hud and CrtOverlay.
 
 const SNAP_RADIUS_CELLS: int = 2
@@ -13,11 +14,15 @@ const AUTOPILOT_PAUSE_MAX: float = 6.0
 ## A walk to a random spot ends within this many cells of the character.
 const WANDER_RADIUS_CELLS: int = 10
 const WANDER_TRIES: int = 12
+## Without a touch for this long, the autopilot takes the character back.
+const MANUAL_CONTROL_SECONDS: float = 5.0
 
 var _current_room_id: StringName = &""
 var _autopilot_left: float = 1.5
 ## An activity coroutine is running.
 var _autopilot_busy: bool = false
+## Seconds the player still steers the character since the last touch; 0 = the autopilot leads.
+var _manual_left: float = 0.0
 ## Windows, ambience and footsteps around the player.
 var _life: LocationLife
 
@@ -42,6 +47,12 @@ func _setup_world(layout: MapLayout) -> void:
 	_life.setup(_map, _player, _life_place(), _is_modal_open)
 
 
+## Any touch anywhere (map, HUD or panels) keeps the player in control for a while.
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		_manual_left = MANUAL_CONTROL_SECONDS
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	var touch: InputEventScreenTouch = event as InputEventScreenTouch
 	if touch != null and touch.index == 0:
@@ -55,6 +66,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
+	_manual_left = maxf(0.0, _manual_left - delta)
 	_update_autopilot(delta)
 	_update_room()
 
@@ -73,9 +85,26 @@ func _is_ui_blocking() -> bool:
 	return _is_modal_open() or get_viewport().gui_get_hovered_control() != null
 
 
-## A tap on the map: scenes react to their objects (task markers); the character is not steered.
-func _on_tap(_world_position: Vector2) -> void:
-	pass
+## A tap on the map: scenes override it to react to their objects (task markers) first and call
+## super() for a tap on the floor, which walks the character there.
+func _on_tap(world_position: Vector2) -> void:
+	_steer_to(world_position)
+
+
+## The player leads the character to the tapped spot, or to the closest walkable cell next to it
+## (a tap on furniture).
+func _steer_to(world_position: Vector2) -> void:
+	var cell: Vector2i = _map.find_nearest_walkable(world_position, SNAP_RADIUS_CELLS)
+	if cell == WorldMap.INVALID_CELL:
+		_show_blocked(world_position)
+		return
+	_cancel_pending_actions()
+	_walk_to_cell(cell, world_position)
+
+
+## The player touched the screen recently: the autopilot waits.
+func _is_steered() -> bool:
+	return _manual_left > 0.0
 
 
 ## Overridden by scenes that queue an action on arrival.
@@ -91,7 +120,7 @@ func _screen_to_world(screen_position: Vector2) -> Vector2:
 
 
 func _update_autopilot(delta: float) -> void:
-	if _autopilot_busy or _is_modal_open() or _player.is_walking() or _player.is_talking():
+	if _autopilot_busy or _is_steered() or _is_modal_open() or _player.is_walking() or _player.is_talking():
 		return
 	_autopilot_left -= delta
 	if _autopilot_left > 0.0:
@@ -117,24 +146,25 @@ func _wander() -> void:
 
 
 ## Autopilot walk without the tap marker. Resolves once the character stops: true when it reached
-## `cell`, false when there is no path or the walk was interrupted (a task started, the scene ends).
+## `cell`, false when there is no path or the walk was interrupted (a task started, the player took
+## control with a tap, the scene ends).
 func _auto_walk(cell: Vector2i) -> bool:
-	if _is_modal_open():
+	if _is_modal_open() or _is_steered():
 		return false
 	var path: PackedVector2Array = _map.find_path(_player.global_position, cell)
 	if path.is_empty():
 		return false
 	_player.walk_path(path)
-	while is_inside_tree() and _player.is_walking():
+	while is_inside_tree() and _player.is_walking() and not _is_steered():
 		await get_tree().process_frame
-	return is_inside_tree() and _player_cell() == cell and not _is_modal_open()
+	return is_inside_tree() and _player_cell() == cell and not _is_modal_open() and not _is_steered()
 
 
 ## Waits `seconds` unless a modal opens; true when the wait ran out undisturbed.
 func _auto_wait(seconds: float) -> bool:
 	var left: float = seconds
 	while left > 0.0:
-		if not is_inside_tree() or _is_modal_open():
+		if not is_inside_tree() or _is_modal_open() or _is_steered():
 			return false
 		await get_tree().process_frame
 		left -= get_process_delta_time()

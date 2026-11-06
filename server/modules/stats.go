@@ -169,8 +169,7 @@ func loadPlayerRows(ctx context.Context, db *sql.DB, nk runtime.NakamaModule, us
 			summary.LastActivity = lastActivity.Time.Unix()
 		}
 		now := playerNow(state)
-		offset := gameContent.officeOffset()
-		today := dayOf(now, offset)
+		today, offset := parsed.localDay(now)
 		summarize(&summary, state, today)
 		summary.CurrentOfficeID, _ = parsed.placement(today)
 		summary.Trip = tripOf(parsed, today)

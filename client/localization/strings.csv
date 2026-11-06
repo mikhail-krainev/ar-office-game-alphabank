@@ -14,9 +14,9 @@ HOME_ROOM_HALL,Прихожая,Hallway
 HOME_ROOM_LIVING,Гостиная,Living room
 HOME_ROOM_KITCHEN,Кухня,Kitchen
 HUD_TITLE,АЛЬФА ОФИС,ALFA OFFICE
-HUD_HINT,"Персонаж живёт сам. Выбери задание в списке справа или нажми на красную метку",The character lives by itself. Pick a task in the list on the right or tap a red marker
+HUD_HINT,"Нажми на пол — персонаж пойдёт туда. Без касаний 5 с он снова живёт сам. Задания — в списке справа или на красных метках","Tap the floor to walk there. After 5 s without a touch the character lives by itself again. Tasks: the list on the right or the red markers"
 HUD_HOME_TITLE,ДОМА,AT HOME
-HUD_HOME_HINT,"Утро дома. Кнопки внизу: гардероб, гараж, интерьер и поездка в офис","Morning at home. The buttons below: wardrobe, garage, interior and the trip to the office"
+HUD_HOME_HINT,"Утро дома. Нажми на пол — персонаж пойдёт туда. Кнопки внизу: гардероб, гараж, интерьер и поездка в офис","Morning at home. Tap the floor to walk there. The buttons below: wardrobe, garage, interior and the trip to the office"
 HUD_BLOCKED,Туда не пройти,Can't go there
 HUD_TASKS,ЗАДАНИЯ,TASKS
 HUD_SHOP,МАГАЗИН,SHOP
@@ -585,3 +585,23 @@ INTRO_STOP_GROCERY_EVENING,МАГАЗИН. ЧТО-НИБУДЬ НА УЖИН.,TH
 INTRO_STOP_GROCERY_WAIT,НА КАССЕ...,AT THE TILL...
 INTRO_STOP_RESTAURANT,УЖИН В РЕСТОРАНЕ. ЗАСЛУЖИЛ.,DINNER OUT. EARNED IT.
 INTRO_STOP_RESTAURANT_WAIT,ЧАС СПУСТЯ...,AN HOUR LATER...
+HUD_CHAT,ЧАТ,CHAT
+CHAT_TITLE,Чат офиса,Office chat
+CHAT_SUBTITLE,"Коллеги рядом и сообщения, хранятся неделю","Colleagues nearby and messages, kept for a week"
+CHAT_CHATS,ЧАТЫ,CHATS
+CHAT_IN_OFFICE,В ОФИСЕ СЕЙЧАС: %d,IN THE OFFICE NOW: %d
+CHAT_NOBODY_HERE,"Пока никто из коллег не отсканировал код входа","No colleague has scanned the entry code yet"
+CHAT_KIND_OFFICE,Офис,Office
+CHAT_KIND_DEPARTMENT,Отдел,Department
+CHAT_KIND_DIRECT,Личные сообщения,Direct messages
+CHAT_NO_MESSAGES,Сообщений пока нет,No messages yet
+CHAT_EMPTY,"Здесь пока тихо. Напиши первым!",It's quiet here. Write first!
+CHAT_ME,Я,Me
+CHAT_LOADING,Загружаю сообщения…,Loading messages…
+CHAT_PLACEHOLDER,Сообщение…,Message…
+CHAT_SEND,ОТПР.,SEND
+COLLEAGUE_WRITE,НАПИСАТЬ,WRITE A MESSAGE
+ERROR_CHAT_TOO_FAST,Не так быстро: одно сообщение в секунду,Not so fast: one message per second
+ERROR_CHAT_TEXT_INVALID,"Сообщение пустое или длиннее 500 символов",The message is empty or longer than 500 characters
+ERROR_CHAT_RECIPIENT_UNAVAILABLE,"Коллега недоступен: писать можно коллегам твоего офиса",The colleague is unavailable: you can write to colleagues of your office
+ERROR_CHAT_NO_CHANNEL,У тебя нет отдела для этого чата,You have no department for this chat

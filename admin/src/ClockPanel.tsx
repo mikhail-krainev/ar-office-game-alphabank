@@ -93,7 +93,7 @@ export function ClockPanel({ actions, clock, onChange }: { actions: DashboardAct
         времени. Включено, потому что на сервере стоит TEST_CLOCK=true.
       </p>
       <div className="clock-now">
-        <span className="muted">Время в игре (офис, UTC{clock.utc_offset_minutes >= 0 ? "+" : "−"}{Math.abs(clock.utc_offset_minutes / 60)})</span>
+        <span className="muted">Время в игре (офис по умолчанию, UTC{clock.utc_offset_minutes >= 0 ? "+" : "−"}{Math.abs(clock.utc_offset_minutes / 60)})</span>
         <strong>{officeClock.format((now + offsetSeconds) * 1000)}</strong>
         <span className="muted">Сдвиг от настоящего времени: {formatShift(clock.shift_seconds)}</span>
       </div>

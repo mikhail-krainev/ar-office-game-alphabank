@@ -22,6 +22,8 @@ const MESSAGES: Record<string, string> = {
   department_not_in_office: "Департамент должен быть из выбранного офиса.",
   office_exists: "Офис с таким названием уже есть.",
   office_not_found: "Выберите офис из списка.",
+  chat_message_not_found: "Сообщение уже удалено или старше недели.",
+  invalid_timezone: "Часовой пояс: выберите пояс из списка, например Europe/Moscow.",
   invalid_networks: "Сети офиса: адреса или CIDR-префиксы, например 203.0.113.0/24, не больше 32.",
   invalid_trip: "Командировка: другой офис, конец — сегодня или позже, не дальше чем через год.",
   user_not_found: "Пользователь не найден.",

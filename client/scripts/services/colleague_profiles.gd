@@ -6,6 +6,10 @@ extends Node
 ## A press that moves further than this is a drag, not a tap.
 const TAP_SLOP: float = 8.0
 
+## Opens a direct chat with (user_id, name); set by the office scene, where the chat lives. The
+## mini profile shows "Write" only while it is set.
+var message_handler: Callable = Callable()
+
 var _panel: ColleagueProfilePanel
 
 

@@ -63,7 +63,7 @@ type clockView struct {
 }
 
 func currentClockView() clockView {
-	view := clockView{Enabled: testClock, Now: gameNow(), UTCOffsetMinutes: gameContent.officeOffset() / 60, MaxShiftSeconds: maxClockShiftSeconds}
+	view := clockView{Enabled: testClock, Now: gameNow(), UTCOffsetMinutes: defaultOfficeOffset(gameNow()) / 60, MaxShiftSeconds: maxClockShiftSeconds}
 	if testClock {
 		view.ShiftSeconds = clockShift.Load()
 	}

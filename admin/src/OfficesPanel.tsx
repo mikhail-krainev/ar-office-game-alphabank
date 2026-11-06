@@ -1,8 +1,43 @@
 import { useState, type FormEvent } from "react";
 import { api, type GraffitiWall, type Office, type OfficeFields, type User } from "./api";
+import { ChatModeration } from "./ChatModeration";
 import type { DashboardActions } from "./Dashboard";
 
-const EMPTY: OfficeFields = { name: "", city: "", networks: [] };
+const EMPTY: OfficeFields = { name: "", city: "", networks: [], timezone: "" };
+
+/** Time zones of Russian cities first; any other IANA zone of the browser list can be typed. */
+const RUSSIAN_ZONES = [
+  "Europe/Kaliningrad",
+  "Europe/Moscow",
+  "Europe/Samara",
+  "Asia/Yekaterinburg",
+  "Asia/Omsk",
+  "Asia/Novosibirsk",
+  "Asia/Krasnoyarsk",
+  "Asia/Irkutsk",
+  "Asia/Yakutsk",
+  "Asia/Vladivostok",
+  "Asia/Magadan",
+  "Asia/Kamchatka",
+];
+
+function knownZones(): string[] {
+  const intl = Intl as unknown as { supportedValuesOf?: (key: string) => string[] };
+  const all = intl.supportedValuesOf?.("timeZone") ?? [];
+  return [...RUSSIAN_ZONES, ...all.filter((zone) => !RUSSIAN_ZONES.includes(zone))];
+}
+
+/** "UTC+5" for the zone right now; "" for a zone the browser does not know. */
+function zoneOffsetLabel(zone: string): string {
+  try {
+    const part = new Intl.DateTimeFormat("en-US", { timeZone: zone, timeZoneName: "shortOffset" })
+      .formatToParts(new Date())
+      .find((item) => item.type === "timeZoneName");
+    return part ? part.value.replace("GMT", "UTC").replace(/^UTC$/, "UTC+0") : "";
+  } catch {
+    return "";
+  }
+}
 
 /** "203.0.113.0/24, 198.51.100.7" or one per line -> the list the server checks. */
 function parseNetworks(text: string): string[] {
@@ -22,16 +57,20 @@ export function OfficesPanel({ actions, players }: { actions: DashboardActions; 
   const [form, setForm] = useState<OfficeFields>(EMPTY);
   const [networks, setNetworks] = useState("");
   const [graffiti, setGraffiti] = useState<{ office: Office; wall: GraffitiWall } | null>(null);
+  const [zones] = useState(knownZones);
+  const [chatOffice, setChatOffice] = useState<Office | null>(null);
 
   function edit(office: Office | null) {
     setEditing(office);
-    setForm(office ? { name: office.name, city: office.city, networks: office.networks } : EMPTY);
+    setForm(
+      office ? { name: office.name, city: office.city, networks: office.networks, timezone: office.timezone ?? "" } : EMPTY,
+    );
     setNetworks(office ? office.networks.join("\n") : "");
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const fields = { ...form, networks: parseNetworks(networks) };
+    const fields = { ...form, networks: parseNetworks(networks), timezone: form.timezone.trim() };
     const ok = await run(() => (editing ? api.updateOffice(session, editing.id, fields) : api.createOffice(session, fields)));
     if (ok) {
       edit(null);
@@ -70,6 +109,7 @@ export function OfficesPanel({ actions, players }: { actions: DashboardActions; 
           <thead>
             <tr>
               <th>Офис</th>
+              <th>Часовой пояс</th>
               <th>Сеть офиса</th>
               <th className="num">Игроков</th>
               <th>Код для экрана</th>
@@ -82,6 +122,15 @@ export function OfficesPanel({ actions, players }: { actions: DashboardActions; 
                 <td>
                   <div className="player-name">{office.name}</div>
                   <span className="muted">{office.city || "город не указан"}</span>
+                </td>
+                <td className="nowrap">
+                  {office.timezone ? (
+                    <>
+                      {office.timezone} <span className="muted">{zoneOffsetLabel(office.timezone)}</span>
+                    </>
+                  ) : (
+                    <span className="muted">по умолчанию сервера</span>
+                  )}
                 </td>
                 <td>
                   {office.networks.length ? (
@@ -108,6 +157,9 @@ export function OfficesPanel({ actions, players }: { actions: DashboardActions; 
                   </button>
                   <button className="secondary" onClick={() => showGraffiti(office)}>
                     Граффити
+                  </button>
+                  <button className="secondary" onClick={() => setChatOffice(office)}>
+                    Чат
                   </button>
                 </td>
               </tr>
@@ -149,6 +201,8 @@ export function OfficesPanel({ actions, players }: { actions: DashboardActions; 
         </>
       )}
 
+      {chatOffice && <ChatModeration actions={actions} office={chatOffice} onClose={() => setChatOffice(null)} />}
+
       <h3>{editing ? `Изменить офис «${editing.name}»` : "Новый офис"}</h3>
       <form className="grid-form limits-form" onSubmit={submit}>
         <label>
@@ -158,6 +212,28 @@ export function OfficesPanel({ actions, players }: { actions: DashboardActions; 
         <label>
           Город
           <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} maxLength={60} />
+        </label>
+        <label>
+          Часовой пояс
+          <input
+            list="office-zones"
+            placeholder="Asia/Yekaterinburg"
+            value={form.timezone}
+            onChange={(e) => setForm({ ...form, timezone: e.target.value })}
+            maxLength={64}
+          />
+          <datalist id="office-zones">
+            {zones.map((zone) => (
+              <option key={zone} value={zone}>
+                {zoneOffsetLabel(zone)}
+              </option>
+            ))}
+          </datalist>
+          <span className="hint">
+            По нему считаются дни, серии, штрафы, часы заданий и розыгрыш парковки игроков офиса. Пусто — пояс
+            по умолчанию из правил сервера.
+            {form.timezone.trim() && ` Сейчас: ${zoneOffsetLabel(form.timezone.trim()) || "пояс не найден"}.`}
+          </span>
         </label>
         <label>
           Сеть Wi-Fi офиса

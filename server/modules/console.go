@@ -303,7 +303,7 @@ func formatGameTime(unix int64) string {
 	if unix == 0 {
 		return "—"
 	}
-	return time.Unix(unix+gameContent.officeOffset(), 0).UTC().Format("02.01.2006 15:04:05")
+	return time.Unix(unix, 0).In(officeZone(defaultOfficeID())).Format("02.01.2006 15:04:05")
 }
 
 func formatDay(day int) string {
