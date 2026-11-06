@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { api, type Office, type OfficeFields, type User } from "./api";
+import { api, type GraffitiWall, type Office, type OfficeFields, type User } from "./api";
 import type { DashboardActions } from "./Dashboard";
 
 const EMPTY: OfficeFields = { name: "", city: "", networks: [] };
@@ -21,6 +21,7 @@ export function OfficesPanel({ actions, players }: { actions: DashboardActions; 
   const [editing, setEditing] = useState<Office | null>(null);
   const [form, setForm] = useState<OfficeFields>(EMPTY);
   const [networks, setNetworks] = useState("");
+  const [graffiti, setGraffiti] = useState<{ office: Office; wall: GraffitiWall } | null>(null);
 
   function edit(office: Office | null) {
     setEditing(office);
@@ -36,6 +37,21 @@ export function OfficesPanel({ actions, players }: { actions: DashboardActions; 
       edit(null);
     }
   }
+
+  async function showGraffiti(office: Office) {
+    await run(async () => setGraffiti({ office, wall: await api.getGraffiti(session, office.id) }));
+  }
+
+  async function clearGraffiti(office: Office) {
+    if (!window.confirm(`Очистить стену граффити офиса «${office.name}»? Рисунки пропадут у всех игроков.`)) {
+      return;
+    }
+    if (await run(() => api.clearGraffiti(session, office.id))) {
+      await showGraffiti(office);
+    }
+  }
+
+  const playerName = (id: string) => players.find((user) => user.id === id)?.display_name || id;
 
   const homePlayers = (office: Office) => players.filter((user) => user.office_id === office.id && !user.trip).length;
   const visitors = (office: Office) => players.filter((user) => user.trip?.office_id === office.id).length;
@@ -90,12 +106,48 @@ export function OfficesPanel({ actions, players }: { actions: DashboardActions; 
                   <button className="secondary" onClick={() => edit(office)}>
                     Изменить
                   </button>
+                  <button className="secondary" onClick={() => showGraffiti(office)}>
+                    Граффити
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {graffiti && (
+        <>
+          <h3>Стена граффити офиса «{graffiti.office.name}»</h3>
+          <p className="muted">
+            Стена общая для всех игроков офиса: каждое задание «Граффити на стене» рисует поверх прежних. Неуместный
+            рисунок убирается только очисткой всей стены.
+          </p>
+          {graffiti.wall.png ? (
+            <img
+              className="graffiti-wall"
+              src={`data:image/png;base64,${graffiti.wall.png}`}
+              alt={`Граффити офиса ${graffiti.office.name}`}
+            />
+          ) : (
+            <p className="hint">Стена чистая.</p>
+          )}
+          {graffiti.wall.authors.length > 0 && (
+            <p className="hint">
+              Рисунков: {graffiti.wall.tags}. Последние авторы:{" "}
+              {[...new Set(graffiti.wall.authors.slice(-10).reverse().map((author) => playerName(author.user_id)))].join(", ")}
+            </p>
+          )}
+          <div className="form-actions">
+            <button type="button" disabled={!graffiti.wall.png} onClick={() => clearGraffiti(graffiti.office)}>
+              Очистить стену
+            </button>
+            <button type="button" className="secondary" onClick={() => setGraffiti(null)}>
+              Закрыть
+            </button>
+          </div>
+        </>
+      )}
 
       <h3>{editing ? `Изменить офис «${editing.name}»` : "Новый офис"}</h3>
       <form className="grid-form limits-form" onSubmit={submit}>

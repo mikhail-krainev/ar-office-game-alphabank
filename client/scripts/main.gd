@@ -5,9 +5,9 @@ extends WorldScene
 ## game asks to scan the code of the task's room first. Then the minigame starts right away, on any
 ## floor: the player does it in the real office, so the character does not walk or ride anywhere.
 ## After the check-in the player can go home at any time: tasks only add coins and gifts.
-## "QR" scans a room door emblem (RoomEmblems): the room's open task starts right away, several open
-## tasks show as a list, and with none the character walks to that room (on any floor). It also scans
-## the office screen code (starts the check-in) or a colleague's profile code.
+## "QR" scans a room door code: the room's open task starts right away, several open tasks show as
+## a list, and with none the character walks to that room (on any floor). It also scans the office
+## screen code (starts the check-in) or a colleague's profile code.
 ## On arrival from the commute the entry code scan opens by itself until the player checks in.
 ## Right after the check-in the game asks for the facts of "Three truths, two lies" when that task is
 ## in today's pack. Colleagues in the office now walk on the map in their own outfits
@@ -416,8 +416,8 @@ func _scan_payload() -> QrPayload:
 	return payload
 
 
-## Sends a room door code (the room of the emblem seen) to the server. Door emblems are static, so
-## they count only after the entry code at the reception. Returns true when the server accepted it.
+## Sends a room door code to the server. Door codes are static, so they count only after the entry
+## code at the reception. Returns true when the server accepted it.
 func _enter_room(room_id: StringName) -> bool:
 	if OfficeFloors.floor_of_room(room_id) == &"":
 		_hud.flash_message(tr("QR_UNKNOWN_ROOM"))

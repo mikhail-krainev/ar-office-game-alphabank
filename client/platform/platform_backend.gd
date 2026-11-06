@@ -14,8 +14,6 @@ signal faces_detected(faces: Array[SensorModels.Face])
 signal markers_detected(marker_ids: PackedInt32Array)
 signal labels_detected(labels: Array[SensorModels.ObjectLabel])
 signal qr_detected(text: String)
-## CameraMode.CODES: a room emblem (RoomEmblems id) in the middle of the frame.
-signal emblem_detected(emblem_id: String)
 signal speech_recognized(text: String, is_final: bool)
 signal speech_failed(error: String)
 ## Emulated platforms only: a scheduled notification "arrived" while the game is open.
@@ -39,10 +37,11 @@ enum Feature {
 	NOTIFICATIONS,
 	## Picking a picture from the gallery or the file system.
 	PHOTO_LIBRARY,
+	## Six-degree tracking of the phone in the room with surface hit tests (SLAM).
+	WORLD_TRACKING,
 }
 
-## CODES reads QR codes and room emblems together (the general scanner).
-enum CameraMode { PREVIEW, QR, POSE, FACES, MARKERS, LABELS, CODES }
+enum CameraMode { PREVIEW, QR, POSE, FACES, MARKERS, LABELS }
 
 
 func has_feature(feature: Feature) -> bool:
@@ -111,10 +110,31 @@ func stop_camera() -> void:
 	pass
 
 
-## Reference pictures of the room emblems, by emblem id, for CameraMode.CODES. Called before the
-## camera starts; platforms without recognition ignore it.
-func set_emblems(_references: Dictionary[String, Image]) -> void:
+## Opens the back camera with world tracking: frames arrive through camera_frame as with
+## start_camera(); the pose and hit tests are read with get_world_pose() and world_hit_test().
+## `view_size` is the shape of the game view the picture is shown in.
+func start_world_tracking(_view_size: Vector2) -> void:
 	pass
+
+
+func stop_world_tracking() -> void:
+	pass
+
+
+## "unsupported", "off", "loading", "initializing", "limited", "normal" or "failed".
+func get_world_tracking_status() -> String:
+	return "unsupported"
+
+
+## The camera in the room now, or null before the tracking has one.
+func get_world_pose() -> SensorModels.WorldPose:
+	return null
+
+
+## The surface point (room metres, right-handed, y up) under `point` (0 to 1 across the game view),
+## or null when no surface was found there.
+func world_hit_test(_point: Vector2) -> Variant:
+	return null
 
 
 ## Shows the camera at full quality over `rect` (window pixels) outside the game viewport. Returns

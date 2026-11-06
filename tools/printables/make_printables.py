@@ -1,9 +1,8 @@
-"""Printable room emblems for the doors and ArUco markers for the scavenger hunt.
+"""Printable QR codes for room doors and ArUco markers for the scavenger hunt.
 
 Room ids and names are read from the game sources, so the posters always match the office map:
   - client/scripts/world/office_layout.gd, analytics_layout.gd  (add_room calls)
   - client/localization/strings.csv        (room names)
-  - client/assets/brand/emblems            (the emblem of each room: emblems.json and <id>.png)
   - server/content/tasks.json               (scavenger hunt markers)
 
 Usage:
@@ -22,13 +21,14 @@ import re
 from pathlib import Path
 
 import cv2
+import qrcode
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
 LAYOUTS = [ROOT / "client/scripts/world/office_layout.gd", ROOT / "client/scripts/world/analytics_layout.gd"]
-EMBLEMS = ROOT / "client/assets/brand/emblems"
 STRINGS = ROOT / "client/localization/strings.csv"
 TASKS = ROOT / "server/content/tasks.json"
+QR_SCHEME = "alfaoffice://room/"
 PAGE = (874, 1240)  # A5 at 150 dpi
 RED = (239, 49, 36)
 INK = (29, 29, 31)
@@ -50,12 +50,6 @@ def load_rooms(strings: dict[str, str]) -> list[tuple[str, str]]:
     return rooms
 
 
-def load_emblems() -> dict[str, str]:
-    """Room id -> emblem id."""
-    catalog = json.loads((EMBLEMS / "emblems.json").read_text(encoding="utf-8"))
-    return {emblem["room"]: emblem["id"] for emblem in catalog["emblems"]}
-
-
 def load_markers(strings: dict[str, str]) -> list[tuple[int, str]]:
     markers: dict[int, str] = {}
     for task in json.loads(TASKS.read_text(encoding="utf-8"))["tasks"]:
@@ -73,31 +67,24 @@ def font(size: int) -> ImageFont.ImageFont:
     return ImageFont.load_default()
 
 
-def page(title: str, subtitle: str, picture: Image.Image, footer: str, smooth: bool = False) -> Image.Image:
+def page(title: str, subtitle: str, picture: Image.Image, footer: str) -> Image.Image:
     sheet = Image.new("RGB", PAGE, "white")
     draw = ImageDraw.Draw(sheet)
     draw.rectangle((0, 0, PAGE[0], 90), fill=RED)
     draw.text((PAGE[0] // 2, 45), "АЛЬФА ОФИС", fill="white", font=font(44), anchor="mm")
     draw.text((PAGE[0] // 2, 170), title, fill=INK, font=font(60), anchor="mm")
     draw.text((PAGE[0] // 2, 240), subtitle, fill=INK, font=font(28), anchor="mm")
-    # Codes stay sharp; emblem pictures keep their proportions and are scaled smoothly.
-    if smooth:
-        picture = picture.copy()
-        picture.thumbnail((640, 640), Image.LANCZOS)
-        if max(picture.size) < 640:
-            scale = 640 / max(picture.size)
-            picture = picture.resize((round(picture.width * scale), round(picture.height * scale)), Image.LANCZOS)
-    else:
-        picture = picture.resize((640, 640), Image.NEAREST)
-    sheet.paste(picture, ((PAGE[0] - picture.width) // 2, 300 + (640 - picture.height) // 2))
+    picture = picture.resize((640, 640), Image.NEAREST)
+    sheet.paste(picture, ((PAGE[0] - 640) // 2, 300))
     draw.text((PAGE[0] // 2, 1010), footer, fill=(110, 106, 100), font=font(24), anchor="mm")
     return sheet
 
 
-def room_page(room_id: str, name: str, emblem_id: str) -> Image.Image:
-    picture = Image.open(EMBLEMS / f"{emblem_id}.png").convert("RGB")
-    subtitle = "Наведи камеру в игре: персонаж перейдёт сюда"
-    return page(name, subtitle, picture, f"Эмблема комнаты: {emblem_id}", smooth=True)
+def room_page(room_id: str, name: str) -> Image.Image:
+    code = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, border=4, box_size=10)
+    code.add_data(QR_SCHEME + room_id)
+    picture = code.make_image(fill_color="black", back_color="white").convert("RGB")
+    return page(name, "Отсканируй кнопкой «QR» в игре: задания этой комнаты", picture, QR_SCHEME + room_id)
 
 
 def marker_page(marker_id: int, name: str) -> Image.Image:
@@ -116,12 +103,9 @@ def main() -> None:
     args.out.mkdir(parents=True, exist_ok=True)
 
     strings = load_strings()
-    emblems = load_emblems()
     pages: list[Image.Image] = []
     for room_id, name in load_rooms(strings):
-        if room_id not in emblems:
-            raise SystemExit(f"Room {room_id} has no emblem in {EMBLEMS / 'emblems.json'}")
-        sheet = room_page(room_id, name, emblems[room_id])
+        sheet = room_page(room_id, name)
         sheet.save(args.out / f"room_{room_id}.png")
         pages.append(sheet)
     for marker_id, name in load_markers(strings):

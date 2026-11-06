@@ -17,8 +17,6 @@ signal markers_detected(marker_ids: PackedInt32Array)
 ## Objects recognized in the camera frame, most confident first.
 signal labels_detected(labels: Array[SensorModels.ObjectLabel])
 signal qr_detected(text: String)
-## CameraMode.CODES: a room emblem seen in the middle of the frame (RoomEmblems id).
-signal emblem_detected(emblem_id: String)
 signal speech_recognized(text: String, is_final: bool)
 signal speech_failed(error: String)
 ## Desktop emulation only: a scheduled notification "arrived" while the game is open.
@@ -46,7 +44,6 @@ func _ready() -> void:
 	_backend.markers_detected.connect(markers_detected.emit)
 	_backend.labels_detected.connect(labels_detected.emit)
 	_backend.qr_detected.connect(qr_detected.emit)
-	_backend.emblem_detected.connect(emblem_detected.emit)
 	_backend.speech_recognized.connect(speech_recognized.emit)
 	_backend.speech_failed.connect(speech_failed.emit)
 	_backend.notification_shown.connect(notification_shown.emit)
@@ -112,6 +109,29 @@ func stop_step_counter() -> void:
 # --- Camera ----------------------------------------------------------------------
 
 
+## Opens the back camera with world tracking (SLAM): frames arrive through camera_frame, the pose
+## and surface hits are read below. Check Feature.WORLD_TRACKING first; the status says when it fails.
+func start_world_tracking(view_size: Vector2) -> void:
+	_backend.start_world_tracking(view_size)
+
+
+func stop_world_tracking() -> void:
+	_backend.stop_world_tracking()
+
+
+func get_world_tracking_status() -> String:
+	return _backend.get_world_tracking_status()
+
+
+func get_world_pose() -> SensorModels.WorldPose:
+	return _backend.get_world_pose()
+
+
+## The surface point under `point` (0 to 1 across the game view), or null.
+func world_hit_test(point: Vector2) -> Variant:
+	return _backend.world_hit_test(point)
+
+
 ## Opens the camera. Frames arrive through camera_frame; detections through the signal of the mode.
 func start_camera(mode: PlatformBackend.CameraMode, front: bool = false) -> void:
 	_backend.start_camera(mode, front)
@@ -119,11 +139,6 @@ func start_camera(mode: PlatformBackend.CameraMode, front: bool = false) -> void
 
 func stop_camera() -> void:
 	_backend.stop_camera()
-
-
-## Reference pictures of the room emblems for CameraMode.CODES, by emblem id.
-func set_emblems(references: Dictionary[String, Image]) -> void:
-	_backend.set_emblems(references)
 
 
 ## Shows the camera at full quality over `rect` in window pixels, above everything under it and below
@@ -176,6 +191,7 @@ func stop_speech() -> void:
 ## Stops every sensor a minigame may have left running.
 func stop_all() -> void:
 	stop_step_counter()
+	stop_world_tracking()
 	stop_camera()
 	stop_microphone()
 	stop_speech()

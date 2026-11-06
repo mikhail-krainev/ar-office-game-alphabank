@@ -995,3 +995,13 @@ label.check input {
   flex-wrap: wrap;
   gap: 4px 12px;
 }
+
+.graffiti-wall {
+  display: block;
+  width: 100%;
+  max-width: 576px;
+  aspect-ratio: 3 / 2;
+  image-rendering: pixelated;
+  background: #8f8a83;
+  border-radius: 6px;
+}

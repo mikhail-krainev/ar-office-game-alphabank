@@ -91,6 +91,15 @@ export interface ManagerProfile {
   office_names: Record<string, string>;
 }
 
+/** The shared graffiti wall of an office (server/modules/graffiti.go). */
+export interface GraffitiWall {
+  /** Base64 PNG of the wall; empty when nobody painted on it. */
+  png: string;
+  tags: number;
+  /** The last painters, oldest first. */
+  authors: { user_id: string; t: number }[];
+}
+
 export interface User {
   id: string;
   username: string;
@@ -432,6 +441,8 @@ export const api = {
   listOffices: (s: Session) => call<{ offices: Office[] }>(s, "admin_list_offices").then((r) => r.offices),
   createOffice: (s: Session, office: OfficeFields) => call<Office>(s, "admin_create_office", office),
   updateOffice: (s: Session, id: string, office: OfficeFields) => call<Office>(s, "admin_update_office", { id, ...office }),
+  getGraffiti: (s: Session, office_id: string) => call<GraffitiWall>(s, "admin_get_graffiti", { office_id }),
+  clearGraffiti: (s: Session, office_id: string) => call<{ ok: boolean }>(s, "admin_clear_graffiti", { office_id }),
   listDepartments: (s: Session) => call<{ departments: Department[] }>(s, "list_departments").then((r) => r.departments),
   createDepartment: (s: Session, name: string, office_id: string) =>
     call<Department>(s, "admin_create_department", { name, office_id }),

@@ -172,3 +172,27 @@ static func frame_from_rgb(width: int, height: int, rgb: PackedByteArray) -> Ima
 	if width <= 0 or height <= 0 or rgb.size() != width * height * 3:
 		return null
 	return Image.create_from_data(width, height, false, Image.FORMAT_RGB8, rgb)
+
+
+## The phone camera in the room from world tracking: right-handed metres, y up from the floor, the
+## camera looks along its -z; `field_of_view` is horizontal across the game view, in degrees.
+class WorldPose:
+	extends RefCounted
+
+	var position: Vector3 = Vector3.ZERO
+	var rotation: Quaternion = Quaternion.IDENTITY
+	var field_of_view: float = 0.0
+
+	## "px,py,pz,qx,qy,qz,qw,fov" from the web bridge; null when it is something else.
+	static func parse(text: String) -> WorldPose:
+		var parts: PackedStringArray = text.split(",")
+		if parts.size() != 8:
+			return null
+		var pose: WorldPose = WorldPose.new()
+		pose.position = Vector3(parts[0].to_float(), parts[1].to_float(), parts[2].to_float())
+		var rotation: Quaternion = Quaternion(parts[3].to_float(), parts[4].to_float(), parts[5].to_float(), parts[6].to_float())
+		if not rotation.is_finite() or rotation.length() < 0.5:
+			return null
+		pose.rotation = rotation.normalized()
+		pose.field_of_view = parts[7].to_float()
+		return pose

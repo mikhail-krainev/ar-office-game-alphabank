@@ -21,6 +21,7 @@ func consoleDevCommands() []consoleCommand {
 		{Name: "take_coins", Args: "<логин> <N>", Help: "списать N монет, баланс не уходит ниже нуля", minArgs: 2, run: consoleTakeCoins},
 		{Name: "set_coins", Args: "<логин> <N>", Help: "поставить баланс ровно N", minArgs: 2, run: consoleSetCoins},
 		{Name: "complete_task", Args: "<логин> <id задания>", Help: "засчитать задание сегодня с обычной наградой (id: tasks)", minArgs: 2, run: consoleCompleteTask},
+		{Name: "give_task", Args: "<логин> <id задания>", Help: "добавить задание в набор игрока на сегодня (id: tasks)", minArgs: 2, run: consoleGiveTask},
 		{Name: "reset_task", Args: "<логин> <id задания>", Help: "вернуть задание сегодня в «открыто»", minArgs: 2, run: consoleResetTask},
 		{Name: "reset_day", Args: "<логин>", Help: "открыть все задания сегодня заново, сбросить паузу и заработок дня", minArgs: 1, run: consoleResetDay},
 		{Name: "reset_cooldown", Args: "<логин>", Help: "убрать паузу до следующего задания", minArgs: 1, run: consoleResetCooldown},
@@ -109,6 +110,20 @@ func consoleCompleteTask(c *consoleCall, args []string) (string, error) {
 		reward := max(0, min(taskReward(task, tx.multiplier()), capLeft(tx.me.state, tx.today, &tx.content.Rules)))
 		tx.grantTask(tx.me, task, tx.today, reward)
 		return fmt.Sprintf("Задание %s выполнено: +%d монет, баланс %d", task.ID, reward, tx.me.balance), nil
+	})
+}
+
+func consoleGiveTask(c *consoleCall, args []string) (string, error) {
+	return c.change(args[0], func(tx *gameTx) (string, error) {
+		task := tx.content.task(args[1])
+		if task == nil || task.Minigame == presenceMinigame {
+			return "", consoleErrorf("Нет задания %q (список: task_list)", args[1])
+		}
+		if tx.isTodaysTask(task) {
+			return fmt.Sprintf("Задание %s уже в наборе игрока на сегодня", task.ID), nil
+		}
+		addToDay(tx.me.state.Given, tx.today, task.ID)
+		return fmt.Sprintf("Задание %s добавлено в набор игрока на сегодня", task.ID), nil
 	})
 }
 

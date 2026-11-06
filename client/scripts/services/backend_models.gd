@@ -465,3 +465,14 @@ class PlayStatus:
 	var beat_seconds: int = 30
 	## In the office Wi-Fi today without the entry code (see Profile.needs_entry_code).
 	var needs_entry_code: bool = false
+
+
+## The shared graffiti wall of the office the player is in (server/modules/graffiti.go).
+class GraffitiWall:
+	extends RefCounted
+
+	var ok: bool = false
+	var error: String = ""
+	## What everyone painted, or null on a clean wall.
+	var image: Image
+	var tags: int = 0

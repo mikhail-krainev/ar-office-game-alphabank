@@ -26,11 +26,13 @@ const REQUIRED_FEATURES: Dictionary[String, Array] = {
 	"colleague_bingo": [PlatformBackend.Feature.QR_SCAN],
 	"two_truths": [PlatformBackend.Feature.QR_SCAN],
 	"bug_hunt": [PlatformBackend.Feature.CAMERA, PlatformBackend.Feature.ACCELEROMETER],
-	"paper_toss": [PlatformBackend.Feature.CAMERA, PlatformBackend.Feature.ACCELEROMETER],
+	"paper_toss": [PlatformBackend.Feature.CAMERA],
 	"pose_match": [PlatformBackend.Feature.POSE_DETECTION],
 	"cat_mask": [PlatformBackend.Feature.FACE_DETECTION],
 	# Drawing works everywhere; the AR try-on on the forehead runs only with face detection.
 	"mood_doodle": [],
+	# The wall works without a camera too: then the graffiti is sprayed over a plain background.
+	"graffiti": [],
 }
 
 var task: BackendModels.TaskInfo
@@ -111,11 +113,10 @@ func add_big_label(y: float, font_size: int = 22, color: Color = UiStyle.INK) ->
 	return label
 
 
-## Opens the camera over the play area until a code of `kind` is seen (UNKNOWN = any game code).
-## Other codes show a hint. UNKNOWN and ROOM also look for the room emblems at the doors.
+## Opens the camera over the play area until a QR code of `kind` is seen (UNKNOWN = any game code).
+## Other codes show a hint.
 func scan_qr(prompt: String, kind: QrPayload.Kind) -> QrPayload:
 	_qr_kind = kind
-	var reads_emblems: bool = kind in [QrPayload.Kind.UNKNOWN, QrPayload.Kind.ROOM]
 	_qr_overlay = Control.new()
 	_qr_overlay.size = AREA_SIZE
 	_qr_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -143,14 +144,9 @@ func scan_qr(prompt: String, kind: QrPayload.Kind) -> QrPayload:
 	_qr_message.size = Vector2(AREA_SIZE.x - 16.0, 40)
 	_qr_overlay.add_child(_qr_message)
 	PlatformServices.qr_detected.connect(_on_qr_detected)
-	if reads_emblems:
-		RoomEmblems.register()
-		PlatformServices.emblem_detected.connect(_on_emblem_detected)
-	PlatformServices.start_camera(PlatformBackend.CameraMode.CODES if reads_emblems else PlatformBackend.CameraMode.QR, false)
+	PlatformServices.start_camera(PlatformBackend.CameraMode.QR, false)
 	var payload: QrPayload = await _qr_scanned
 	PlatformServices.qr_detected.disconnect(_on_qr_detected)
-	if reads_emblems:
-		PlatformServices.emblem_detected.disconnect(_on_emblem_detected)
 	PlatformServices.stop_camera()
 	_qr_overlay.queue_free()
 	_qr_overlay = null
@@ -184,18 +180,7 @@ static func colleague_error_text(result: BackendModels.ColleagueResult) -> Strin
 func _on_qr_detected(text: String) -> void:
 	if _qr_overlay == null or _qr_cooldown > 0.0:
 		return
-	_accept_scan(QrPayload.parse(text))
-
-
-func _on_emblem_detected(emblem_id: String) -> void:
-	if _qr_overlay == null or _qr_cooldown > 0.0:
-		return
-	var room_id: StringName = RoomEmblems.room_of(emblem_id)
-	if room_id != &"":
-		_accept_scan(QrPayload.from_room(String(room_id)))
-
-
-func _accept_scan(payload: QrPayload) -> void:
+	var payload: QrPayload = QrPayload.parse(text)
 	if payload.kind == _qr_kind or (_qr_kind == QrPayload.Kind.UNKNOWN and payload.is_valid()):
 		_qr_scanned.emit(payload)
 		return
@@ -265,6 +250,8 @@ static func create(kind: String) -> Minigame:
 			return MoodDoodleMinigame.new()
 		"paper_toss":
 			return PaperTossMinigame.new()
+		"graffiti":
+			return GraffitiMinigame.new()
 		"pose_match":
 			return PoseMatchMinigame.new()
 		"cat_mask":

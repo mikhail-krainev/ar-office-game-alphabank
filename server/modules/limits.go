@@ -174,7 +174,7 @@ func taskPack(tasks []Task, userID string, day int) map[string]bool {
 	return pack
 }
 
-// isTodaysTask: the check-in or a task of today's pack.
+// isTodaysTask: the check-in, a task of today's pack or one the admin console gave for today.
 func (tx *gameTx) isTodaysTask(task *Task) bool {
 	if task.Minigame == presenceMinigame {
 		return true
@@ -182,7 +182,7 @@ func (tx *gameTx) isTodaysTask(task *Task) bool {
 	if tx.pack == nil {
 		tx.pack = taskPack(tx.content.Tasks, tx.me.userID, tx.today)
 	}
-	return tx.pack[task.ID]
+	return tx.pack[task.ID] || contains(dayList(tx.me.state.Given, tx.today), task.ID)
 }
 
 // --- Task hours and cooldown -----------------------------------------------------

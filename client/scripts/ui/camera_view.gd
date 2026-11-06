@@ -11,6 +11,9 @@ const WAITING_COLOR: Color = Color("#2b2730")
 
 ## Called with (view, image_rect) after the frame is drawn; image_rect maps normalized frame coordinates.
 var overlay: Callable
+## False draws the camera frames in the game even where the browser video could show: phone
+## browsers may put the video above the game canvas and hide an AR scene drawn over it.
+var prefers_native: bool = true
 
 var _texture: ImageTexture
 var _frame_size: Vector2 = Vector2.ZERO
@@ -45,7 +48,7 @@ func _exit_tree() -> void:
 
 
 func _process(_delta: float) -> void:
-	var rect: Rect2 = _window_rect() if is_visible_in_tree() else Rect2()
+	var rect: Rect2 = _window_rect() if is_visible_in_tree() and prefers_native else Rect2()
 	if rect == _native_rect:
 		return
 	_native_rect = rect

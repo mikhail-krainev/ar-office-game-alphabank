@@ -131,9 +131,9 @@ INTRO_NIGHT_DRIVE,ВЕЧЕР. ДОМОЙ ПО ОГНЯМ ГОРОДА.,EVENING. 
 INTRO_HOME_ARRIVE,ДОМА.,HOME.
 INTRO_SLEEP,ОТБОЙ. ЗАВТРА СНОВА В ОФИС.,LIGHTS OUT. OFFICE AGAIN TOMORROW.
 HUD_SCAN,QR,QR
-QR_SCAN_TITLE,Сканер,Scanner
-QR_SCAN_HINT,Наведи камеру на эмблему у двери комнаты или на QR-код экрана офиса,Point the camera at a room door emblem or the office screen code
-QR_WRONG_CODE,Это не тот код,That's not the right code
+QR_SCAN_TITLE,Сканер QR,QR scanner
+QR_SCAN_HINT,Наведи камеру на QR-код у двери комнаты или на экране офиса,Point the camera at a room door code or the office screen
+QR_WRONG_CODE,Это не тот QR-код,That's not the right QR code
 QR_UNKNOWN_ROOM,Такой комнаты нет на карте,No such room on the map
 QR_GOING_TO_ROOM,Идём: %s,Heading to: %s
 QR_COLLEAGUE_HINT,Это профиль коллеги. Он нужен в заданиях на знакомство,That's a colleague's profile. It is used in the meet-a-colleague tasks
@@ -400,11 +400,11 @@ HUD_GO_HOME_QUESTION,"Поехать домой? Визит в офис уже �
 HUD_GO_HOME_CONFIRM,Домой,Go home
 HUD_GO_HOME_CANCEL,Остаться,Stay
 TASK_TAKE,Взять,Take
-TASKS_ROOM_RULE,Задание берут в его комнате: приди туда и наведи камеру на эмблему у двери. Коллеге из совместного задания приходить туда не нужно,A task is taken in its room: go there and point the camera at the emblem by the door. The colleague of a joint task doesn't need to come there
-TASK_ROOM_QUESTION,"Задание ждёт в комнате «%s». Приди туда и наведи камеру на эмблему у двери, чтобы взять его","The task waits in the room «%s». Go there and point the camera at the emblem by the door to take it"
+TASKS_ROOM_RULE,Задание берут в его комнате: приди туда и отсканируй QR-код у двери. Коллеге из совместного задания приходить туда не нужно,A task is taken in its room: go there and scan the QR code by the door. The colleague of a joint task doesn't need to come there
+TASK_ROOM_QUESTION,"Задание ждёт в комнате «%s». Приди туда и отсканируй QR-код у двери, чтобы взять его","The task waits in the room «%s». Go there and scan the QR code by the door to take it"
 TASK_ROOM_SCAN,Сканировать,Scan
 TASK_ROOM_CANCEL,Не сейчас,Not now
-TASK_ROOM_WRONG_CODE,Это другая эмблема. Нужна эмблема комнаты «%s»,That's another emblem. Scan the emblem of the room «%s»
+TASK_ROOM_WRONG_CODE,Это другой код. Нужен QR-код комнаты «%s»,That's another code. Scan the QR code of the room «%s»
 QR_ROOM_TASKS,"Заданий в этой комнате: %d. Выбери, какое начать",Tasks in this room: %d. Pick one to start
 ERROR_WRONG_ROOM,Сначала отсканируй QR-код комнаты задания,Scan the QR code of the task's room first
 ERROR_TASK_NOT_TAKEN,Сначала возьми задание в его комнате,Take the task in its room first
@@ -453,6 +453,16 @@ MG_MOOD_HOLD,Покажи лицо камере,Show your face to the camera
 MG_MOOD_READY,Нажми «Сделать фото»,"Tap ""Take a photo"""
 MG_MOOD_TAKE_PHOTO,СДЕЛАТЬ ФОТО,TAKE A PHOTO
 MG_MOOD_PHOTO_FAILED,Не получилось сделать снимок. Попробуй ещё раз,Couldn't take the shot. Try again
+ERROR_GRAFFITI_INVALID,"Граффити не получилось сохранить, попробуй ещё раз","The graffiti could not be saved, try again"
+ERROR_GRAFFITI_EMPTY,На стене почти ничего не нарисовано,There is almost nothing painted on the wall
+MG_GRAFFITI_HINT,"Стена общая для всего офиса: рисуй баллончиком поверх граффити коллег. На рисунок %d секунд с первого штриха","The wall is shared by the whole office: spray over your colleagues' graffiti. You have %d seconds from the first stroke"
+MG_GRAFFITI_LOADING,Ищем стену…,Finding the wall…
+MG_GRAFFITI_TAGS,"Граффити на стене: %d. Коснись стены, чтобы начать","Graffiti on the wall: %d. Touch the wall to start"
+MG_GRAFFITI_CLEAN,"Стена чистая, будь первым. Коснись стены, чтобы начать","The wall is clean, be the first. Touch the wall to start"
+MG_GRAFFITI_PLACE,"Наведи рамку на стену и коснись экрана: там появится общая стена офиса","Aim the frame at a wall and tap: the office wall will appear there"
+MG_GRAFFITI_THIN,Тонко,Thin
+MG_GRAFFITI_FAT,Жирно,Fat
+MG_GRAFFITI_DONE,Готово,Done
 ERROR_MOOD_INVALID,"Рисунок не получилось сохранить, попробуй ещё раз","The drawing could not be saved, try again"
 COLLEAGUE_PROFILE_TITLE,Коллега,Colleague
 COLLEAGUE_STREAK,Серия: %d дн. в офисе,Streak: %d office days
@@ -510,7 +520,11 @@ MG_CAT_SMILE,Улыбнись!,Smile!
 MG_CAT_WINK,Подмигни!,Wink!
 MG_CAT_OPEN_MOUTH,Открой рот!,Open your mouth!
 MG_CAT_TILT_HEAD,Наклони голову!,Tilt your head!
-MG_PAPER_TOSS_HINT,"Найди урну, поворачиваясь с телефоном, и брось бумажку свайпом вверх","Find the bin by turning with the phone, then swipe up to throw"
+MG_PAPER_TOSS_HINT,"Поставь урну на пол и брось в неё бумажку свайпом вверх: чем дальше урна, тем сильнее бросок","Put the bin on the floor and swipe up to throw the paper into it: the farther the bin, the harder the throw"
+AR_ENGINE_CREDIT,"8th Wall XR Engine © Niantic Spatial, Inc. · лицензия","8th Wall XR Engine © Niantic Spatial, Inc. · license"
+MG_AR_STARTING,"Ищем поверхности: медленно поводи телефоном из стороны в сторону","Finding surfaces: slowly move the phone from side to side"
+MG_PAPER_TOSS_PLACE,"Наведи кольцо на пол и коснись экрана: там встанет урна","Aim the ring at the floor and tap: the bin will stand there"
+MG_PAPER_TOSS_AIM_FLOOR,"Наклони телефон к полу в 1–3 м перед собой","Tilt the phone at the floor 1–3 m in front of you"
 MG_PAPER_TOSS_WIND,Ветер %s %.1f,Wind %s %.1f
 MG_PAPER_TOSS_IN,ПОПАЛ!,IN!
 MG_PAPER_TOSS_MISS,МИМО,MISS

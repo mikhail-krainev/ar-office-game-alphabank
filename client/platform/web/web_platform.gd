@@ -4,17 +4,18 @@ extends PlatformBackend
 ## Web implementation. The Godot core reads neither the accelerometer nor the microphone in the
 ## browser, so both come from camera_bridge.js too: DeviceMotion and getUserMedia audio samples.
 ## Camera, QR (getUserMedia + jsQR), faces, pose and objects (MediaPipe), ArUco markers (js-aruco2),
-## speech (Web Speech API) and the step counter run in camera_bridge.js, room emblems (MediaPipe image
-## embedder) in emblem_bridge.js; only results come back: a small RGB preview, QR text, emblem ids,
-## face boxes, pose landmarks, marker ids, object labels, recognized text, steps. The camera and
-## speech need HTTPS.
+## speech (Web Speech API) and the step counter run in camera_bridge.js; only results come back: a
+## small RGB preview, QR text, face boxes, pose landmarks, marker ids, object labels, recognized text,
+## steps. The camera and speech need HTTPS.
 ## Notifications use the Notification API: they are timed in the page, so they arrive only while the
 ## game tab is open (closed-tab delivery needs Web Push from the server). On iPhone the API exists
 ## only for a web app added to the home screen (iOS 16.4+).
 ## Pictures are picked with a hidden <input type="file">.
 
 const PERMISSION_TIMEOUT: float = 60.0
-const BRIDGE_PATHS: Array[String] = ["res://platform/web/emblem_bridge.js", "res://platform/web/camera_bridge.js"]
+const BRIDGE_PATH: String = "res://platform/web/camera_bridge.js"
+## World tracking with the 8th Wall XR Engine (slam_bridge.js has the license notice).
+const SLAM_BRIDGE_PATH: String = "res://platform/web/slam_bridge.js"
 const CAMERA_FEATURES: Array[Feature] = [
 	Feature.CAMERA, Feature.QR_SCAN, Feature.FACE_DETECTION, Feature.POSE_DETECTION,
 	Feature.MARKER_DETECTION, Feature.OBJECT_RECOGNITION,
@@ -22,7 +23,7 @@ const CAMERA_FEATURES: Array[Feature] = [
 const MOTION_FEATURES: Array[Feature] = [Feature.ACCELEROMETER, Feature.PEDOMETER]
 const CAMERA_MODES: Dictionary[CameraMode, String] = {
 	CameraMode.QR: "qr", CameraMode.FACES: "faces", CameraMode.POSE: "pose",
-	CameraMode.MARKERS: "markers", CameraMode.LABELS: "labels", CameraMode.CODES: "codes",
+	CameraMode.MARKERS: "markers", CameraMode.LABELS: "labels",
 }
 const HELPERS_JS: String = """
 window.alfaOffice = window.alfaOffice || {
@@ -67,6 +68,8 @@ var _pick_callback: JavaScriptObject
 ## Callbacks stay referenced while JavaScript may call them.
 var _camera_callbacks: JavaScriptObject
 var _camera_callback_refs: Array[JavaScriptObject] = []
+var _slam_callbacks: JavaScriptObject
+var _slam_callback_refs: Array[JavaScriptObject] = []
 var _speech_callbacks: JavaScriptObject
 var _speech_callback_refs: Array[JavaScriptObject] = []
 var _counting_steps: bool = false
@@ -75,7 +78,7 @@ var _steps: int = 0
 
 func _ready() -> void:
 	JavaScriptBridge.eval(HELPERS_JS, true)
-	for path: String in BRIDGE_PATHS:
+	for path: String in [BRIDGE_PATH, SLAM_BRIDGE_PATH]:
 		var bridge: FileAccess = FileAccess.open(path, FileAccess.READ)
 		if bridge == null:
 			push_error("Web bridge missing: %s (check the Web export include filter)" % path)
@@ -105,6 +108,9 @@ func has_feature(feature: PlatformBackend.Feature) -> bool:
 			return str(JavaScriptBridge.eval("window.alfaOffice.permission()", true)) != "unsupported"
 		Feature.PHOTO_LIBRARY:
 			return true
+		Feature.WORLD_TRACKING:
+			var slam: bool = bool(JavaScriptBridge.eval("!!(window.alfaSlam && window.alfaSlam.supported())", true))
+			return _is_phone() and slam and _camera_permission() != "denied"
 		Feature.MICROPHONE:
 			return str(JavaScriptBridge.eval("window.alfaMic.status()", true)) != "unsupported"
 	return super(feature)
@@ -135,7 +141,7 @@ func request_access(features: Array[PlatformBackend.Feature]) -> bool:
 func start_camera(mode: CameraMode, front: bool) -> void:
 	var camera_mode: String = CAMERA_MODES.get(mode, "preview")
 	_camera_callbacks = _make_callbacks({
-		"frame": _on_frame, "qr": _on_qr, "emblem": _on_emblem, "faces": _on_faces, "pose": _on_pose,
+		"frame": _on_frame, "qr": _on_qr, "faces": _on_faces, "pose": _on_pose,
 		"markers": _on_markers, "labels": _on_labels, "error": _on_camera_error,
 	}, _camera_callback_refs)
 	var camera: JavaScriptObject = JavaScriptBridge.get_interface("alfaCamera")
@@ -148,14 +154,35 @@ func stop_camera() -> void:
 	_camera_callback_refs.clear()
 
 
-## The bridge builds its templates from these pictures on the first start in CameraMode.CODES.
-func set_emblems(references: Dictionary[String, Image]) -> void:
-	var items: Array[Dictionary] = []
-	for emblem_id: String in references:
-		items.append({"id": emblem_id, "png": Marshalls.raw_to_base64(references[emblem_id].save_png_to_buffer())})
-	var emblems: JavaScriptObject = JavaScriptBridge.get_interface("alfaEmblems")
-	if emblems != null:
-		emblems.call("setReferences", JSON.stringify(items))
+func start_world_tracking(view_size: Vector2) -> void:
+	_slam_callbacks = _make_callbacks({"frame": _on_frame, "error": _on_camera_error}, _slam_callback_refs)
+	var slam: JavaScriptObject = JavaScriptBridge.get_interface("alfaSlam")
+	if slam != null:
+		slam.call("start", view_size.x, view_size.y, _slam_callbacks)
+
+
+func stop_world_tracking() -> void:
+	JavaScriptBridge.eval("window.alfaSlam && window.alfaSlam.stop()", true)
+	_slam_callbacks = null
+	_slam_callback_refs.clear()
+
+
+func get_world_tracking_status() -> String:
+	return str(JavaScriptBridge.eval("window.alfaSlam ? window.alfaSlam.status() : 'unsupported'", true))
+
+
+func get_world_pose() -> SensorModels.WorldPose:
+	return SensorModels.WorldPose.parse(str(JavaScriptBridge.eval("window.alfaSlam ? window.alfaSlam.pose() : ''", true)))
+
+
+func world_hit_test(point: Vector2) -> Variant:
+	var slam: JavaScriptObject = JavaScriptBridge.get_interface("alfaSlam")
+	if slam == null:
+		return null
+	var parts: PackedStringArray = str(slam.call("hitTest", point.x, point.y)).split(",")
+	if parts.size() != 4:
+		return null
+	return Vector3(parts[0].to_float(), parts[1].to_float(), parts[2].to_float())
 
 
 func show_camera_view(rect: Rect2) -> bool:
@@ -282,11 +309,6 @@ func _on_frame(args: Array) -> void:
 func _on_qr(args: Array) -> void:
 	if not args.is_empty():
 		qr_detected.emit(str(args[0]))
-
-
-func _on_emblem(args: Array) -> void:
-	if not args.is_empty():
-		emblem_detected.emit(str(args[0]))
 
 
 func _on_faces(args: Array) -> void:

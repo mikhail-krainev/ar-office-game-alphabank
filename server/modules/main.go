@@ -83,6 +83,8 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"admin_update_manager":    rpcAdminUpdateManager,
 		"admin_console_info":      rpcAdminConsoleInfo,
 		"admin_console":           rpcAdminConsole,
+		"admin_get_graffiti":      rpcAdminGetGraffiti,
+		"admin_clear_graffiti":    rpcAdminClearGraffiti,
 		// Manager panel: from anywhere, each call checks the manager's scope (managers.go).
 		"manager_get_scope":      rpcManagerGetScope,
 		"manager_stats_overview": rpcManagerStatsOverview,
@@ -125,6 +127,7 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"get_facts":             rpcGetFacts,
 		"office_players":        rpcOfficePlayers,
 		"get_mood":              rpcGetMood,
+		"get_graffiti_wall":     rpcGetGraffitiWall,
 		"player_card":           rpcPlayerCard,
 		"set_facts":             rpcSetFacts,
 		"send_facts":            rpcSendFacts,

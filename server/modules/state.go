@@ -69,7 +69,9 @@ type PlayerState struct {
 	Skipped      map[string][]string `json:"skipped"`
 	Pending      map[string][]string `json:"pending"`
 	// Tasks taken in their room (tasks.go: rpcTakeTask); only taken tasks can be completed.
-	Taken              map[string][]string          `json:"taken"`
+	Taken map[string][]string `json:"taken"`
+	// Tasks the admin console added to the day's pack (console_dev.go: give_task).
+	Given              map[string][]string          `json:"given,omitempty"`
 	Earned             map[string]int               `json:"earned"`
 	TaskLog            map[string][]TaskLogEntry    `json:"task_log"`
 	Met                map[string][]string          `json:"met"`
@@ -143,7 +145,7 @@ func (s *PlayerState) normalize() {
 	if s.WifiArrivals == nil {
 		s.WifiArrivals = map[string]int64{}
 	}
-	for _, m := range []*map[string][]string{&s.Completed, &s.Skipped, &s.Pending, &s.Taken, &s.Met, &s.Purchases} {
+	for _, m := range []*map[string][]string{&s.Completed, &s.Skipped, &s.Pending, &s.Taken, &s.Given, &s.Met, &s.Purchases} {
 		if *m == nil {
 			*m = map[string][]string{}
 		}

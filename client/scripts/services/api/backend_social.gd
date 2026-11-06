@@ -76,6 +76,20 @@ func get_mood(user_id: String) -> Image:
 	return null
 
 
+## The graffiti wall of the office the player is in now, as everyone painted it. Only while the
+## player is in the office; otherwise the error says why.
+func get_graffiti_wall() -> BackendModels.GraffitiWall:
+	var response: ServerSession.RpcResult = await _backend.call_rpc("get_graffiti_wall")
+	var wall: BackendModels.GraffitiWall = BackendModels.GraffitiWall.new()
+	wall.error = response.error if not response.error.is_empty() else str(response.data.get("error", ""))
+	wall.ok = response.ok and wall.error.is_empty()
+	wall.tags = int(response.data.get("tags", 0))
+	var encoded: String = str(response.data.get("png", ""))
+	if wall.ok and not encoded.is_empty():
+		wall.image = PlatformBackend.decode_image(Marshalls.base64_to_raw(encoded))
+	return wall
+
+
 ## Answer to "<colleague> took a photo with you. Is it true?".
 func respond_photo_request(item_id: int, confirm: bool) -> BackendModels.ActionResult:
 	var payload: Dictionary = {"item_id": item_id, "confirm": confirm, "operation_key": _backend.operation_key()}

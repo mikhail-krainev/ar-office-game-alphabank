@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"image"
 	"math"
 
 	"github.com/heroiclabs/nakama-common/runtime"
@@ -211,6 +212,8 @@ type taskProof struct {
 	MoodPNG string `json:"mood_png"`
 	// The photo with the drawing on the forehead, a base64 JPEG; empty without face detection.
 	MoodPhoto string `json:"mood_photo"`
+	// "Graffiti wall": the player's spray layer, a base64 PNG of the wall size (graffiti.go).
+	GraffitiPNG string `json:"graffiti_png"`
 }
 
 // rpcCompleteTask: {"task_id", "success", "operation_key", "proof"} -> taskResult.
@@ -270,6 +273,13 @@ func rpcCompleteTask(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 				return result, nil
 			}
 		}
+		var graffiti image.Image
+		if task.Minigame == graffitiMinigame {
+			// The spray layer is the proof: without paint on it the task does not count.
+			if graffiti, result.Error = validGraffitiPNG(proof.GraffitiPNG); result.Error != "" {
+				return result, nil
+			}
+		}
 		if task.Minigame == factsMinigame {
 			// The colleague's guess, not the client, decides the score.
 			proof.Score = tx.factsQuizScore(task)
@@ -295,6 +305,11 @@ func rpcCompleteTask(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 		if mood != nil {
 			tx.saveMood(mood, moodPhoto)
 		}
+		if graffiti != nil {
+			if err := tx.paintGraffiti(graffiti); err != nil {
+				return nil, err
+			}
+		}
 		tx.grantTask(tx.me, task, tx.today, reward)
 		result.Reward = reward
 		result.Balance = tx.me.balance
@@ -313,6 +328,7 @@ func parseProof(raw map[string]any) taskProof {
 	proof.Score, _ = raw["score"].(float64)
 	proof.MoodPNG, _ = raw["mood_png"].(string)
 	proof.MoodPhoto, _ = raw["mood_photo"].(string)
+	proof.GraffitiPNG, _ = raw["graffiti_png"].(string)
 	if ids, ok := raw["colleague_ids"].([]any); ok {
 		for _, id := range ids {
 			if text, ok := id.(string); ok {
