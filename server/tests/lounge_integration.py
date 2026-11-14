@@ -2,6 +2,7 @@
 Run on an empty test database. No credentials or URLs from the working server are used.
 """
 import urllib.request, urllib.error, json, base64, time, uuid
+from concurrent.futures import ThreadPoolExecutor
 BASE='http://127.0.0.1:17350'
 BASIC='Basic '+base64.b64encode(b'defaultkey:').decode()
 def http(path,body,token=None):
@@ -75,6 +76,19 @@ for t,_ in people[:4]:r=action(t,r,'ready')
 r=action(a,r,'start');assert len(r['board'])==144
 for side in range(1,5):assert r['board'].count(side)==8
 print('PASS: four-player checkers cross, eight pieces per side')
+# Six independent readiness updates must all survive concurrent room CAS conflicts.
+for trial in range(3):
+ r=action(a,{},'create',game='bug_hunt',capacity=6,stake=0)
+ for token,_ in people[1:]:r=action(token,r,'join')
+ def confirm_ready(token):
+  return rpc(token,'lounge_action',{'action':'ready','ready':True,'room_id':r['id'],'revision':r['revision'],'operation_key':str(uuid.uuid4())})
+ with ThreadPoolExecutor(max_workers=6) as pool:
+  confirmations=list(pool.map(confirm_ready,[token for token,_ in people]))
+ assert all(result['ok'] for result in confirmations),confirmations
+ current=rpc(a,'lounge_action',{'action':'get','room_id':r['id']})['room']
+ assert all(player['ready'] for player in current['players'])
+print('PASS: six simultaneous ready confirmations, three independent rooms',flush=True)
+
 # Department assignment and unlimited personal contribution.
 
 for i in range(6):

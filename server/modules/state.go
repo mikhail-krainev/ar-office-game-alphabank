@@ -295,6 +295,7 @@ func runPlayerTx(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runt
 
 // runUserTx runs `fn` with `userID` as tx.me; admin RPCs use it to change a player's state safely.
 func runUserTx(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, userID string, fn func(tx *gameTx) (any, error)) (string, error) {
+	attemptLimit := txAttempts
 	for attempt := 1; ; attempt++ {
 		tx, err := newGameTx(ctx, logger, db, nk, userID)
 		if err != nil {
@@ -307,13 +308,27 @@ func runUserTx(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtim
 		if err != nil {
 			return "", err
 		}
+		// Six players can confirm or settle the same room simultaneously. Keep the ordinary
+		// transaction policy for other RPCs, but give shared-room conflicts a bounded backoff.
+		if len(tx.lounges) > 0 {
+			attemptLimit = 12
+		}
 		commitErr := tx.commit()
 		if commitErr == nil {
 			return encodeResponse(result)
 		}
-		if attempt >= txAttempts {
+		if attempt >= attemptLimit {
 			logger.Error("commit for %s failed: %v", userID, commitErr)
 			return "", errInternal
+		}
+		if attemptLimit > txAttempts {
+			timer := time.NewTimer(time.Duration(attempt*3) * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return "", errInternal
+			case <-timer.C:
+			}
 		}
 	}
 }
