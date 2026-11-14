@@ -17,7 +17,6 @@ const QR_WRONG_COOLDOWN: float = 1.5
 ## Sensors each physical minigame needs. Games not listed work everywhere.
 const REQUIRED_FEATURES: Dictionary[String, Array] = {
 	"presence_qr": [PlatformBackend.Feature.QR_SCAN],
-	"stairs": [PlatformBackend.Feature.PEDOMETER],
 	"find_object": [PlatformBackend.Feature.OBJECT_RECOGNITION],
 	"squats": [PlatformBackend.Feature.POSE_DETECTION],
 	"tongue_twister": [PlatformBackend.Feature.SPEECH_RECOGNITION],
@@ -228,8 +227,6 @@ static func create(kind: String) -> Minigame:
 	match kind:
 		"presence_qr":
 			return PresenceQrMinigame.new()
-		"stairs":
-			return StairsMinigame.new()
 		"find_object":
 			return FindObjectMinigame.new()
 		"squats":
@@ -261,9 +258,5 @@ static func create(kind: String) -> Minigame:
 			return CoffeeMinigame.new()
 		"bubble_wrap":
 			return BubbleWrapMinigame.new()
-		"paper_sort":
-			return PaperSortMinigame.new()
-		"alfa_red":
-			return AlfaRedMinigame.new()
 		_:
 			return CheckInMinigame.new()

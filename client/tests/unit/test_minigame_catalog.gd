@@ -3,7 +3,7 @@ extends GdUnitTestSuite
 ## a free cell of its room on the client's map, and fallbacks need no sensors.
 
 const TASKS_PATH: String = "../server/content/tasks.json"
-const SCREEN_ONLY: Array[String] = ["check_in", "coffee", "bubble_wrap", "paper_sort", "alfa_red"]
+const SCREEN_ONLY: Array[String] = ["check_in", "coffee", "bubble_wrap"]
 
 
 func _tasks() -> Array:

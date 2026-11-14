@@ -49,10 +49,7 @@ MG_COFFEE_HINT,"Держи, чтобы налить. Отпусти между �
 MG_CUPS,Чашки: %d/%d,Cups: %d/%d
 MG_BUBBLE_HINT,Лопай все пупырки!,Pop all the bubbles!
 MG_TIME,Время: %d,Time: %d
-MG_SORT_HINT,"Красные - в левый лоток, белые - в правый","Red to the left tray, white to the right"
-MG_SORT_PROGRESS,Документы: %d/%d,Documents: %d/%d
 MG_MISTAKES,Ошибки: %d/%d,Mistakes: %d/%d
-MG_RED_HINT,Найди настоящий Альфа-красный #EF3124,Find the real Alfa red #EF3124
 MG_ROUND,Раунд %d/%d,Round %d/%d
 MG_CHECKIN_HINT,Поздоровайся и отметься,Say hi and check in
 MG_CHECKIN_BUTTON,Отметиться,Check in
@@ -148,7 +145,6 @@ MG_NO_CAMERA_PERMISSION,"Нет доступа к камере. Разреши �
 MG_FALLBACK,Играем в упрощённую версию.,Playing the simplified version.
 MG_UNAVAILABLE,Задание недоступно на этом устройстве,This task isn't available on this device
 MG_PRESENCE_HINT,Отсканируй QR-код на экране у ресепшна,Scan the QR code on the reception screen
-MG_STAIRS_HINT,"Пройди %d шагов по офису или по лестнице. Шаги считает телефон: держи его в руке или в кармане","Walk %d steps around the office or up the stairs. The phone counts them: keep it in your hand or pocket"
 MG_FOUND,Найдено: %d/%d,Found: %d/%d
 MG_SQUATS_HINT,"Поставь телефон так, чтобы были видны ноги. Сделай %d приседаний",Place the phone so your legs are visible. Do %d squats
 MG_SQUATS_NO_BODY,Не вижу ног,Can't see your legs

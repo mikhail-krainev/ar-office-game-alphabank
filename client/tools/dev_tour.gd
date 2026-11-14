@@ -292,7 +292,6 @@ func _minigame_tour(office: Node) -> void:
 		"selfie": func() -> void:
 			desktop.set("face_count", 2)
 			desktop.set("smiling", false),
-		"stairs": func() -> void: desktop.call("add_steps", 47),
 	}
 	var index: int = 0
 	for task: BackendModels.TaskInfo in office.get("_tasks"):

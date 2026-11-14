@@ -10,8 +10,8 @@ const INK: Color = Color("#1d1d1f")
 const WHITE: Color = Color("#fbfaf8")
 const GOLD: Color = Color("#f7c948")
 const ICONS: Dictionary[String, int] = {
-	"check_in": NpcAction.Kind.PAPERS, "coffee": NpcAction.Kind.COFFEE, "paper_sort": NpcAction.Kind.PAPERS,
-	"bubble_wrap": NpcAction.Kind.DANCE, "alfa_red": NpcAction.Kind.SKETCH,
+	"check_in": NpcAction.Kind.PAPERS, "coffee": NpcAction.Kind.COFFEE,
+	"bubble_wrap": NpcAction.Kind.DANCE,
 }
 
 var task: BackendModels.TaskInfo
