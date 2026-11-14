@@ -257,3 +257,35 @@ func TestReadyIsAnExplicitStateNotAToggle(t *testing.T) {
 		t.Fatal("cannot withdraw consent")
 	}
 }
+
+func TestBlackjackStakeChangesAtTable(t *testing.T) {
+	r := &loungeRoom{Game: "blackjack", Host: "a", Phase: "waiting", Stake: 20, Players: []loungePlayer{{ID: "a", Ready: true}, {ID: "b", Ready: true}}}
+	for _, amount := range []int64{40, 10, 0} {
+		if problem := r.act("a", loungeAction{Action: "stake", Stake: amount}, 100); problem != "" {
+			t.Fatalf("change stake: %s", problem)
+		}
+		if r.Stake != amount || r.Players[0].Ready || r.Players[1].Ready {
+			t.Fatal("stake change must reset everyone's consent")
+		}
+	}
+	for _, tc := range []struct {
+		id, phase string
+		amount    int64
+		want      string
+	}{
+		{"b", "waiting", 20, "host_only"},
+		{"a", "playing", 20, "round_started"},
+		{"a", "waiting", 3, "even_stake_required"},
+		{"a", "waiting", -2, "invalid_bet"},
+		{"a", "waiting", 1000002, "invalid_bet"},
+	} {
+		r.Phase = tc.phase
+		if got := r.act(tc.id, loungeAction{Action: "stake", Stake: tc.amount}, 100); got != tc.want {
+			t.Errorf("%+v: got %q", tc, got)
+		}
+	}
+	r.Phase = "finished"
+	if got := r.act("a", loungeAction{Action: "stake", Stake: 30}, 101); got != "" || r.Stake != 30 {
+		t.Fatal("next round stake must be adjustable")
+	}
+}

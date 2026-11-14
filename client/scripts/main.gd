@@ -58,6 +58,7 @@ var _facts_panel: FactsPanel
 ## "Scan the entry code" while the game is open in the office Wi-Fi without it.
 var _entry_button: Button
 var _colleagues: OfficeColleagues
+var _squats_panel: DepartmentSquatsPanel
 var _chat: ChatPanel
 var _chat_button: Button
 var _chat_dot: UnreadDot
@@ -96,7 +97,19 @@ func _ready() -> void:
 	_hud.add_icon_action(ICON_TASKS, tr("HUD_TASKS"), true).pressed.connect(_open_tasks)
 	_hud.add_icon_action(ICON_SCAN, tr("HUD_SCAN"), false).pressed.connect(_scan_code)
 	_hud.add_icon_action(ICON_SHOP, tr("HUD_SHOP"), false).pressed.connect(_open_shop)
-	_chat_button = _hud.add_icon_action(ICON_CHAT, tr("HUD_CHAT"), false)
+	_chat_button = UiStyle.make_button(tr("HUD_CHAT"), false, 10)
+	_chat_button.custom_minimum_size = Vector2(40, PlayerCorner.BUTTON_SIDE)
+	_hud.add_corner(_chat_button)
+	var entertainment: Button = _hud.add_action("Развлечения", false)
+	entertainment.add_theme_font_size_override("font_size", 9)
+	entertainment.pressed.connect(func() -> void:
+		if not _is_modal_open():
+			_stop_player()
+			_corner.open_lounge()
+	)
+	Backend.profile_changed.connect(func(profile: BackendModels.Profile) -> void: entertainment.disabled = not profile.in_office)
+	entertainment.disabled = Backend.profile == null or not Backend.profile.in_office
+	entertainment.tooltip_text = "Доступно после отметки входа в офис"
 	_chat_button.pressed.connect(_open_chat)
 	_chat_dot = UnreadDot.attach(_chat_button)
 	_chat = ChatPanel.new()
@@ -119,6 +132,7 @@ func _ready() -> void:
 	Backend.request_failed.connect(_on_request_failed)
 	_task_panel.go_requested.connect(_go_to_task)
 	_task_panel.skip_requested.connect(_skip_task)
+	_task_panel.continue_requested.connect(_continue_squats)
 	if Backend.profile == null:
 		await Backend.login()
 	await _refresh_tasks()
@@ -156,6 +170,7 @@ func _is_modal_open() -> bool:
 		or _minigame_panel.is_open() or _choice.is_open() or (_corner != null and _corner.is_open())
 		or (_facts_panel != null and _facts_panel.is_open())
 		or ColleagueProfiles.is_open() or _chat.is_open()
+		or (is_instance_valid(_squats_panel) and _squats_panel.is_open())
 	)
 
 
@@ -347,8 +362,20 @@ func _on_task_list_pressed(task: BackendModels.TaskInfo) -> void:
 		_go_to_task(task)
 
 
+func _continue_squats() -> void:
+	_task_panel.close_panel()
+	_stop_player()
+	_squats_panel = DepartmentSquatsPanel.new()
+	add_child(_squats_panel)
+	_squats_panel.closed.connect(_squats_panel.queue_free)
+	_squats_panel.open()
+
+
 func _go_to_task(task: BackendModels.TaskInfo) -> void:
 	_task_panel.close_panel()
+	if task.completed and task.id == "squats":
+		_continue_squats()
+		return
 	if task.completed:
 		_hud.flash_message(tr("ERROR_ALREADY_COMPLETED"))
 		return

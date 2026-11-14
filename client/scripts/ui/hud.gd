@@ -246,7 +246,7 @@ func _build_bottom() -> void:
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(_hint)
-	var close: Button = UiStyle.make_button("✕", false, 10)
+	var close: Button = UiStyle.make_symbol_button("close", "Закрыть")
 	close.custom_minimum_size = Vector2(22, 22)
 	close.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	close.pressed.connect(_close_hint)

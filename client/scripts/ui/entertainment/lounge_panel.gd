@@ -19,14 +19,7 @@ var _game: String = ""
 var _table: LoungeTable
 var _board: LoungeBoard
 var _sound: AudioStreamPlayer
-var _sound_on: bool = true
 var _previous_board: Array = []
-var _exercising: bool = false
-var _exercise: SquatsMinigame
-var _workout_session: String = ""
-var _rep_sequence: int = 0
-var _rep_queue: int = 0
-var _sending_rep: bool = false
 var _bugs: LoungeBugs
 var _memory_grid: GridContainer
 var _ui_epoch: int = 0
@@ -47,9 +40,10 @@ func _ready() -> void:
 
 
 func open() -> void:
+	if Backend.profile == null or not Backend.profile.in_office:
+		return
 	show_panel()
 	_room = {}
-	_exercising = false
 	_home()
 
 
@@ -66,7 +60,7 @@ func _notification(what: int) -> void:
 
 
 func _process(delta: float) -> void:
-	if not visible or _busy or _room.is_empty() or _exercising:
+	if not visible or _busy or _room.is_empty():
 		return
 	_poll_left -= delta
 	if _poll_left <= 0:
@@ -86,13 +80,20 @@ func _home() -> void:
 	for key: String in TITLES:
 		var game_key: String = key
 		_button(str(TITLES[key]), func() -> void: _configure(game_key))
-	_button("Помочь отделу: приседания", _department)
-	_button("Долги и переводы", func() -> void: var panel: LoungeLoans = LoungeLoans.new(); get_parent().add_child(panel); panel.open())
+	var join_row: HBoxContainer = HBoxContainer.new()
+	content.add_child(join_row)
 	var code: LineEdit = LineEdit.new()
 	code.placeholder_text = "Код комнаты"
 	code.max_length = 12
-	content.add_child(code)
-	_button("Войти по коду", func() -> void: await _join(code.text.strip_edges()))
+	code.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	join_row.add_child(code)
+	var apply: Button = UiStyle.make_symbol_button("arrow", "Войти в комнату")
+	apply.custom_minimum_size = Vector2(36, 36)
+	apply.visible = false
+	join_row.add_child(apply)
+	code.text_changed.connect(func(value: String) -> void: apply.visible = not value.strip_edges().is_empty())
+	code.text_submitted.connect(func(value: String) -> void: if not value.strip_edges().is_empty(): await _join(value.strip_edges()))
+	apply.pressed.connect(func() -> void: await _join(code.text.strip_edges()))
 	_button("Открытые комнаты", _rooms)
 	_status = _text("")
 
@@ -102,7 +103,7 @@ func _configure(game_key: String) -> void:
 	clear()
 	_game = game_key
 	set_title(str(TITLES[game_key]))
-	set_subtitle("Правила и ставка видны до входа")
+	set_subtitle("Правила комнаты")
 	var rules: Dictionary = {
 		"blackjack": "Один: против дилера. 2–6: ближе к 21. «Хватит» сохраняет результат, «Пас» теряет стартовую ставку. 60 секунд на решение. Команд нет.",
 		"roulette": "Общий стол. Каждый ставит собственные койны. Красное/чёрное: выплата ×2, ноль или номер: ×36, включая возврат ставки. Команд и турниров нет.",
@@ -135,9 +136,9 @@ func _configure(game_key: String) -> void:
 	_stake.max_value = 1000000
 	_stake.step = 2 if game_key == "blackjack" else 1
 	_stake.value = 20
-	_stake.visible = game_key not in ["roulette", "defuse"]
+	_stake.visible = game_key not in ["blackjack", "roulette", "defuse"]
 	if _stake.visible:
-		_text("Стартовая ставка, койны. Один: выплаты дилера. С коллегами: победителю весь фонд." if game_key == "blackjack" else "Стартовая ставка, койны. Победителю — фонд, победившей команде — поровну.")
+		_text("Стартовая ставка, койны. Победителю — фонд, победившей команде — поровну.")
 	content.add_child(_stake)
 	_level = OptionButton.new()
 	for caption: String in ["1. Первый сбой", "2. Перепутанные каналы", "3. Потерянный пакет", "4. Перегрев", "5. Каскадный сбой"]:
@@ -267,6 +268,18 @@ func _render_room() -> void:
 		var p: Dictionary = players[i]
 		_score_labels[str(p.get("id", ""))] = _text("%s%s · %d%s" % ["ГОТОВ · " if p.get("ready", false) else "", p.get("name", ""), int(p.get("score", 0)), " · команда %d" % (int(p.get("team", 0)) + 1) if _room.get("teams", false) else ""], 10)
 	if phase in ["waiting", "finished"]:
+		if game_key == "blackjack":
+			if phase == "waiting":
+				_show_table()
+			if _room.get("host", "") == Backend.get_user_id():
+				_text("Ставка на следующий раунд, койны")
+				var amount: SpinBox = SpinBox.new()
+				amount.max_value = 1000000
+				amount.step = 2
+				amount.value = int(_room.get("stake", 0))
+				content.add_child(amount)
+				_button("Применить ставку", func() -> void: await _send("stake", {"stake": int(amount.value)}))
+				_text("Изменение ставки сбрасывает готовность всех игроков.", 10)
 		if phase == "finished":
 			var winners: Array = _room.get("winners", [])
 			var names: PackedStringArray = PackedStringArray()
@@ -325,12 +338,6 @@ func _render_room() -> void:
 				_bugs = LoungeBugs.new(_room)
 				content.add_child(_bugs)
 				_bugs.caught.connect(func(index: int) -> void: await _send("catch", {"index": index}))
-	var sound: CheckBox = CheckBox.new()
-	_style_check(sound)
-	sound.text = "Звуки"
-	sound.button_pressed = _sound_on
-	sound.toggled.connect(func(enabled: bool) -> void: _sound_on = enabled)
-	content.add_child(sound)
 	if phase in ["waiting", "finished"] or game_key == "roulette":
 		_button("Выйти из комнаты", _leave)
 	_button("Свернуть комнату", _home)
@@ -458,75 +465,8 @@ func _show_table() -> void:
 	content.add_child(_table)
 
 
-func _department() -> void:
-	if _busy:
-		return
-	_busy = true
-	var result: Dictionary = await Backend.lounge.request("department_squats", {"action": "get"})
-	_busy = false
-	if not visible:
-		return
-	clear()
-	set_title("План отдела")
-	set_subtitle("По числу сотрудников с приседаниями сегодня")
-	_text("%d / %d повторений · назначено %d сотрудникам" % [int(result.get("total", 0)), int(result.get("goal", 0)), int(result.get("assigned", 0))])
-	_text("Твой вклад: %d. Дополнительное приседание: 15 койнов до выполнения плана. Личного лимита нет." % int(result.get("mine", 0)))
-	if result.get("can_help", false):
-		_button("Начать приседания", _start_exercise, true)
-	else:
-		_text("Сначала выполни личное задание «Утренняя зарядка».")
-	_button("Назад", _home)
-	_status = _text(_error(str(result.get("error", ""))))
-
-
-func _start_exercise() -> void:
-	var features: Array[PlatformBackend.Feature] = [PlatformBackend.Feature.POSE_DETECTION]
-	if not PlatformServices.has_features(features) or not await PlatformServices.request_access(features):
-		_status.text = "Распознавание позы недоступно."
-		return
-	var result: Dictionary = await Backend.lounge.request("department_squats", {"action": "start"}, true)
-	if not result.get("ok", false):
-		_status.text = _error(str(result.get("error", "")))
-		return
-	_workout_session = str(result.get("session", ""))
-	_rep_sequence = 0
-	_rep_queue = 0
-	_exercising = true
-	PlayTime.exercise_mode = true
-	clear()
-	_exercise = SquatsMinigame.new()
-	_exercise.context = {"continuous": true}
-	_exercise.repetition.connect(_on_rep)
-	var exercise_host: Control = Control.new()
-	exercise_host.custom_minimum_size = Vector2(288, 306)
-	content.add_child(exercise_host)
-	_exercise.scale = Vector2(0.9, 0.9)
-	exercise_host.add_child(_exercise)
-	_status = _text("15 койнов за повторение до выполнения плана.")
-	_button("Закончить тренировку", func() -> void: _exercising = false; PlayTime.exercise_mode = false; _exercise.queue_free(); await _department())
-
-
-func _on_rep() -> void:
-	_rep_queue += 1
-	if _sending_rep:
-		return
-	_sending_rep = true
-	while _rep_queue > 0 and _exercising:
-		_rep_queue -= 1
-		var result: Dictionary = await Backend.lounge.request("department_squats", {"action": "rep", "session": _workout_session, "sequence": _rep_sequence + 1}, true)
-		if result.get("ok", false):
-			_rep_sequence += 1
-		if is_instance_valid(_status):
-			_status.text = "%d / %d · за повторение +%d" % [int(result.get("total", 0)), int(result.get("goal", 0)), int(result.get("reward", 0))] if result.get("ok", false) else _error(str(result.get("error", "")))
-	_sending_rep = false
-
-
 func _on_closed() -> void:
 	_ui_epoch += 1
-	_exercising = false
-	PlayTime.exercise_mode = false
-	if is_instance_valid(_exercise):
-		_exercise.queue_free()
 	if is_instance_valid(_bugs):
 		_bugs.queue_free()
 
@@ -559,8 +499,6 @@ func _button(caption: String, callback: Callable, primary: bool = false) -> Butt
 
 
 func _play_sound(sound_name: String) -> void:
-	if not _sound_on:
-		return
 	_sound.stream = load("res://assets/audio/%s.wav" % sound_name)
 	_sound.play()
 
@@ -579,11 +517,11 @@ static func _error(key: String) -> String:
 		"not_your_turn": "Сейчас ход другого игрока.", "capture_required": "Взятие обязательно.", "invalid_move": "Этот ход недоступен.",
 		"personal_squats_required": "Сначала выполни личное задание с приседаниями.", "too_fast": "Повторение пока не подтверждено сервером.",
 		"invalid_teams": "Для команд нужно 4 или 6 игроков.", "not_enough_players": "Собери нужное число участников.",
-		"office_network_required": "Для помощи отделу подключись к Wi-Fi офиса.", "presence_required": "Сначала отметь вход в офис по QR-коду.",
+		"office_network_required": "Подключись к Wi-Fi офиса.", "presence_required": "Сначала отметь вход в офис по QR-коду.",
 		"invalid_workout": "Тренировка устарела. Начни её заново.", "invalid_loan": "Запрос уже обработан или сумма недоступна.",
 		"turn_finished": "Твоё решение принято. Ждём остальных.", "already_caught": "Этот баг уже пойман.", "wrong_wave": "Началась следующая волна.",
 		"not_in_room": "Ты вышел из комнаты. Присоединись заново.", "invalid_mode": "Этот режим недоступен.",
-		"even_stake_required": "Для 21 выбери чётную ставку: выплата за блэкджек составляет 3:2.", "host_only": "Начать игру может создатель комнаты.",
+		"even_stake_required": "Для 21 выбери чётную ставку: выплата за блэкджек составляет 3:2.", "host_only": "Начать игру и изменить общую ставку может создатель комнаты.",
 		"no_power": "У тебя пока нет способности.", "wrong_role": "Нажимать кнопки может только оператор.", "wrong_channel": "Сначала подключи текущий канал.",
 		"invalid_bet": "Ставка недоступна. Проверь сумму и дождись приёма ставок.", "invalid_card": "Эта карточка сейчас недоступна.",
 		"player_unavailable": "Коллега сейчас недоступен.", "loan_not_found": "Запрос не найден.", "duplicate_operation": "Действие уже обработано. Обнови экран.",

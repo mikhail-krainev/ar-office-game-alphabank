@@ -36,13 +36,14 @@ func open_profile() -> void:
 		_profile.open()
 
 
+func open_lounge() -> void:
+	if not is_open():
+		_lounge.open()
+
+
 func _build(scene: Node, hud: Hud) -> void:
 	_lounge = LoungePanel.new()
 	scene.add_child(_lounge)
-	var games: Button = UiStyle.make_button("Игры", false, 10)
-	games.custom_minimum_size = Vector2(40, BUTTON_SIDE)
-	games.pressed.connect(func() -> void: if not is_open(): _lounge.open())
-	hud.add_corner(games)
 	_inbox = InboxPanel.new()
 	_inbox.name = "InboxPanel"
 	scene.add_child(_inbox)

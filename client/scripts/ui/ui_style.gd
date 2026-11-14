@@ -116,3 +116,25 @@ static func make_dimmer() -> ColorRect:
 	dimmer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dimmer.mouse_filter = Control.MOUSE_FILTER_STOP
 	return dimmer
+
+
+## Draw symbols directly so missing font glyphs never become Unicode codepoint boxes.
+static func make_symbol_button(symbol: String, hint: String) -> Button:
+	var button: Button = make_button("", false)
+	button.tooltip_text = hint
+	var icon: Control = Control.new()
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	button.add_child(icon)
+	icon.draw.connect(func() -> void:
+		var center: Vector2 = (icon.size / 2.0).round()
+		if symbol == "close":
+			icon.draw_line(center + Vector2(-5, -5), center + Vector2(5, 5), INK, 2)
+			icon.draw_line(center + Vector2(5, -5), center + Vector2(-5, 5), INK, 2)
+		else:
+			icon.draw_line(center + Vector2(-6, 0), center + Vector2(6, 0), INK, 2)
+			icon.draw_line(center + Vector2(1, -5), center + Vector2(6, 0), INK, 2)
+			icon.draw_line(center + Vector2(6, 0), center + Vector2(1, 5), INK, 2)
+	)
+	icon.resized.connect(icon.queue_redraw)
+	return button

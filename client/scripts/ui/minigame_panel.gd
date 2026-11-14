@@ -51,7 +51,7 @@ func _ready() -> void:
 	_title = UiStyle.make_label("", 14)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(_title)
-	_close = UiStyle.make_button("✕", false, 12)
+	_close = UiStyle.make_symbol_button("close", "Закрыть")
 	_close.pressed.connect(func() -> void: _resolved.emit(Outcome.CANCELLED))
 	header.add_child(_close)
 

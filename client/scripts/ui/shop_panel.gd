@@ -77,7 +77,7 @@ func _ready() -> void:
 	var coins: CoinCounter = CoinCounter.new()
 	coins.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	header.add_child(coins)
-	var close: Button = UiStyle.make_button("✕", false, 14)
+	var close: Button = UiStyle.make_symbol_button("close", "Закрыть")
 	close.custom_minimum_size = Vector2(34, 30)
 	close.pressed.connect(func() -> void: visible = false)
 	close.size_flags_vertical = Control.SIZE_SHRINK_CENTER

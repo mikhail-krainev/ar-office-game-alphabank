@@ -40,7 +40,7 @@ func set_tasks(tasks: Array[BackendModels.TaskInfo]) -> void:
 		child.queue_free()
 	for task: BackendModels.TaskInfo in tasks:
 		var row: Button = _make_row_button(UiStyle.MUTED if task.is_closed() else UiStyle.INK, false)
-		row.text = task.title
+		row.text = task.title + (" · Продолжить" if task.id == "squats" and task.completed else "")
 		row.tooltip_text = task.description
 		row.pressed.connect(func() -> void: task_pressed.emit(task))
 		var mark: ColorRect = ColorRect.new()

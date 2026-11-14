@@ -308,6 +308,25 @@ func (r *loungeRoom) act(id string, a loungeAction, now int64) string {
 	if p < 0 {
 		return "not_in_room"
 	}
+	if a.Action == "stake" {
+		if id != r.Host {
+			return "host_only"
+		}
+		if r.Phase != "waiting" && r.Phase != "finished" {
+			return "round_started"
+		}
+		if r.Game != "blackjack" || a.Stake < 0 || a.Stake > 1000000 {
+			return "invalid_bet"
+		}
+		if a.Stake%2 != 0 {
+			return "even_stake_required"
+		}
+		r.Stake = a.Stake
+		for i := range r.Players {
+			r.Players[i].Ready = false
+		}
+		return ""
+	}
 	if a.Action == "ready" {
 		if r.Phase != "waiting" && r.Phase != "finished" {
 			return "round_started"
@@ -544,6 +563,9 @@ func (tx *gameTx) loungeSettle(r *loungeRoom) error {
 }
 func rpcLoungeList(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, _ string) (string, error) {
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
+		if problem, err := tx.presenceError(); problem != "" || err != nil {
+			return fail(problem), err
+		}
 		objects, _, err := nk.StorageList(ctx, "", systemUserID, loungeCollection, 100, "")
 		if err != nil {
 			return nil, errInternal
@@ -567,6 +589,9 @@ func rpcLoungeAction(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 		return "", err
 	}
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
+		if problem, err := tx.presenceError(); problem != "" || err != nil {
+			return fail(problem), err
+		}
 		now := time.Now().Unix()
 		var r *loungeRoom
 		version := "*"
@@ -578,7 +603,7 @@ func rpcLoungeAction(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 			if a.Game != "defuse" {
 				a.Training = false
 			}
-			if a.Game == "roulette" || a.Game == "defuse" {
+			if a.Game == "blackjack" || a.Game == "roulette" || a.Game == "defuse" {
 				a.Stake = 0
 			}
 			if a.Game == "blackjack" && a.Stake%2 != 0 {

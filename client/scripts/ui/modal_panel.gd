@@ -68,7 +68,7 @@ func _init(title_key: String = "") -> void:
 	_subtitle = UiStyle.make_label("", 9, UiStyle.MUTED)
 	_subtitle.visible = false
 	titles.add_child(_subtitle)
-	var close: Button = UiStyle.make_button("✕", false, 14)
+	var close: Button = UiStyle.make_symbol_button("close", "Закрыть")
 	close.custom_minimum_size = Vector2(34, 30)
 	close.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	close.pressed.connect(close_panel)

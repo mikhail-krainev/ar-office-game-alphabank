@@ -6,6 +6,8 @@ extends CanvasLayer
 ## reward multiplier; skippable ones have a "Skip" button. During the break between tasks and
 ## outside the task hours (Backend.task_schedule) the tasks are locked, with the reason on top.
 
+signal continue_requested
+
 signal go_requested(task: BackendModels.TaskInfo)
 signal skip_requested(task: BackendModels.TaskInfo)
 
@@ -57,7 +59,7 @@ func _ready() -> void:
 	_notice = UiStyle.make_label("", 9, UiStyle.MUTED)
 	_notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	titles.add_child(_notice)
-	var close: Button = UiStyle.make_button("✕", false, 14)
+	var close: Button = UiStyle.make_symbol_button("close", "Закрыть")
 	close.custom_minimum_size = Vector2(34, 30)
 	close.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	close.pressed.connect(close_panel)
@@ -191,7 +193,10 @@ func _make_row(task: BackendModels.TaskInfo, width: float) -> Control:
 	var button: Button
 	var schedule: BackendModels.TaskSchedule = Backend.task_schedule
 	var lock: String = "" if task.is_check_in() else schedule.lock_reason()
-	if closed:
+	if task.id == "squats" and task.completed:
+		button = UiStyle.make_button("Продолжить", true, 10)
+		button.pressed.connect(func() -> void: continue_requested.emit())
+	elif closed:
 		var state_key: String = "TASK_DONE" if task.completed else ("TASK_PENDING" if task.pending else "TASK_SKIPPED")
 		button = UiStyle.make_button(tr(state_key), false, 12)
 		button.disabled = true

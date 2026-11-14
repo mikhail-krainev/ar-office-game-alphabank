@@ -63,7 +63,7 @@ func _ready() -> void:
 	var title: Label = UiStyle.make_label(tr("WARDROBE_TITLE"), 16)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
-	var close: Button = UiStyle.make_button("✕", false, 14)
+	var close: Button = UiStyle.make_symbol_button("close", "Закрыть")
 	close.custom_minimum_size = Vector2(34, 30)
 	close.pressed.connect(_close)
 	header.add_child(close)
