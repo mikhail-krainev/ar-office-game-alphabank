@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -26,6 +27,8 @@ func consoleDevCommands() []consoleCommand {
 		{Name: "reset_day", Args: "<логин>", Help: "открыть все задания сегодня заново, сбросить паузу и заработок дня", minArgs: 1, run: consoleResetDay},
 		{Name: "reset_cooldown", Args: "<логин>", Help: "убрать паузу до следующего задания", minArgs: 1, run: consoleResetCooldown},
 		{Name: "task_limits", Args: "<логин> on|off", Help: "off — задания в любой час и без паузы между ними", minArgs: 2, run: consoleTaskLimits},
+		{Name: "clicker_points", Args: "<логин> <степень>", Help: "добавить в кликер 10^степень очков (до 300)", minArgs: 2, run: consoleClickerPoints},
+		{Name: "clicker_reset", Args: "<логин>", Help: "обнулить кликер игрока целиком (очки, улучшения, золото, достижения)", minArgs: 1, run: consoleClickerReset},
 		{Name: "check_in", Args: "<логин>", Help: "отметить вход в офис без кода (засчитывает день)", minArgs: 1, run: consoleCheckIn},
 		{Name: "check_out", Args: "<логин>", Help: "отметить выход из офиса", minArgs: 1, run: consoleCheckOut},
 		{Name: "room", Args: "<логин> <id комнаты>", Help: "поставить игрока в комнату, как после скана эмблемы", minArgs: 2, run: consoleRoom},
@@ -180,6 +183,45 @@ func consoleTaskLimits(c *consoleCall, args []string) (string, error) {
 }
 
 // --- Presence -------------------------------------------------------------------------
+
+func consoleClickerPoints(c *consoleCall, args []string) (string, error) {
+	exponent, err := strconv.ParseFloat(args[1], 64)
+	if err != nil || exponent < 0 || exponent > 300 {
+		return "", consoleError("Степень — число от 0 до 300")
+	}
+	return c.change(args[0], func(tx *gameTx) (string, error) {
+		state, version, err := tx.clickerLoad()
+		if err != nil {
+			return "", err
+		}
+		rules := &tx.content.Clicker
+		rules.earn(state, math.Pow(10, exponent))
+		rules.grantAchievements(state)
+		state.BoardAt = tx.now
+		tx.clickerPublish(state)
+		if err := tx.clickerSave(state, version); err != nil {
+			return "", err
+		}
+		return "Кликер: " + strconv.FormatFloat(state.Points, 'g', 4, 64) + " очков", nil
+	})
+}
+
+func consoleClickerReset(c *consoleCall, args []string) (string, error) {
+	return c.change(args[0], func(tx *gameTx) (string, error) {
+		_, version, err := tx.clickerLoad()
+		if err != nil {
+			return "", err
+		}
+		state := &ClickerState{}
+		tx.content.Clicker.normalize(state)
+		state.BoardAt = tx.now
+		tx.clickerPublish(state)
+		if err := tx.clickerSave(state, version); err != nil {
+			return "", err
+		}
+		return "Кликер обнулён", nil
+	})
+}
 
 func consoleCheckIn(c *consoleCall, args []string) (string, error) {
 	return c.change(args[0], func(tx *gameTx) (string, error) {

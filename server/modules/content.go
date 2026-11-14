@@ -114,6 +114,7 @@ type Content struct {
 	FunTexts []string
 	Home     HomeContent
 	Rules    Rules
+	Clicker  ClickerContent
 }
 
 func loadContent(dir string) (*Content, error) {
@@ -141,6 +142,7 @@ func loadContent(dir string) (*Content, error) {
 		"notifications.json": &notifications,
 		"game_rules.json":    &content.Rules,
 		"home.json":          &content.Home,
+		"clicker.json":       &content.Clicker,
 	}
 	for name, target := range files {
 		data, err := os.ReadFile(filepath.Join(dir, name))
@@ -158,6 +160,9 @@ func loadContent(dir string) (*Content, error) {
 		if _, ok := loadZone(zone); !ok {
 			return nil, fmt.Errorf("game_rules.json: office.timezone: unknown zone %q", zone)
 		}
+	}
+	if err := validateClicker(&content.Clicker); err != nil {
+		return nil, fmt.Errorf("clicker.json: %w", err)
 	}
 	if err := validateWheel(&content.Rules.Wheel); err != nil {
 		return nil, fmt.Errorf("game_rules.json: wheel: %w", err)

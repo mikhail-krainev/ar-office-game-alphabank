@@ -1,4 +1,4 @@
-"""Pixel-art icons of the office HUD buttons (tasks, QR scan, shop, chat), 24x24, drawn here.
+"""Pixel-art icons of the office HUD buttons (tasks, QR scan, shop, chat, games), 24x24, drawn here.
 
 Usage:
     python tools/printables/make_hud_icons.py
@@ -119,9 +119,41 @@ def chat() -> Image.Image:
     return image
 
 
+def games() -> Image.Image:
+    """Entertainment: a fanned playing card (ace of hearts) behind a casino chip."""
+    image, d = canvas()
+    # back card, tilted left by a stepped edge
+    rect(d, 2, 4, 11, 15, INK)
+    rect(d, 3, 5, 9, 13, RED)
+    rect(d, 4, 6, 7, 11, RED_DARK)
+    rect(d, 5, 7, 5, 9, RED)
+    # front card
+    rect(d, 7, 1, 12, 17, INK)
+    rect(d, 8, 2, 10, 15, WHITE)
+    for x, y in ((10, 3), (9, 4), (11, 4), (9, 5), (10, 5), (11, 5), (9, 6), (11, 6)):
+        rect(d, x, y, 1, 1, RED)  # rank "A"
+    # heart
+    rect(d, 11, 8, 2, 2, RED)
+    rect(d, 14, 8, 2, 2, RED)
+    rect(d, 10, 9, 7, 2, RED)
+    rect(d, 11, 11, 5, 1, RED)
+    rect(d, 12, 12, 3, 1, RED)
+    rect(d, 13, 13, 1, 1, RED)
+    # chip
+    rect(d, 13, 14, 8, 10, INK)
+    rect(d, 12, 15, 10, 8, INK)
+    rect(d, 14, 15, 6, 8, GOLD)
+    rect(d, 13, 16, 8, 6, GOLD)
+    for x, y in ((16, 15), (16, 22), (13, 18), (20, 18)):
+        rect(d, x, y, 2, 1 if y in (15, 22) else 2, WHITE)
+    rect(d, 15, 17, 4, 4, GOLD_DARK)
+    rect(d, 16, 18, 2, 2, GOLD)
+    return image
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    for name, draw in (("tasks", tasks), ("qr", qr), ("shop", shop), ("chat", chat)):
+    for name, draw in (("tasks", tasks), ("qr", qr), ("shop", shop), ("chat", chat), ("games", games)):
         draw().save(OUT / f"{name}.png")
     print(f"icons written to {OUT}")
 

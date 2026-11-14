@@ -382,7 +382,7 @@ PLAY_REST_NOW,Отдохнуть сейчас,Rest now
 PLAY_WARNING_OK,Понятно,Got it
 PLAY_PILL,Выйти из игры: %s,Leave the game: %s
 PLAY_REST_TITLE,ПЕРЕРЫВ,BREAK
-PLAY_REST_TEXT,Отдохните и выпейте кофе. Игра откроется через:,Rest and have a coffee. The game opens in:
+PLAY_REST_TEXT,"Отдохните и выпейте кофе. Игра откроется, когда время на часах закончится.","Rest and have a coffee. The game opens when the clock runs out."
 PLAY_REST_DONE,Перерыв окончен. Можно возвращаться!,The break is over. Welcome back!
 PLAY_RESUME,Вернуться в игру,Back to the game
 PLAY_BLOCKED_TITLE,НА СЕГОДНЯ ВСЁ,THAT'S ALL FOR TODAY
@@ -604,3 +604,4 @@ ERROR_CHAT_TOO_FAST,Не так быстро: одно сообщение в с�
 ERROR_CHAT_TEXT_INVALID,"Сообщение пустое или длиннее 500 символов",The message is empty or longer than 500 characters
 ERROR_CHAT_RECIPIENT_UNAVAILABLE,"Коллега недоступен: писать можно коллегам твоего офиса",The colleague is unavailable: you can write to colleagues of your office
 ERROR_CHAT_NO_CHANNEL,У тебя нет отдела для этого чата,You have no department for this chat
+LOUNGE_PLAYERS,игрок|игрока|игроков,player|players|players

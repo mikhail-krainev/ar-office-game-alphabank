@@ -12,7 +12,6 @@ signal retry_pressed
 ## Above every panel (ChoicePrompt is 45), below the CRT effect (50) so the screens get it too.
 const LAYER: int = 48
 const BACKGROUND: Color = Color("#120a1c")
-const NEON: Color = RestRoom.NEON
 const SIDE_MARGIN: float = 16.0
 
 var _warning: Control
@@ -24,7 +23,6 @@ var _room: RestRoom
 var _stage: Control
 var _screen_title: Label
 var _screen_text: Label
-var _screen_timer: Label
 var _resume: Button
 var _retry: Button
 var _notice: PanelContainer
@@ -87,7 +85,6 @@ func show_rest(seconds: int) -> void:
 	_room.no_wifi = false
 	_screen_title.text = tr("PLAY_REST_TITLE")
 	_screen_text.text = tr("PLAY_REST_TEXT")
-	_screen_timer.visible = true
 	_resume.visible = false
 	_retry.visible = false
 	set_rest_left(seconds)
@@ -95,7 +92,6 @@ func show_rest(seconds: int) -> void:
 
 
 func set_rest_left(seconds: int) -> void:
-	_screen_timer.text = TimeText.countdown(seconds)
 	_room.clock_text = TimeText.countdown(seconds)
 
 
@@ -103,7 +99,6 @@ func set_rest_left(seconds: int) -> void:
 func show_rest_done() -> void:
 	set_rest_left(0)
 	_screen_text.text = tr("PLAY_REST_DONE")
-	_screen_timer.visible = false
 	_resume.visible = true
 
 
@@ -113,7 +108,6 @@ func show_blocked() -> void:
 	_room.no_wifi = false
 	_screen_title.text = tr("PLAY_BLOCKED_TITLE")
 	_screen_text.text = tr("PLAY_BLOCKED_TEXT")
-	_screen_timer.visible = false
 	_resume.visible = false
 	_retry.visible = false
 	_open_screen()
@@ -126,7 +120,6 @@ func show_network() -> void:
 	_room.no_wifi = true
 	_screen_title.text = tr("NETWORK_TITLE")
 	_screen_text.text = tr("NETWORK_TEXT")
-	_screen_timer.visible = false
 	_resume.visible = false
 	_retry.visible = true
 	_open_screen()
@@ -171,8 +164,6 @@ func _build_screen() -> void:
 	_stage.add_child(_room)
 	_screen_text = _centered_label("", 11, UiStyle.PAPER_EDGE)
 	column.add_child(_screen_text)
-	_screen_timer = _centered_label("", 28, NEON)
-	column.add_child(_screen_timer)
 	_resume = UiStyle.make_button(tr("PLAY_RESUME"), true, 13)
 	_resume.custom_minimum_size = Vector2(200, 36)
 	_resume.size_flags_horizontal = Control.SIZE_SHRINK_CENTER

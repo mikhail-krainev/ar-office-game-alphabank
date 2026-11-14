@@ -31,6 +31,7 @@ var raffle: BackendRaffle
 var wheel: BackendWheel
 var home: BackendHome
 var lounge: BackendLounge
+var clicker: BackendClicker
 var chat: BackendChat
 ## When tasks count (cooldown, task hours); updated by list_tasks().
 var task_schedule: BackendModels.TaskSchedule = BackendModels.TaskSchedule.new()
@@ -50,7 +51,8 @@ func _ready() -> void:
 	home = BackendHome.new(self)
 	chat = BackendChat.new(self)
 	lounge = BackendLounge.new(self)
-	for api: Node in [social, account, raffle, wheel, home, chat, lounge]:
+	clicker = BackendClicker.new(self)
+	for api: Node in [social, account, raffle, wheel, home, chat, lounge, clicker]:
 		add_child(api)
 	if OS.is_debug_build() and OS.has_feature("pc"):
 		var keys: Node = load("res://scripts/services/dev_backend_keys.gd").new()

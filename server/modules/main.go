@@ -51,6 +51,9 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 	if _, err := parseOfficeNetworks(env["OFFICE_NETWORKS"]); err != nil {
 		return err
 	}
+	if err := createClickerBoard(ctx, nk); err != nil {
+		return err
+	}
 	if err := registerAuthHooks(initializer); err != nil {
 		return err
 	}
@@ -62,6 +65,8 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"lounge_loans":      rpcLoungeLoans,
 		"lounge_people":     rpcLoungePeople,
 		"lounge_action":     rpcLoungeAction,
+		"clicker":           rpcClicker,
+		"clicker_top":       rpcClickerTop,
 		"department_squats": rpcDepartmentSquats,
 		// Account and admin: from anywhere.
 		"get_profile":             rpcGetProfile,

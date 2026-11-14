@@ -31,6 +31,7 @@ const ICON_TASKS: Texture2D = preload("res://assets/ui/hud_icons/tasks.png")
 const ICON_SCAN: Texture2D = preload("res://assets/ui/hud_icons/qr.png")
 const ICON_SHOP: Texture2D = preload("res://assets/ui/hud_icons/shop.png")
 const ICON_CHAT: Texture2D = preload("res://assets/ui/hud_icons/chat.png")
+const ICON_GAMES: Texture2D = preload("res://assets/ui/hud_icons/games.png")
 ## The room of the player's character goes to the server at most this often (colleagues see it).
 const POSITION_REPORT_SECONDS: float = 1.5
 ## After a refused report (no entry code yet, no office Wi-Fi) the next try waits this long.
@@ -100,8 +101,7 @@ func _ready() -> void:
 	_chat_button = UiStyle.make_button(tr("HUD_CHAT"), false, 10)
 	_chat_button.custom_minimum_size = Vector2(40, PlayerCorner.BUTTON_SIDE)
 	_hud.add_corner(_chat_button)
-	var entertainment: Button = _hud.add_action("Развлечения", false)
-	entertainment.add_theme_font_size_override("font_size", 9)
+	var entertainment: Button = _hud.add_icon_action(ICON_GAMES, "Развлечения", false)
 	entertainment.pressed.connect(func() -> void:
 		if not _is_modal_open():
 			_stop_player()
@@ -109,7 +109,7 @@ func _ready() -> void:
 	)
 	Backend.profile_changed.connect(func(profile: BackendModels.Profile) -> void: entertainment.disabled = not profile.in_office)
 	entertainment.disabled = Backend.profile == null or not Backend.profile.in_office
-	entertainment.tooltip_text = "Доступно после отметки входа в офис"
+	entertainment.tooltip_text = "Развлечения · доступно после отметки входа в офис"
 	_chat_button.pressed.connect(_open_chat)
 	_chat_dot = UnreadDot.attach(_chat_button)
 	_chat = ChatPanel.new()

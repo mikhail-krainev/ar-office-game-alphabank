@@ -2,7 +2,11 @@ class_name LoungePanel
 extends ModalPanel
 ## Daily-independent entertainment rooms. Polling resumes server timers and never derives money locally.
 
+const CASINO_GAMES: Array[String] = ["blackjack", "roulette"]
 const TITLES: Dictionary = {"blackjack": "21", "roulette": "Рулетка", "checkers": "Шашки", "memory": "Альфа-пары", "defuse": "Обезвредить баг", "bug_hunt": "Охота на баги"}
+## Open rooms listed on the menu itself; the rest are on the full list screen.
+const HOME_ROOMS_SHOWN: int = 6
+const GAME_ICON_DIR: String = "res://assets/ui/game_icons/%s.png"
 static var last_room: Dictionary = {}
 var _room: Dictionary = {}
 var _busy: bool = false
@@ -16,7 +20,7 @@ var _level: OptionButton
 var _training: CheckBox
 var _memory_size: OptionButton
 var _game: String = ""
-var _table: LoungeTable
+var _casino: LoungeCasinoView
 var _board: LoungeBoard
 var _sound: AudioStreamPlayer
 var _previous_board: Array = []
@@ -26,6 +30,7 @@ var _ui_epoch: int = 0
 var _focused: bool = true
 var _temperature: ProgressBar
 var _score_labels: Dictionary[String, Label] = {}
+var _clicker_view: ClickerView
 
 
 func _init() -> void:
@@ -74,18 +79,33 @@ func _home() -> void:
 	set_title("Развлечения")
 	set_subtitle("Ежедневно · без заданий из дневного пула")
 	_room = {}
+	_add_code_search()
 	_text("Собери коллег за одним столом или начни один.")
 	if not last_room.is_empty():
 		_button("Вернуться в комнату", func() -> void: _room = last_room; await _send("get"))
+	var clicker: Button = _game_button("Кот удачи · кликер", "clicker", _open_clicker, true)
+	clicker.tooltip_text = "Гладь кота, покупай улучшения и золоти его перерождениями"
 	for key: String in TITLES:
 		var game_key: String = key
-		_button(str(TITLES[key]), func() -> void: _configure(game_key))
+		_game_button(str(TITLES[key]), key, func() -> void: _configure(game_key))
+	content.add_child(make_text("Сейчас играют", 11, UiStyle.MUTED))
+	var room_list: VBoxContainer = VBoxContainer.new()
+	room_list.add_theme_constant_override("separation", 4)
+	content.add_child(room_list)
+	_button("Открытые комнаты", _rooms)
+	_status = _text("")
+	_fill_room_list(room_list, _ui_epoch)
+
+
+## Room code entry on top of the menu, like a search field.
+func _add_code_search() -> void:
 	var join_row: HBoxContainer = HBoxContainer.new()
 	content.add_child(join_row)
 	var code: LineEdit = LineEdit.new()
 	code.placeholder_text = "Код комнаты"
 	code.max_length = 12
 	code.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	code.custom_minimum_size.y = 36
 	join_row.add_child(code)
 	var apply: Button = UiStyle.make_symbol_button("arrow", "Войти в комнату")
 	apply.custom_minimum_size = Vector2(36, 36)
@@ -94,8 +114,34 @@ func _home() -> void:
 	code.text_changed.connect(func(value: String) -> void: apply.visible = not value.strip_edges().is_empty())
 	code.text_submitted.connect(func(value: String) -> void: if not value.strip_edges().is_empty(): await _join(value.strip_edges()))
 	apply.pressed.connect(func() -> void: await _join(code.text.strip_edges()))
-	_button("Открытые комнаты", _rooms)
-	_status = _text("")
+
+
+## Short list of open rooms on the menu: game and players; a tap joins. Loaded after the menu is shown.
+func _fill_room_list(room_list: VBoxContainer, epoch: int) -> void:
+	var loading: Label = make_text("Загрузка…", 10)
+	room_list.add_child(loading)
+	var result: Dictionary = await Backend.lounge.request("lounge_list")
+	if not visible or epoch != _ui_epoch or not is_instance_valid(room_list):
+		return
+	loading.queue_free()
+	if not result.get("ok", false):
+		room_list.add_child(make_text(_error(str(result.get("error", ""))), 10))
+		return
+	var rooms: Array = result.get("rooms", [])
+	if rooms.is_empty():
+		room_list.add_child(make_text("Пока никого. Создай комнату — коллеги увидят её здесь.", 10))
+		return
+	for item: Variant in rooms.slice(0, HOME_ROOMS_SHOWN):
+		var entry: Dictionary = item
+		var id: String = str(entry.get("id", ""))
+		var game_key: String = str(entry.get("game", ""))
+		var count: int = int(entry.get("count", 0))
+		var caption: String = "%s · %d %s" % [str(TITLES.get(game_key, "Игра")), count, TimeText.plural(count, "LOUNGE_PLAYERS")]
+		var button: Button = _game_button(caption, game_key, func() -> void: await _join(id))
+		content.remove_child(button)
+		room_list.add_child(button)
+	if rooms.size() > HOME_ROOMS_SHOWN:
+		room_list.add_child(make_text("И ещё %d — в полном списке." % (rooms.size() - HOME_ROOMS_SHOWN), 10))
 
 
 func _configure(game_key: String) -> void:
@@ -186,7 +232,7 @@ func _rooms() -> void:
 	for item: Variant in result.get("rooms", []):
 		var entry: Dictionary = item
 		var id: String = str(entry.get("id", ""))
-		_button("%s · %d/%d · %d койнов" % [str(TITLES.get(entry.get("game", ""), "Игра")), int(entry.get("count", 0)), int(entry.get("capacity", 0)), int(entry.get("stake", 0))], func() -> void: await _join(id))
+		_game_button("%s · %d/%d · %d койнов" % [str(TITLES.get(entry.get("game", ""), "Игра")), int(entry.get("count", 0)), int(entry.get("capacity", 0)), int(entry.get("stake", 0))], str(entry.get("game", "")), func() -> void: await _join(id))
 	_button("Обновить", _rooms)
 	_button("Назад", _home)
 	_status = _text(_error(str(result.get("error", ""))))
@@ -217,7 +263,11 @@ func _send(action_name: String, extra: Dictionary = {}) -> bool:
 		_room = incoming
 		last_room = incoming
 		var heat_only: bool = action_name == "get" and incoming.get("game", "") == "defuse" and old_phase == "playing" and incoming.get("phase", "") == old_phase and int(incoming.get("progress", 0)) == old_progress and int(incoming.get("errors", 0)) == old_errors
-		if heat_only:
+		if _casino_shows(incoming) and action_name not in ["create", "join"]:
+			# Every poll reaches the table: its timers and animations follow the server clock.
+			_casino.update_room(incoming)
+			set_subtitle(_casino_subtitle())
+		elif heat_only:
 			if is_instance_valid(_temperature):
 				_temperature.value = int(incoming.get("heat", 0))
 			if is_instance_valid(_timer):
@@ -228,12 +278,12 @@ func _send(action_name: String, extra: Dictionary = {}) -> bool:
 			_timer.text = "Осталось: %d сек." % int(_room.get("left", 0))
 	if action_name == "catch" and is_instance_valid(_bugs) and not incoming.is_empty():
 		_bugs.update_room(incoming)
-	if is_instance_valid(_status):
+	# A quiet poll keeps the last error of a table action on screen.
+	var quiet: bool = _casino_alive() and ((action_name == "get" and result.get("ok", false)) or result.get("error", "") == "turn_finished")
+	if is_instance_valid(_status) and not quiet:
 		_status.text = _error(str(result.get("error", "")))
-	if old_phase != "result" and _room.get("phase", "") == "result" and _room.get("game", "") == "roulette":
-		_show_result(_room.duplicate(true))
-	if old_phase != "finished" and _room.get("phase", "") == "finished":
-		_play_sound("neighbor_voice" if _room.get("game", "") == "blackjack" else "cash_register")
+	if old_phase != "finished" and _room.get("phase", "") == "finished" and _room.get("game", "") not in CASINO_GAMES:
+		_play_sound("cash_register")
 
 	return bool(result.get("ok", false))
 
@@ -249,11 +299,9 @@ func _render_room() -> void:
 		if is_instance_valid(_timer):
 			_timer.text = "Осталось: %d сек." % int(_room.get("left", 0))
 		return
-	if is_instance_valid(_table) and _table.get_parent() == content:
-		if _table.room.get("id", "") == _room.get("id", "") and _room.get("phase", "") != "waiting" and _room.get("game", "") in ["blackjack", "roulette"]:
-			content.remove_child(_table)
-		else:
-			_table = null
+	if str(_room.get("game", "")) in CASINO_GAMES:
+		_render_casino()
+		return
 	clear()
 	set_title(str(TITLES.get(_room.get("game", ""), "Развлечения")))
 	set_subtitle("Код: %s · взнос: %d · фонд: %d" % [_room.get("id", ""), int(_room.get("stake", 0)), int(_room.get("pot", 0))])
@@ -268,18 +316,6 @@ func _render_room() -> void:
 		var p: Dictionary = players[i]
 		_score_labels[str(p.get("id", ""))] = _text("%s%s · %d%s" % ["ГОТОВ · " if p.get("ready", false) else "", p.get("name", ""), int(p.get("score", 0)), " · команда %d" % (int(p.get("team", 0)) + 1) if _room.get("teams", false) else ""], 10)
 	if phase in ["waiting", "finished"]:
-		if game_key == "blackjack":
-			if phase == "waiting":
-				_show_table()
-			if _room.get("host", "") == Backend.get_user_id():
-				_text("Ставка на следующий раунд, койны")
-				var amount: SpinBox = SpinBox.new()
-				amount.max_value = 1000000
-				amount.step = 2
-				amount.value = int(_room.get("stake", 0))
-				content.add_child(amount)
-				_button("Применить ставку", func() -> void: await _send("stake", {"stake": int(amount.value)}))
-				_text("Изменение ставки сбрасывает готовность всех игроков.", 10)
 		if phase == "finished":
 			var winners: Array = _room.get("winners", [])
 			var names: PackedStringArray = PackedStringArray()
@@ -287,33 +323,18 @@ func _render_room() -> void:
 				if winners.has(p.get("id", "")):
 					names.append(str(p.get("name", "")))
 			_text("Победители: " + ", ".join(names) if not names.is_empty() else "Партия завершена")
-			if game_key != "blackjack" or players.size() != 1:
-				_text(str(_room.get("message", "")))
+			_text(str(_room.get("message", "")))
 			var awards: Dictionary = _room.get("awards", {})
 			for p: Dictionary in players:
 				var id: String = str(p.get("id", ""))
 				if awards.has(id):
 					_text("%s получил %d койнов" % [p.get("name", ""), int(awards[id])], 11)
-			if game_key == "blackjack":
-				_show_table()
 		_button("Скопировать код комнаты", func() -> void: PlatformServices.copy_text(str(_room.get("id", ""))))
 		_button("Готов / не готов", func() -> void: await _send("ready", {"ready": not bool(_my_player().get("ready", false))}))
 		if _room.get("host", "") == Backend.get_user_id():
 			_button("Начать · ставка %d" % int(_room.get("stake", 0)), func() -> void: await _send("start"), true)
 	else:
 		match game_key:
-			"blackjack":
-				_show_table()
-				var me: Dictionary = _my_player()
-				_text("Твои карты: %s · сумма %d" % [_card_names(me.get("cards", [])), int(me.get("total", 0))])
-				var actions: Array[String] = ["hit", "stand"] if players.size() == 1 else ["hit", "stand", "pass"]
-				for action_name: String in actions:
-					var action_copy: String = action_name
-					var button: Button = _button({"hit": "Ещё карту", "stand": "Хватит", "pass": "Пас: потерять ставку"}[action_name], func() -> void: await _send(action_copy))
-					button.disabled = bool(me.get("done", false)) or bool(me.get("eliminated", false))
-			"roulette":
-				_show_table()
-				_roulette()
 			"memory":
 				_memory()
 			"checkers":
@@ -338,47 +359,10 @@ func _render_room() -> void:
 				_bugs = LoungeBugs.new(_room)
 				content.add_child(_bugs)
 				_bugs.caught.connect(func(index: int) -> void: await _send("catch", {"index": index}))
-	if phase in ["waiting", "finished"] or game_key == "roulette":
+	if phase in ["waiting", "finished"]:
 		_button("Выйти из комнаты", _leave)
 	_button("Свернуть комнату", _home)
 	_status = _text("")
-
-
-func _roulette() -> void:
-	var phase: String = str(_room.get("phase", ""))
-	if phase == "betting" and Backend.get_balance() > 0:
-		var amount: SpinBox = SpinBox.new()
-		amount.min_value = 1
-		amount.max_value = maxi(1, Backend.get_balance())
-		amount.value = mini(20, int(amount.max_value))
-		content.add_child(amount)
-		for field: String in ["red", "black", "green"]:
-			var field_copy: String = field
-			_button({"red": "Красное · ×2", "black": "Чёрное · ×2", "green": "Зелёный 0 · ×36"}[field], func() -> void: await _send("bet", {"field": field_copy, "amount": int(amount.value)}))
-		var number: SpinBox = SpinBox.new()
-		number.min_value = 0
-		number.max_value = 36
-		content.add_child(number)
-		_button("Поставить на номер · ×36", func() -> void: await _send("bet", {"field": "n%d" % int(number.value), "amount": int(amount.value)}))
-	if Backend.get_balance() == 0:
-		_text("Баланс 0: ты зритель. После пополнения можно снова ставить.")
-	var bets: Array = _room.get("bets", [])
-	for item: Dictionary in bets:
-		var players: Array = _room.get("players", [])
-		_text("%s: %d на %s" % [(players[int(item.get("player", 0))] as Dictionary).get("name", ""), int(item.get("amount", 0)), item.get("field", "")], 10)
-	var history: Array = _room.get("history", [])
-	_text("История: " + ", ".join(history.map(func(n: Variant) -> String: return str(n))), 10)
-	var gains: Dictionary = _room.get("gains", {})
-	if phase == "result":
-		for positive: bool in [true, false]:
-			_text("Выиграли" if positive else "Проиграли / без изменения")
-			for p: Dictionary in _room.get("players", []):
-				var id: String = str(p.get("id", ""))
-				if gains.has(id) and (int(gains[id]) > 0) == positive:
-					_text("%s: %+d" % [p.get("name", ""), int(gains[id])], 11)
-	if (_room.get("players", []) as Array).size() > 6:
-		content.add_child(LoungeRoster.new(_room.get("players", [])))
-	_button("Попросить койны в долг", func() -> void: var panel: LoungeLoans = LoungeLoans.new(); get_parent().add_child(panel); panel.open())
 
 
 func _memory() -> void:
@@ -457,18 +441,24 @@ static func _binary(value: int) -> String:
 	return "%d%d%d" % [(value >> 2) & 1, (value >> 1) & 1, value & 1]
 
 
-func _show_table() -> void:
-	if not is_instance_valid(_table) or _table.is_queued_for_deletion():
-		_table = LoungeTable.new(_room)
-	else:
-		_table.update_room(_room)
-	content.add_child(_table)
-
-
 func _on_closed() -> void:
 	_ui_epoch += 1
 	if is_instance_valid(_bugs):
 		_bugs.queue_free()
+	# The clicker stops sending taps and counts the time away as closed.
+	if is_instance_valid(_clicker_view):
+		_clicker_view.queue_free()
+
+
+func _open_clicker() -> void:
+	_ui_epoch += 1
+	clear()
+	_room = {}
+	set_title("Кот удачи")
+	set_subtitle("Кликер · очки не превращаются в койны")
+	_clicker_view = ClickerView.new()
+	_clicker_view.back_requested.connect(_home)
+	content.add_child(_clicker_view)
 
 
 func _my_index() -> int:
@@ -498,16 +488,21 @@ func _button(caption: String, callback: Callable, primary: bool = false) -> Butt
 	return button
 
 
+## Menu button with the game's icon on the left, text aligned next to it.
+func _game_button(caption: String, game_key: String, callback: Callable, primary: bool = false) -> Button:
+	var button: Button = _button(caption, callback, primary)
+	var path: String = GAME_ICON_DIR % game_key
+	if ResourceLoader.exists(path):
+		button.icon = load(path)
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.add_theme_constant_override("h_separation", 8)
+		button.custom_minimum_size.y = 40
+	return button
+
+
 func _play_sound(sound_name: String) -> void:
 	_sound.stream = load("res://assets/audio/%s.wav" % sound_name)
 	_sound.play()
-
-
-static func _card_names(cards: Array) -> String:
-	var names: PackedStringArray = PackedStringArray()
-	for card: int in cards:
-		names.append(LoungeTable.card_name(card))
-	return " ".join(names)
 
 
 static func _error(key: String) -> String:
@@ -529,13 +524,6 @@ static func _error(key: String) -> String:
 	}.get(key, "Действие недоступно. Обнови экран.")
 
 
-func _show_result(data: Dictionary) -> void:
-	await get_tree().create_timer(1.8).timeout
-	if visible and _room.get("id", "") == data.get("id", "") and _room.get("phase", "") == "result":
-		get_parent().add_child(LoungeResult.new(data))
-		_play_sound("cash_register")
-
-
 static func _style_check(check: CheckBox) -> void:
 	for state: String in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		check.add_theme_color_override(state, UiStyle.INK)
@@ -544,11 +532,67 @@ static func _style_check(check: CheckBox) -> void:
 
 func _exit_tree() -> void:
 	PlayTime.exercise_mode = false
-	if is_instance_valid(_table) and _table.get_parent() == null:
-		_table.queue_free()
 
 
 func _leave() -> void:
 	if await _send("leave"):
 		last_room = {}
 		_home()
+
+func _casino_alive() -> bool:
+	return is_instance_valid(_casino) and not _casino.is_queued_for_deletion() and _casino.get_parent() == content
+
+
+func _casino_shows(data: Dictionary) -> bool:
+	return _casino_alive() and _casino.room_id() == str(data.get("id", "")) and str(data.get("game", "")) in CASINO_GAMES
+
+
+func _casino_subtitle() -> String:
+	if _room.get("game", "") == "blackjack":
+		return "Ставка %d · баланс %d" % [int(_room.get("stake", 0)), Backend.get_balance()]
+	var seated: int = 0
+	for p: Dictionary in _room.get("players", []):
+		seated += 0 if p.get("departed", false) else 1
+	return "Общий стол · за столом %d · баланс %d" % [seated, Backend.get_balance()]
+
+
+## The 21 and roulette tables are built once per room and then only receive new states.
+func _render_casino() -> void:
+	set_title(str(TITLES.get(_room.get("game", ""), "Развлечения")))
+	set_subtitle(_casino_subtitle())
+	if _casino_shows(_room):
+		_casino.update_room(_room)
+		return
+	clear()
+	_casino = LoungeBlackjackView.new(_room) if _room.get("game", "") == "blackjack" else LoungeRouletteView.new(_room)
+	content.add_child(_casino)
+	_status = _casino.status_label
+	_casino.action_requested.connect(_on_casino_action)
+	_casino.leave_requested.connect(_leave)
+	_casino.minimize_requested.connect(_home)
+	var roulette: LoungeRouletteView = _casino as LoungeRouletteView
+	if roulette != null:
+		roulette.loan_requested.connect(func() -> void:
+			var panel: LoungeLoans = LoungeLoans.new()
+			get_parent().add_child(panel)
+			panel.open()
+		)
+
+
+## Compound table actions: several server steps behind one button.
+func _on_casino_action(action_name: String, extra: Dictionary) -> void:
+	var view: LoungeCasinoView = _casino
+	var ok: bool = false
+	match action_name:
+		"deal":
+			var stake: int = int(extra.get("stake", 0))
+			ok = stake == int(_room.get("stake", 0)) or await _send("stake", {"stake": stake})
+			ok = ok and (bool(_my_player().get("ready", false)) or await _send("ready", {"ready": true}))
+			ok = ok and await _send("start")
+		"open_table":
+			ok = bool(_my_player().get("ready", false)) or await _send("ready", {"ready": true})
+			ok = ok and await _send("start")
+		_:
+			ok = await _send(action_name, extra)
+	if is_instance_valid(view) and not view.is_queued_for_deletion():
+		view.action_finished(action_name, ok)
