@@ -311,6 +311,13 @@ func rpcCompleteTask(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 			}
 		}
 		tx.grantTask(tx.me, task, tx.today, reward)
+		if task.Minigame == "squats" {
+			if reps, ok := request.Proof["reps"].(float64); ok && reps >= 10 {
+				if err := tx.addPersonalSquats(10); err != nil {
+					return nil, err
+				}
+			}
+		}
 		result.Reward = reward
 		result.Balance = tx.me.balance
 		return result, nil

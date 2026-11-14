@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: nakama
+      POSTGRES_USER: nakama
+      POSTGRES_PASSWORD: lounge-test-only
+    healthcheck:
+      test: [CMD, pg_isready, -U, nakama]
+      interval: 1s
+      retries: 30
+  game:
+    image: officegame-lounge-test:local
+    build:
+      context: ..
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:17350:7350'
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - >-
+        /nakama/nakama migrate up --database.address nakama:lounge-test-only@db:5432/nakama &&
+        exec /nakama/nakama --config /nakama/data/local.yml
+        --database.address nakama:lounge-test-only@db:5432/nakama
+        --socket.server_key defaultkey
+        --session.encryption_key lounge-test-session-only
+        --session.refresh_encryption_key lounge-test-refresh-only
+        --console.password lounge-test-console-only
+        --runtime.env ADMIN_USERNAME=loungeadmin
+        --runtime.env ADMIN_PASSWORD=lounge-test-password
+        --runtime.env PRESENCE_SECRET=lounge-test-presence-secret
+        --runtime.env APP_ENV=dev
+        --runtime.env DEV_MODE=true

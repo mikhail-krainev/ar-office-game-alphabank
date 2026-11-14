@@ -84,6 +84,10 @@ func (tx *gameTx) networkError() (string, error) {
 // coins at home or on the way to the shop. Accounts and the admin panel work from anywhere, and so
 // do these game RPCs:
 var anywhereRpcs = map[string]bool{
+	"lounge_list":   true,
+	"lounge_loans":  true,
+	"lounge_people": true,
+	"lounge_action": true,
 	// The home location: the apartment, the wardrobe and the garage. Nothing here earns coins, it
 	// only spends them, so the player looks around and dresses up before the trip. login records the
 	// Wi-Fi arrival only from the office network (account.go).

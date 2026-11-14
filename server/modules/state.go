@@ -56,6 +56,9 @@ type MorningReport struct {
 }
 
 type PlayerState struct {
+	LoanIDs      []string     `json:"loan_ids,omitempty"`
+	SquatWorkout squatWorkout `json:"squat_workout"`
+
 	FirstDay     int                 `json:"first_day"`
 	LastLoginDay int                 `json:"last_login_day"`
 	ProcessedDay int                 `json:"processed_day"`
@@ -245,6 +248,8 @@ func (d *playerDoc) displayName() string {
 }
 
 type gameTx struct {
+	lounges map[string]*loadedLounge
+
 	ctx     context.Context
 	logger  runtime.Logger
 	db      *sql.DB
@@ -293,6 +298,9 @@ func runUserTx(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtim
 	for attempt := 1; ; attempt++ {
 		tx, err := newGameTx(ctx, logger, db, nk, userID)
 		if err != nil {
+			return "", err
+		}
+		if err := tx.loungeSweep(); err != nil {
 			return "", err
 		}
 		result, err := fn(tx)
@@ -469,6 +477,13 @@ func (tx *gameTx) writeSystem(collection, key string, value any, version string)
 }
 
 func (tx *gameTx) commit() error {
+	for id, loaded := range tx.lounges {
+		if loaded.dirty {
+			if err := tx.writeSystem(loungeCollection, id, loaded.room, loaded.version); err != nil {
+				return err
+			}
+		}
+	}
 	if tx.draw != nil && tx.draw.dirty {
 		if err := tx.writeSystem(rafflesCollection, tx.draw.draw.ID, tx.draw.draw, tx.draw.version); err != nil {
 			return err

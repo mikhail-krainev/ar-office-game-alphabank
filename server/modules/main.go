@@ -58,6 +58,11 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		return err
 	}
 	rpcs := map[string]rpcFunc{
+		"lounge_list":       rpcLoungeList,
+		"lounge_loans":      rpcLoungeLoans,
+		"lounge_people":     rpcLoungePeople,
+		"lounge_action":     rpcLoungeAction,
+		"department_squats": rpcDepartmentSquats,
 		// Account and admin: from anywhere.
 		"get_profile":             rpcGetProfile,
 		"list_departments":        rpcListDepartments,
