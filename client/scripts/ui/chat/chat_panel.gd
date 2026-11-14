@@ -31,7 +31,7 @@ var _back: Button
 
 func _init() -> void:
 	super("CHAT_TITLE")
-	_back = UiStyle.make_button("←", false, 14)
+	_back = UiStyle.make_symbol_button("back", "Назад")
 	_back.custom_minimum_size = Vector2(34, 30)
 	_back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_back.pressed.connect(open)

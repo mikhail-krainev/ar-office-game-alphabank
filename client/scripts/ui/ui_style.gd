@@ -131,6 +131,10 @@ static func make_symbol_button(symbol: String, hint: String) -> Button:
 		if symbol == "close":
 			icon.draw_line(center + Vector2(-5, -5), center + Vector2(5, 5), INK, 2)
 			icon.draw_line(center + Vector2(5, -5), center + Vector2(-5, 5), INK, 2)
+		elif symbol == "back":
+			icon.draw_line(center + Vector2(6, 0), center + Vector2(-6, 0), INK, 2)
+			icon.draw_line(center + Vector2(-1, -5), center + Vector2(-6, 0), INK, 2)
+			icon.draw_line(center + Vector2(-6, 0), center + Vector2(-1, 5), INK, 2)
 		else:
 			icon.draw_line(center + Vector2(-6, 0), center + Vector2(6, 0), INK, 2)
 			icon.draw_line(center + Vector2(1, -5), center + Vector2(6, 0), INK, 2)

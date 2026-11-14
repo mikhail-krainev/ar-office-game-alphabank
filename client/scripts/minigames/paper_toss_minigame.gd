@@ -205,7 +205,7 @@ func _aimed_spot() -> Variant:
 
 
 func _wind_text() -> String:
-	var arrow: String = "→" if _toss.wind > 0.0 else "←"
+	var arrow: String = tr("MG_PAPER_TOSS_WIND_RIGHT") if _toss.wind > 0.0 else tr("MG_PAPER_TOSS_WIND_LEFT")
 	return tr("MG_PAPER_TOSS_WIND") % [arrow, absf(_toss.wind)]
 
 

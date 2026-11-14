@@ -522,6 +522,8 @@ MG_AR_STARTING,"Ищем поверхности: медленно поводи �
 MG_PAPER_TOSS_PLACE,"Наведи кольцо на пол и коснись экрана: там встанет урна","Aim the ring at the floor and tap: the bin will stand there"
 MG_PAPER_TOSS_AIM_FLOOR,"Наклони телефон к полу в 1–3 м перед собой","Tilt the phone at the floor 1–3 m in front of you"
 MG_PAPER_TOSS_WIND,Ветер %s %.1f,Wind %s %.1f
+MG_PAPER_TOSS_WIND_RIGHT,вправо,right
+MG_PAPER_TOSS_WIND_LEFT,влево,left
 MG_PAPER_TOSS_IN,ПОПАЛ!,IN!
 MG_PAPER_TOSS_MISS,МИМО,MISS
 HUD_INTERIOR,Интерьер,Interior
