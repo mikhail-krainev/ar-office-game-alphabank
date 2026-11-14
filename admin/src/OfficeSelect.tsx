@@ -1,4 +1,4 @@
-import type { DashboardActions } from "./Dashboard";
+import type { DashboardActions } from "./actions";
 import { Dropdown } from "./Dropdown";
 
 /**

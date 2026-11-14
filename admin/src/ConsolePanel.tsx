@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { api, ApiError, type ConsoleCommand, type ConsoleInfo } from "./api";
-import type { DashboardActions } from "./Dashboard";
+import type { DashboardActions } from "./actions";
+import { PageHeader } from "./ui";
 import { errorText, isSessionError } from "./messages";
 
 const HISTORY_KEY = "office-admin-console-history";
@@ -170,11 +171,12 @@ export function ConsolePanel({ actions }: { actions: DashboardActions }) {
   };
 
   return (
+    <>
+    <PageHeader
+      title="Консоль разработчика"
+      actions={info && <span className={info.env === "dev" ? "badge present" : "badge soft"}>{info.env === "dev" ? "DEV: все команды" : "PROD: только просмотр"}</span>}
+    />
     <div className="card console-card">
-      <div className="section-head">
-        <h2>Консоль</h2>
-        {info && <span className={info.env === "dev" ? "badge present" : "badge soft"}>{info.env === "dev" ? "DEV: все команды" : "PROD: только просмотр"}</span>}
-      </div>
       <div className="console" onClick={() => inputRef.current?.focus()}>
         <div className="console-output" ref={outputRef} role="log" aria-live="polite">
           {lines.map((line) => (
@@ -216,5 +218,6 @@ export function ConsolePanel({ actions }: { actions: DashboardActions }) {
         </ul>
       )}
     </div>
+    </>
   );
 }

@@ -1,11 +1,27 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, type RewardStock, type RewardsOverview } from "./api";
-import type { DashboardActions } from "./Dashboard";
+import type { DashboardActions } from "./actions";
+import { useDialogs } from "./Dialogs";
+import { FilterBar, matches, useFilters } from "./FilterBar";
+import { Icon } from "./Icon";
+import { EmptyState, Loading, PageHeader, StatCard } from "./ui";
 import { formatDay } from "./format";
 import { RARITY_LABELS, label } from "./labels";
 
 // Server range (server/modules/rewards.go: maxStock).
 const MAX_STOCK = 10000;
+
+const DEFAULT_FILTERS = { q: "", stock: "", rarity: "", kind: "" };
+
+type StockState = "in" | "out" | "unlimited";
+const STOCK_LABELS: Record<StockState, string> = { in: "в наличии", out: "нет в наличии", unlimited: "без ограничений" };
+
+function stockState(item: RewardStock): StockState {
+  if (item.left < 0) {
+    return "unlimited";
+  }
+  return item.left === 0 ? "out" : "in";
+}
 
 interface Draft {
   weekly: string;
@@ -27,9 +43,10 @@ function stockNumber(text: string): number | null {
  */
 export function RewardsPanel({ actions }: { actions: DashboardActions }) {
   const { session, run, report } = actions;
+  const { notify } = useDialogs();
   const [overview, setOverview] = useState<RewardsOverview | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
-  const [notice, setNotice] = useState("");
+  const { values, set, reset, active } = useFilters("rewards", DEFAULT_FILTERS);
 
   const load = useCallback(async () => {
     try {
@@ -45,17 +62,37 @@ export function RewardsPanel({ actions }: { actions: DashboardActions }) {
     void load();
   }, [load]);
 
+  const visible = useMemo(
+    () =>
+      (overview?.items ?? [])
+        .filter((item) => !values.rarity || item.rarity === values.rarity)
+        .filter((item) => !values.stock || stockState(item) === values.stock)
+        .filter((item) => !values.kind || (values.kind === "cosmetic") === item.cosmetic)
+        .filter((item) => matches(values.q, item.name, item.id, label(RARITY_LABELS, item.rarity))),
+    [overview, values],
+  );
+
+  const header = (
+    <PageHeader
+      title="Награды"
+      actions={
+        <button type="button" className="secondary" onClick={() => void load()}>
+          <Icon name="refresh" size={16} /> Обновить
+        </button>
+      }
+    />
+  );
+
   if (!overview) {
     return (
-      <section className="card">
-        <h2>Награды</h2>
-        <p className="muted">Загрузка…</p>
-      </section>
+      <>
+        {header}
+        <Loading />
+      </>
     );
   }
 
   function edit(id: string, field: keyof Draft, text: string) {
-    setNotice("");
     setDrafts((current) => ({ ...current, [id]: { ...current[id], [field]: text } }));
   }
 
@@ -68,27 +105,65 @@ export function RewardsPanel({ actions }: { actions: DashboardActions }) {
     }
     const ok = await run(() => api.setRewardStock(session, item.id, weekly, left));
     if (ok) {
-      setNotice(`Запас «${item.name}» сохранён.`);
+      notify(`Запас «${item.name}» сохранён.`);
       await load();
     }
   }
 
   const totalShop = overview.items.reduce((sum, item) => sum + item.from_shop, 0);
   const totalWheel = overview.items.reduce((sum, item) => sum + item.from_wheel, 0);
+  const outOfStock = overview.items.filter((item) => item.left === 0).length;
+  const rarities = [...new Set(overview.items.map((item) => item.rarity))];
 
   return (
-    <section className="card">
-      <h2>Награды</h2>
-      <p className="muted">
-        Запас на неделю пополняется каждый понедельник (неделя с {formatDay(overview.week_start)}). 0 — без ограничений.
-        Закончившаяся награда остаётся в магазине и на колесе с пометкой «Нет в наличии»: купить её нельзя, а выигрыш на
-        колесе игрок обменивает на монеты по её цене или на повторный спин. Вещи гардероба игрок получает только один раз.
-      </p>
-      <p className="muted">
-        Выдано всего: в магазине {totalShop}, на колесе {totalWheel}; обменено выигрышей колеса: {overview.wheel_exchanged}.
-      </p>
+    <>
+      {header}
+      <div className="stat-grid">
+        <StatCard label="Неделя с" value={formatDay(overview.week_start)} />
+        <StatCard label="Выдано в магазине" value={totalShop} />
+        <StatCard label="Выдано на колесе" value={totalWheel} hint={`обменено выигрышей: ${overview.wheel_exchanged}`} />
+        <StatCard
+          label="Нет в наличии"
+          value={outOfStock}
+          tone={outOfStock ? "warn" : undefined}
+          href={outOfStock ? "#/rewards?stock=out" : undefined}
+        />
+      </div>
+      <section className="card flush">
+        <FilterBar
+          query={values.q}
+          onQuery={(text) => set("q", text)}
+          placeholder="Название награды"
+          filters={[
+            { key: "stock", label: "Наличие", allLabel: "любое", options: Object.entries(STOCK_LABELS).map(([value, text]) => ({ value, label: text })) },
+            { key: "rarity", label: "Редкость", allLabel: "любая", options: rarities.map((r) => ({ value: r, label: label(RARITY_LABELS, r) })) },
+            {
+              key: "kind",
+              label: "Тип",
+              allLabel: "все",
+              options: [
+                { value: "cosmetic", label: "гардероб" },
+                { value: "other", label: "прочие" },
+              ],
+            },
+          ]}
+          values={values}
+          onChange={(key, value) => set(key as keyof typeof DEFAULT_FILTERS, value)}
+          onReset={reset}
+          active={active}
+          shown={visible.length}
+          total={overview.items.length}
+          noun={["награда", "награды", "наград"]}
+        />
+        {visible.length === 0 ? (
+          <EmptyState icon="gift" title="Наград не найдено">
+            <button type="button" className="link" onClick={reset}>
+              Сбросить фильтры
+            </button>
+          </EmptyState>
+        ) : (
       <div className="table-wrap">
-        <table className="stats-table">
+        <table className="data-table">
           <thead>
             <tr>
               <th>Награда</th>
@@ -103,7 +178,7 @@ export function RewardsPanel({ actions }: { actions: DashboardActions }) {
             </tr>
           </thead>
           <tbody>
-            {overview.items.map((item) => {
+            {visible.map((item) => {
               const draft = drafts[item.id] ?? draftOf(item);
               const changed = JSON.stringify(draft) !== JSON.stringify(draftOf(item));
               const weekly = stockNumber(draft.weekly);
@@ -111,10 +186,12 @@ export function RewardsPanel({ actions }: { actions: DashboardActions }) {
               return (
                 <tr key={item.id}>
                   <td>
-                    {item.name}
-                    {item.cosmetic && <span className="muted"> · гардероб</span>}
+                    <span className="player-name">{item.name}</span>
+                    {item.cosmetic && <span className="muted">гардероб</span>}
                   </td>
-                  <td>{label(RARITY_LABELS, item.rarity)}</td>
+                  <td>
+                    <span className={`badge rarity-${item.rarity}`}>{label(RARITY_LABELS, item.rarity)}</span>
+                  </td>
                   <td className="num">{item.price}</td>
                   <td className="num">
                     <input
@@ -142,13 +219,13 @@ export function RewardsPanel({ actions }: { actions: DashboardActions }) {
                         onChange={(e) => edit(item.id, "left", e.target.value)}
                       />
                     )}
-                    {item.left === 0 && <span className="hint error"> нет в наличии</span>}
+                    {item.left === 0 && <div className="hint error">нет в наличии</div>}
                   </td>
                   <td className="num">{item.from_shop}</td>
                   <td className="num">{item.from_wheel}</td>
                   <td className="num">{item.this_week}</td>
                   <td>
-                    <button type="button" className="secondary" disabled={!changed || !valid} onClick={() => void save(item)}>
+                    <button type="button" className={changed ? "small" : "secondary small"} disabled={!changed || !valid} onClick={() => void save(item)}>
                       Сохранить
                     </button>
                   </td>
@@ -158,7 +235,8 @@ export function RewardsPanel({ actions }: { actions: DashboardActions }) {
           </tbody>
         </table>
       </div>
-      {notice && <p className="muted">{notice}</p>}
-    </section>
+        )}
+      </section>
+    </>
   );
 }

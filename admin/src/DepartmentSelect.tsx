@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { DashboardActions } from "./Dashboard";
+import type { DashboardActions } from "./actions";
 import { Dropdown } from "./Dropdown";
 
 const NEW_DEPARTMENT = "__new__";

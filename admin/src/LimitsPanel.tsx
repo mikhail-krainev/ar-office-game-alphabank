@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, type Limits } from "./api";
-import type { DashboardActions } from "./Dashboard";
+import type { DashboardActions } from "./actions";
+import { useDialogs } from "./Dialogs";
+import { Loading } from "./ui";
 import { formatMinutes } from "./format";
-import { OfficeSelect } from "./OfficeSelect";
 
 // Server ranges (server/modules/limits.go).
 const RANGES = {
@@ -19,24 +20,14 @@ type NumberField = keyof typeof RANGES;
  * Working-time limits of one office: how often tasks count and how long one may play without a break.
  * A player follows the limits of the office they are in today (the trip office on a business trip).
  */
-export function LimitsPanel({ actions }: { actions: DashboardActions }) {
+export function LimitsPanel({ actions, officeId }: { actions: DashboardActions; officeId: string }) {
   const { session, run, report } = actions;
-  const [officeId, setOfficeId] = useState(actions.offices[0]?.id ?? "");
+  const { notify } = useDialogs();
   const [saved, setSaved] = useState<Limits | null>(null);
   const [defaults, setDefaults] = useState<Limits | null>(null);
   const [form, setForm] = useState<Limits | null>(null);
-  const [notice, setNotice] = useState("");
-
-  useEffect(() => {
-    if (!officeId && actions.offices.length) {
-      setOfficeId(actions.offices[0].id);
-    }
-  }, [officeId, actions.offices]);
 
   const load = useCallback(async () => {
-    if (!officeId) {
-      return;
-    }
     try {
       const result = await api.getLimits(session, officeId);
       setSaved(result.limits);
@@ -51,43 +42,18 @@ export function LimitsPanel({ actions }: { actions: DashboardActions }) {
     void load();
   }, [load]);
 
-  const picker = (
-    <div className="office-picker">
-      <label>
-        Офис
-        <OfficeSelect
-          actions={actions}
-          value={officeId}
-          onChange={(id) => {
-            setNotice("");
-            setForm(null);
-            setOfficeId(id);
-          }}
-        />
-      </label>
-    </div>
-  );
-
   if (!form || !saved || !defaults) {
-    return (
-      <section className="card">
-        <h2>Ограничения</h2>
-        {picker}
-        <p className="muted">Загрузка…</p>
-      </section>
-    );
+    return <Loading />;
   }
 
   const changed = JSON.stringify(form) !== JSON.stringify(saved);
   const windowValid = form.task_window_start < form.task_window_end;
 
   function setNumber(field: NumberField, text: string) {
-    setNotice("");
     setForm((current) => (current ? { ...current, [field]: text === "" ? 0 : Math.round(Number(text)) } : current));
   }
 
   function setClock(field: "task_window_start" | "task_window_end", text: string) {
-    setNotice("");
     setForm((current) => (current ? { ...current, [field]: text } : current));
   }
 
@@ -103,7 +69,7 @@ export function LimitsPanel({ actions }: { actions: DashboardActions }) {
     if (ok && next) {
       setSaved(next);
       setForm(next);
-      setNotice(`Сохранено для офиса «${actions.officeName(officeId)}». Новые значения действуют со следующего действия игроков.`);
+      notify(`Сохранено для офиса «${actions.officeName(officeId)}». Новые значения действуют со следующего действия игроков.`);
     }
   }
 
@@ -122,13 +88,8 @@ export function LimitsPanel({ actions }: { actions: DashboardActions }) {
 
   return (
     <form onSubmit={submit}>
-      {picker}
       <section className="card">
         <h2>Задания</h2>
-        <p className="muted">
-          Каждый рабочий день игрок получает свой случайный набор заданий: половину всех заданий в один день и оставшуюся
-          половину на следующий рабочий день. Отметка на ресепшне есть всегда и в ограничения ниже не входит.
-        </p>
         <div className="grid-form limits-form">
           <label>
             Пауза между заданиями, мин
@@ -150,9 +111,6 @@ export function LimitsPanel({ actions }: { actions: DashboardActions }) {
 
       <section className="card">
         <h2>Время в игре</h2>
-        <p className="muted">
-          Считается непрерывная игра: всё время, пока игра открыта на экране. Перерыв не короче отдыха обнуляет счёт.
-        </p>
         <div className="grid-form limits-form">
           <label>
             Предупреждение после, мин
@@ -182,11 +140,6 @@ export function LimitsPanel({ actions }: { actions: DashboardActions }) {
 
       <section className="card">
         <h2>Присутствие в офисе</h2>
-        <p className="muted">
-          Код ВХОД сканируется один раз в день: он отмечает приход. Дальше выходы и возвращения определяются по Wi-Fi офиса,
-          пока у игрока открыта игра. Код ВЫХОД или кнопка «Поехать домой» завершают день; без них уходом считается последний
-          раз, когда игрок был в сети офиса.
-        </p>
         <div className="grid-form limits-form">
           <label>
             Вышел, если нет в сети, мин
@@ -198,7 +151,8 @@ export function LimitsPanel({ actions }: { actions: DashboardActions }) {
         </div>
       </section>
 
-      <div className="form-actions">
+      <div className={changed ? "form-actions sticky-actions visible" : "form-actions sticky-actions"}>
+        {changed && <span className="muted">Есть несохранённые изменения</span>}
         <button type="submit" disabled={!changed || !windowValid}>
           Сохранить
         </button>
@@ -209,14 +163,10 @@ export function LimitsPanel({ actions }: { actions: DashboardActions }) {
           type="button"
           className="link"
           disabled={JSON.stringify(form) === JSON.stringify(defaults)}
-          onClick={() => {
-            setNotice("");
-            setForm(defaults);
-          }}
+          onClick={() => setForm(defaults)}
         >
           Значения по умолчанию
         </button>
-        {notice && <span className="muted">{notice}</span>}
       </div>
     </form>
   );

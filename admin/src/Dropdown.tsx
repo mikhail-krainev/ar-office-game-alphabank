@@ -20,11 +20,19 @@ export function Dropdown({
   options,
   placeholder,
   onChange,
+  prefix,
+  highlighted,
+  ariaLabel,
 }: {
   value: string;
   options: DropdownOption[];
   placeholder: string;
   onChange: (value: string) => void;
+  /** Label shown before the value ("Офис: Екатеринбург"), for filters. */
+  prefix?: string;
+  /** Marks a filter that narrows the list. */
+  highlighted?: boolean;
+  ariaLabel?: string;
 }) {
   const id = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -137,7 +145,8 @@ export function Dropdown({
       <button
         ref={triggerRef}
         type="button"
-        className={`dropdown-trigger${open ? " open" : ""}`}
+        className={`dropdown-trigger${open ? " open" : ""}${highlighted ? " highlighted" : ""}`}
+        aria-label={ariaLabel ?? prefix}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? `${id}-menu` : undefined}
@@ -145,9 +154,10 @@ export function Dropdown({
         onClick={() => (open ? setOpen(false) : show())}
         onKeyDown={onKeyDown}
       >
+        {prefix && <span className="dropdown-prefix">{prefix}:</span>}
         <span className={selected ? "dropdown-value" : "dropdown-value placeholder"}>{selected?.label ?? placeholder}</span>
         <svg className="dropdown-chevron" viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M5 6.5l3-3 3 3M5 9.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
       {open &&

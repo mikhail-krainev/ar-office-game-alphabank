@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { type ActivityEvent, type LedgerEntry, type OfficeVisit, type PlayerStats as Stats, type StatsDay } from "./api";
-import type { DashboardActions } from "./Dashboard";
+import type { DashboardActions } from "./actions";
+import { Loading } from "./ui";
 import { Dropdown } from "./Dropdown";
 import { formatDate, formatDateTime, formatDay, formatMinutes, formatPlayTime, formatTime, plural, weekdayOf } from "./format";
 import {
@@ -16,23 +17,11 @@ import {
   label,
   suspiciousLabel,
 } from "./labels";
-import { PlayBadge, PresenceBadge } from "./StatsPanel";
-import { tripLabel } from "./TripForm";
 
 type Tab = "days" | "journal" | "coins" | "fraud";
 
 /** One player's audit: totals, attendance calendar, day-by-day history, journal, coins, anti-fraud. */
-export function PlayerStats({
-  actions,
-  userId,
-  departmentName,
-  onBack,
-}: {
-  actions: DashboardActions;
-  userId: string;
-  departmentName: (id: string) => string;
-  onBack: () => void;
-}) {
+export function PlayerStats({ actions, userId, version }: { actions: DashboardActions; userId: string; version: number }) {
   const { report, loadPlayerStats } = actions;
   const [stats, setStats] = useState<Stats | null>(null);
   const [tab, setTab] = useState<Tab>("days");
@@ -47,17 +36,10 @@ export function PlayerStats({
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, version]);
 
   if (!stats) {
-    return (
-      <section className="card">
-        <button className="link" onClick={onBack}>
-          ← Все игроки
-        </button>
-        <p className="muted">Загрузка…</p>
-      </section>
-    );
+    return <Loading />;
   }
 
   const { player, names } = stats;
@@ -68,33 +50,12 @@ export function PlayerStats({
     <>
       <section className="card">
         <div className="section-head">
-          <button className="link" onClick={onBack}>
-            ← Все игроки
-          </button>
-          <button className="secondary" onClick={() => void load()}>
-            Обновить
-          </button>
-        </div>
-        <div className="player-head">
-          <div>
-            <h2 className="player-title">
-              {player.display_name} <PresenceBadge player={player} /> <PlayBadge player={player} />
-            </h2>
-            <p className="muted">
-              <code>{player.username}</code> · {actions.officeName(player.office_id)} · {departmentName(player.department_id)} · аккаунт
-              создан {formatDateTime(player.created_at)}
-            </p>
-            {player.trip && (
-              <p>
-                <span className="badge soft">в командировке: {tripLabel(actions, player.trip)}</span>
-              </p>
-            )}
-            <p className="muted">
-              {player.first_day ? <>Играет с {formatDay(player.first_day)}</> : "Ещё не входил в игру"}
-              {player.last_activity ? <> · последняя активность {formatDateTime(player.last_activity)}</> : null}
-              {player.status ? <> · статус «{player.status}»</> : null}
-            </p>
-          </div>
+          <h2>Сводка</h2>
+          <span className="muted">
+            {player.first_day ? <>Играет с {formatDay(player.first_day)}</> : "Ещё не входил в игру"}
+            {player.last_activity ? <> · активность {formatDateTime(player.last_activity)}</> : null}
+            {player.status ? <> · статус «{player.status}»</> : null}
+          </span>
         </div>
         <div className="tiles">
           <Tile value={player.streak} label={`${plural(player.streak, "день", "дня", "дней")} подряд`} accent />

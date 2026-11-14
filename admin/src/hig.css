@@ -1,0 +1,916 @@
+/* Apple Human Interface Guidelines applied to the panel
+   (developer.apple.com/design/human-interface-guidelines):
+   - typography: the system font (SF Pro on Apple devices) and the HIG type ramp;
+   - colour: semantic system colours (labels, fills, separators, grouped backgrounds), the
+     Alfa-Bank red as the single tint colour, Dark Mode that follows the system setting;
+   - layout: a source-list sidebar, inset grouped content, an 8-point grid, large titles;
+   - controls: filled / gray / plain buttons, pop-up buttons, segmented controls, search fields;
+   - presentation: alerts with side-by-side buttons, sheets, HUD notifications;
+   - accessibility: 44-point targets on touch screens, visible focus, Reduce Motion.
+   Loaded last: it sets the tokens the other style sheets use and restyles their components. */
+
+:root {
+  /* Tint: Alfa-Bank red. */
+  --accent: #ef3124;
+  --accent-hover: #d92b1f;
+  --accent-soft: rgba(239, 49, 36, 0.1);
+  --accent-text: #ffffff;
+  --danger: #ef3124;
+  --error-bg: rgba(239, 49, 36, 0.1);
+
+  /* Labels */
+  --text: #1d1d1f;
+  --muted: rgba(60, 60, 67, 0.62);
+  --label-tertiary: rgba(60, 60, 67, 0.3);
+
+  /* Backgrounds: grouped (page) and secondary grouped (cards) */
+  --bg: #f2f2f7;
+  --surface: #ffffff;
+  --sidebar-bg: rgba(242, 242, 247, 0.82);
+
+  /* Fills and separators */
+  --fill: rgba(120, 120, 128, 0.12);
+  --fill-strong: rgba(120, 120, 128, 0.2);
+  --hover: rgba(120, 120, 128, 0.08);
+  --border: rgba(60, 60, 67, 0.16);
+  --separator: rgba(60, 60, 67, 0.12);
+
+  /* System colours, the accessible (darker) variants for text on light backgrounds */
+  --good: #248a3d;
+  --good-soft: rgba(52, 199, 89, 0.14);
+  --warn: #c93400;
+  --warn-soft: rgba(255, 149, 0, 0.14);
+  --info: #0066cc;
+  --info-soft: rgba(0, 122, 255, 0.1);
+
+  --focus: 0 0 0 4px rgba(239, 49, 36, 0.28);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-menu: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 10px 30px rgba(0, 0, 0, 0.16);
+  --overlay: rgba(0, 0, 0, 0.32);
+  --radius: 12px;
+
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #ff453a;
+    --accent-hover: #ff5e55;
+    --accent-soft: rgba(255, 69, 58, 0.18);
+    --danger: #ff453a;
+    --error-bg: rgba(255, 69, 58, 0.18);
+
+    --text: #f5f5f7;
+    --muted: rgba(235, 235, 245, 0.6);
+    --label-tertiary: rgba(235, 235, 245, 0.3);
+
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --sidebar-bg: rgba(28, 28, 30, 0.82);
+
+    --fill: rgba(118, 118, 128, 0.24);
+    --fill-strong: rgba(118, 118, 128, 0.36);
+    --hover: rgba(118, 118, 128, 0.16);
+    --border: rgba(84, 84, 88, 0.6);
+    --separator: rgba(84, 84, 88, 0.5);
+
+    --good: #30d158;
+    --good-soft: rgba(48, 209, 88, 0.18);
+    --warn: #ff9f0a;
+    --warn-soft: rgba(255, 159, 10, 0.18);
+    --info: #64d2ff;
+    --info-soft: rgba(10, 132, 255, 0.2);
+
+    --focus: 0 0 0 4px rgba(255, 69, 58, 0.4);
+    --shadow: none;
+    --shadow-menu: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 10px 30px rgba(0, 0, 0, 0.6);
+    --overlay: rgba(0, 0, 0, 0.55);
+    color-scheme: dark;
+  }
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+/* Type ramp: Large Title, Title 2, Title 3 / Headline, Body, Subheadline, Footnote, Caption */
+
+.page-title h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+.page-title p {
+  font-size: 0.95rem;
+}
+
+h2,
+.card h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+label {
+  font-size: 0.87rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.9em;
+}
+
+/* Sidebar: a source list on a translucent material */
+
+.sidebar {
+  background: var(--sidebar-bg);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-right: 0.5px solid var(--separator);
+}
+
+.brand {
+  border-bottom: none;
+  padding: 0 16px;
+}
+
+.brand-mark {
+  border-radius: 9px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.brand-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.sidebar-search {
+  padding: 4px 12px 0;
+}
+
+.nav {
+  padding: 10px 12px;
+}
+
+.nav-group + .nav-group {
+  margin-top: 18px;
+}
+
+.nav-group-title {
+  padding: 0 8px 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+
+.nav-item {
+  height: 32px;
+  gap: 10px;
+  padding: 0 8px;
+  border-radius: 7px;
+  font-size: 0.93rem;
+  font-weight: 500;
+}
+
+.nav-item .icon {
+  color: var(--accent);
+}
+
+.nav-item:hover {
+  background: var(--hover);
+}
+
+.nav-item.active,
+.nav-item.active:hover {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.nav-item.active .icon {
+  color: #fff;
+}
+
+.nav-item.active::before {
+  display: none;
+}
+
+.nav-item.active .nav-badge {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.nav-badge {
+  background: var(--fill-strong);
+  color: var(--text);
+}
+
+.sidebar-account {
+  border-top: 0.5px solid var(--separator);
+}
+
+.avatar {
+  background: linear-gradient(180deg, #a1a1a6, #8e8e93);
+  color: #fff;
+}
+
+.avatar.small {
+  background: linear-gradient(180deg, #a1a1a6, #8e8e93);
+  color: #fff;
+}
+
+.topbar {
+  background: var(--sidebar-bg);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid var(--separator);
+}
+
+/* Buttons: filled (primary), gray (secondary), plain (link), destructive */
+
+button {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 0.93rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+button.small {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 7px;
+  font-size: 0.85rem;
+}
+
+button.secondary,
+button.danger {
+  border: none;
+  background: var(--fill);
+}
+
+button.secondary {
+  color: var(--accent);
+}
+
+button.secondary:hover:not(:disabled) {
+  border: none;
+  background: var(--fill-strong);
+}
+
+button.danger {
+  color: var(--danger);
+}
+
+button.danger:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+button.link,
+button.link:hover:not(:disabled) {
+  color: var(--accent);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+button.link:hover:not(:disabled) {
+  opacity: 0.75;
+}
+
+button:disabled {
+  opacity: 0.4;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+button.icon-button,
+button.icon-button:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+/* Text fields and search fields: filled, no heavy border */
+
+input,
+textarea,
+.dropdown-trigger {
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: var(--fill);
+  color: var(--text);
+}
+
+textarea {
+  height: auto;
+}
+
+input:hover,
+.dropdown-trigger:hover:not(:disabled) {
+  border: none;
+  background: var(--fill-strong);
+}
+
+input:focus,
+textarea:focus,
+.dropdown-trigger:focus-visible,
+.dropdown-trigger.open {
+  border: none;
+  background: var(--surface);
+  box-shadow: var(--focus);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--label-tertiary);
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.search-field,
+button.search-trigger,
+button.search-trigger:hover:not(:disabled),
+.sidebar-search button.search-trigger,
+.sidebar-search button.search-trigger:hover:not(:disabled) {
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: var(--fill);
+  color: var(--muted);
+}
+
+.sidebar-search button.search-trigger:hover:not(:disabled) {
+  background: var(--fill-strong);
+}
+
+.search-field {
+  height: 36px;
+}
+
+.search-field:focus-within {
+  border: none;
+  background: var(--surface);
+  box-shadow: var(--focus);
+}
+
+.search-field input,
+.search-field input:hover,
+.search-field input:focus {
+  background: none;
+  box-shadow: none;
+}
+
+/* Pop-up buttons (filters, selects) and their menus */
+
+.filter-item .dropdown-trigger {
+  height: 32px;
+  border-radius: 8px;
+}
+
+.dropdown-trigger.highlighted,
+.dropdown-trigger.highlighted:hover:not(:disabled) {
+  border: none;
+  background: var(--accent-soft);
+}
+
+.dropdown-chevron {
+  width: 14px;
+  height: 14px;
+}
+
+.dropdown-trigger.open .dropdown-chevron {
+  transform: none;
+}
+
+.dropdown-menu {
+  padding: 5px;
+  border: none;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow-menu);
+  font-family: inherit;
+  backdrop-filter: blur(20px);
+}
+
+.dropdown-option {
+  padding: 6px 10px 6px 28px;
+  border-radius: 6px;
+}
+
+.dropdown-option.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.dropdown-option.selected {
+  font-weight: 500;
+}
+
+.dropdown-option.active.selected {
+  color: #fff;
+}
+
+.dropdown-option.selected::before {
+  content: "✓";
+  left: 10px;
+  top: 50%;
+  width: auto;
+  height: auto;
+  margin-top: -0.7em;
+  border-radius: 0;
+  background: none;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.dropdown-option.action::after {
+  border-top-color: var(--separator);
+}
+
+/* Segmented controls in place of underlined tabs */
+
+.tabs {
+  display: inline-flex;
+  max-width: 100%;
+  gap: 2px;
+  margin: 0 0 16px;
+  padding: 2px;
+  border: none;
+  border-radius: 9px;
+  background: var(--fill);
+}
+
+.tabs .tab,
+.tabs a.tab,
+.tabs button.tab,
+.tabs button.tab:hover:not(:disabled) {
+  height: 30px;
+  margin: 0;
+  padding: 0 14px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--text);
+  font-size: 0.87rem;
+  font-weight: 500;
+}
+
+.tabs .tab:hover:not(.active) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.tabs .tab.active,
+.tabs .tab.active:hover,
+.tabs button.tab.active:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+}
+
+.tabs .tab .icon {
+  color: var(--muted);
+}
+
+.tabs .tab.active .icon {
+  color: var(--accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .tabs .tab.active,
+  .tabs .tab.active:hover {
+    background: #636366;
+  }
+}
+
+/* Inset grouped content */
+
+.content {
+  padding-top: 32px;
+}
+
+.card {
+  border: none;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.card.flush .card-head {
+  border-bottom: 0.5px solid var(--separator);
+}
+
+.stat-card {
+  border: none;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.stat-card.link-card:hover {
+  border: none;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 1.85rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.filter-bar {
+  border-bottom: 0.5px solid var(--separator);
+}
+
+.notice {
+  border-radius: 10px;
+  background: var(--info-soft);
+  color: var(--info);
+}
+
+.notice.warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+/* Tables: column headers in secondary label colour, hairline separators */
+
+th,
+td {
+  border-bottom: 0.5px solid var(--separator);
+}
+
+.data-table th {
+  background: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+
+.data-table tbody tr:hover td {
+  background: var(--hover);
+}
+
+tr.clickable:hover td {
+  background: var(--hover);
+}
+
+.player-name {
+  font-weight: 600;
+}
+
+/* Capsule badges in system colours */
+
+.badge {
+  padding: 2px 9px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.badge.present {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
+.badge.soft {
+  background: var(--info-soft);
+  color: var(--info);
+}
+
+.badge.missed {
+  border: none;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.badge.muted-badge,
+.badge.rarity-common {
+  background: var(--fill);
+  color: var(--muted);
+}
+
+.badge.rarity-rare {
+  background: var(--info-soft);
+  color: var(--info);
+}
+
+.badge.rarity-epic {
+  background: rgba(175, 82, 222, 0.14);
+  color: #8944ab;
+}
+
+.badge.rarity-legendary {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.meter {
+  background: var(--fill);
+}
+
+/* Player statistics tiles and calendar */
+
+.tile {
+  border: none;
+  border-radius: 10px;
+  background: var(--fill);
+}
+
+.tile.accent {
+  background: var(--accent);
+}
+
+.issued {
+  border-left: none;
+  border-radius: 10px;
+  background: var(--fill);
+}
+
+.limits-preview {
+  border-radius: 10px;
+}
+
+.empty-icon {
+  background: var(--fill);
+}
+
+.leaders b {
+  color: var(--text);
+}
+
+/* Presentation: sheets, alerts, the search panel, HUD notifications */
+
+.drawer {
+  inset: 10px 10px 10px auto;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-menu);
+}
+
+.drawer-head {
+  border-bottom: 0.5px solid var(--separator);
+}
+
+.drawer-head h2 {
+  font-size: 1.15rem;
+}
+
+.modal {
+  width: min(320px, calc(100% - 32px));
+  padding: 20px 16px 16px;
+  border-radius: 14px;
+  text-align: center;
+  box-shadow: var(--shadow-menu);
+}
+
+.modal h2 {
+  font-size: 1.05rem;
+}
+
+.modal-text {
+  font-size: 0.9rem;
+}
+
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.palette {
+  border-radius: 14px;
+  box-shadow: var(--shadow-menu);
+}
+
+.palette-input {
+  border-bottom: 0.5px solid var(--separator);
+}
+
+.palette-input input,
+.palette-input input:hover,
+.palette-input input:focus {
+  background: none;
+  box-shadow: none;
+}
+
+.palette-item {
+  border-radius: 8px;
+}
+
+.palette-item.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.palette-item.active .palette-title,
+.palette-item.active .palette-subtitle {
+  color: #fff;
+}
+
+.palette-item.active .palette-icon {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.palette-icon {
+  background: var(--fill);
+  color: var(--accent);
+}
+
+.palette-group-title {
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.palette-footer {
+  border-top: 0.5px solid var(--separator);
+}
+
+kbd {
+  border: none;
+  background: var(--fill);
+  color: var(--muted);
+}
+
+.toasts {
+  right: 50%;
+  transform: translateX(50%);
+}
+
+.toast {
+  border-radius: 14px;
+  background: rgba(40, 40, 42, 0.86);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.toast.error {
+  background: rgba(215, 0, 21, 0.9);
+}
+
+.spinner {
+  border-color: var(--fill-strong);
+  border-top-color: var(--muted);
+}
+
+/* Login: a centered card on the grouped background */
+
+.login-page {
+  display: grid;
+  grid-template-columns: 1fr;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px 16px;
+}
+
+.login-brand {
+  display: grid;
+  justify-items: center;
+  padding: 0 0 24px;
+  background: none;
+  color: var(--text);
+  text-align: center;
+}
+
+.login-brand h1 {
+  margin: 16px 0 6px;
+  font-size: 2rem;
+  letter-spacing: -0.025em;
+}
+
+.login-brand p {
+  color: var(--muted);
+}
+
+.login-card {
+  width: min(380px, 100%);
+  margin: 0;
+  padding: 28px 24px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.login-card h2 {
+  font-size: 1.3rem;
+}
+
+.login-card button[type="submit"] {
+  height: 40px;
+  margin-top: 4px;
+}
+
+/* Touch screens: 44-point targets */
+
+@media (pointer: coarse) {
+  button,
+  input,
+  .dropdown-trigger,
+  .filter-item .dropdown-trigger,
+  .search-field,
+  .nav-item {
+    min-height: 44px;
+  }
+
+  button.small {
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 960px) {
+  .drawer {
+    inset: 0 0 0 auto;
+    border-radius: 0;
+  }
+
+  .page-title h1 {
+    font-size: 1.7rem;
+  }
+}
+
+/* Reduce Motion */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.plus {
+  color: var(--good);
+}
+
+.cal-cell.excused {
+  background: var(--fill-strong);
+}
+
+/* A long stat value (a date) and the card never overflow */
+
+.stat-card {
+  min-width: 0;
+}
+
+.stat-value {
+  overflow-wrap: anywhere;
+}
+
+.stat-value.long {
+  font-size: 1.35rem;
+  line-height: 1.6;
+}
+
+/* The developer console has its own dark input line: no field fill or focus ring */
+
+.console-input input,
+.console-input input:hover,
+.console-input input:focus {
+  height: auto;
+  min-height: 0;
+  background: none;
+  box-shadow: none;
+}

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, type Clock } from "./api";
-import type { DashboardActions } from "./Dashboard";
+import type { DashboardActions } from "./actions";
 import { plural } from "./format";
+import { PageHeader } from "./ui";
 
 const HOUR = 3600;
 const DAY = 24 * HOUR;
@@ -85,13 +86,11 @@ export function ClockPanel({ actions, clock, onChange }: { actions: DashboardAct
   const forward = (seconds: number) => setShift(clock.shift_seconds + seconds);
 
   return (
+    <>
+    <PageHeader
+      title="Тестовое время"
+    />
     <section className="card">
-      <h2>Время</h2>
-      <p className="muted">
-        Тестовые часы сдвигают игровое время всех игроков вперёд: новые дни, серии, штрафы за пропуски, наборы заданий
-        и статистику можно проверить за несколько минут. Коды входа и выхода на экране офиса работают по настоящему
-        времени. Включено, потому что на сервере стоит TEST_CLOCK=true.
-      </p>
       <div className="clock-now">
         <span className="muted">Время в игре (офис по умолчанию, UTC{clock.utc_offset_minutes >= 0 ? "+" : "−"}{Math.abs(clock.utc_offset_minutes / 60)})</span>
         <strong>{officeClock.format((now + offsetSeconds) * 1000)}</strong>
@@ -114,10 +113,7 @@ export function ClockPanel({ actions, clock, onChange }: { actions: DashboardAct
           Вернуть настоящее время
         </button>
       </div>
-      <p className="muted">
-        Сдвиг применяется со следующего действия игроков; в игре обновите экран, чтобы увидеть новый день. Возврат
-        времени назад может запутать игру: например, пауза между заданиями отсчитается от «будущего» момента.
-      </p>
     </section>
+    </>
   );
 }
