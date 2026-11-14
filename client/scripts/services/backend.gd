@@ -7,7 +7,7 @@ extends Node
 ## joint photos, inbox), `account` (profile page, status, avatar), `raffle` (parking draw) and
 ## `wheel` (fortune wheel), `home` (apartment and interior), `chat` (office, department and direct
 ## messages). The home location (apartment, wardrobe,
-## garage) works outside the office network too; the rest of the game only in the office Wi-Fi.
+## garage) and lounge rooms work outside the office network too; office tasks still require office Wi-Fi.
 
 signal balance_changed(balance: int)
 signal outfit_changed(outfit: Dictionary)
@@ -30,6 +30,7 @@ var account: BackendAccount
 var raffle: BackendRaffle
 var wheel: BackendWheel
 var home: BackendHome
+var lounge: BackendLounge
 var chat: BackendChat
 ## When tasks count (cooldown, task hours); updated by list_tasks().
 var task_schedule: BackendModels.TaskSchedule = BackendModels.TaskSchedule.new()
@@ -48,7 +49,8 @@ func _ready() -> void:
 	wheel = BackendWheel.new(self)
 	home = BackendHome.new(self)
 	chat = BackendChat.new(self)
-	for api: Node in [social, account, raffle, wheel, home, chat]:
+	lounge = BackendLounge.new(self)
+	for api: Node in [social, account, raffle, wheel, home, chat, lounge]:
 		add_child(api)
 	if OS.is_debug_build() and OS.has_feature("pc"):
 		var keys: Node = load("res://scripts/services/dev_backend_keys.gd").new()
@@ -93,6 +95,7 @@ func is_account_loaded() -> bool:
 
 
 func sign_out() -> void:
+	LoungePanel.last_room = {}
 	await server.sign_out()
 	_account_loaded = false
 	profile = null

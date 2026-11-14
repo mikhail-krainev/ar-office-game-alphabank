@@ -10,6 +10,8 @@ static var department_names: Dictionary[String, String] = {}
 static func inbox_text(item: BackendModels.InboxItem) -> String:
 	var p: Dictionary = item.params
 	match item.kind:
+		"loan_request":
+			return "%s просит %d койнов в долг. Открой раздел долгов в профиле." % [str(p.get("name", "")), int(p.get("amount", 0))]
 		"penalty":
 			return _tr("INBOX_PENALTY") % [int(p.get("amount", 0)), int(p.get("missed", 0)), int(p.get("percent", 0)), str(p.get("date", ""))]
 		"streak_reset":

@@ -261,3 +261,8 @@ func clear_safe_rect_override() -> void:
 
 func _emit_safe_rect() -> void:
 	safe_rect_changed.emit(get_safe_rect())
+
+
+## Copies a room invitation code using Godot's platform clipboard support.
+func copy_text(text: String) -> void:
+	DisplayServer.clipboard_set(text)

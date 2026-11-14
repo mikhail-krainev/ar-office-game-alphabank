@@ -38,6 +38,14 @@ func _reload() -> void:
 	content.add_child(_make_totals())
 	content.add_child(_make_history())
 	content.add_child(_make_notifications())
+	var loans: Button = UiStyle.make_button("Долги и переводы", false, 12)
+	loans.pressed.connect(func() -> void:
+		var panel: LoungeLoans = LoungeLoans.new()
+		get_parent().add_child(panel)
+		panel.closed.connect(panel.queue_free)
+		panel.open()
+	)
+	content.add_child(loans)
 	content.add_child(_make_sign_out())
 
 

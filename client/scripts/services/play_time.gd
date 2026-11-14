@@ -25,6 +25,19 @@ const BLOCKED_POLL_SECONDS: float = 60.0
 const NETWORK_POLL_SECONDS: float = 10.0
 const OFFICE_NETWORK_ERROR: String = "office_network_required"
 
+## Physical department exercise has no mandatory game breaks. Presence heartbeats continue.
+var exercise_mode: bool = false:
+	set(value):
+		if exercise_mode == value:
+			return
+		exercise_mode = value
+		if value:
+			_overlay.hide_screen()
+			_overlay.hide_warning()
+			_overlay.hide_deferred_notice()
+		elif Backend.is_account_loaded():
+			check_now()
+
 var _state: BackendModels.PlayStatus.State = BackendModels.PlayStatus.State.OK
 var _overlay: PlayOverlay
 var _beat_interval: float = DEFAULT_BEAT_SECONDS
@@ -140,6 +153,11 @@ func _process(delta: float) -> void:
 	if not Backend.is_account_loaded():
 		_reset()
 		return
+	if exercise_mode:
+		_beat_left -= delta
+		if _focused and _beat_left <= 0:
+			_beat()
+		return
 	match _state:
 		BackendModels.PlayStatus.State.WARNING:
 			_countdown = maxf(0.0, _countdown - delta)
@@ -206,6 +224,11 @@ func _apply(status: BackendModels.PlayStatus) -> void:
 	_beat_interval = float(status.beat_seconds)
 	var previous: BackendModels.PlayStatus.State = _state
 	_state = status.state
+	if exercise_mode:
+		_overlay.hide_screen()
+		_overlay.hide_warning()
+		_overlay.hide_deferred_notice()
+		return
 	if _state != BackendModels.PlayStatus.State.DEFERRED:
 		_overlay.hide_deferred_notice()
 	match _state:
@@ -281,6 +304,7 @@ func _on_resume() -> void:
 
 ## Signed out: nothing to count and nothing to show.
 func _reset() -> void:
+	exercise_mode = false
 	if _state != BackendModels.PlayStatus.State.OK or _off_network or _overlay.is_screen_open():
 		_state = BackendModels.PlayStatus.State.OK
 		_off_network = false

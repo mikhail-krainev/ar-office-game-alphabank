@@ -6,6 +6,7 @@ extends Node
 const BUTTON_SIDE: float = 30.0
 
 var _inbox: InboxPanel
+var _lounge: LoungePanel
 var _profile: ProfilePanel
 var _bell: Button
 var _badge: Label
@@ -22,7 +23,7 @@ static func attach(scene: Node, hud: Hud) -> PlayerCorner:
 
 
 func is_open() -> bool:
-	return _inbox.is_open() or _profile.is_open()
+	return _inbox.is_open() or _profile.is_open() or _lounge.is_open()
 
 
 func open_inbox() -> void:
@@ -36,6 +37,12 @@ func open_profile() -> void:
 
 
 func _build(scene: Node, hud: Hud) -> void:
+	_lounge = LoungePanel.new()
+	scene.add_child(_lounge)
+	var games: Button = UiStyle.make_button("Игры", false, 10)
+	games.custom_minimum_size = Vector2(40, BUTTON_SIDE)
+	games.pressed.connect(func() -> void: if not is_open(): _lounge.open())
+	hud.add_corner(games)
 	_inbox = InboxPanel.new()
 	_inbox.name = "InboxPanel"
 	scene.add_child(_inbox)

@@ -4,6 +4,8 @@ extends Minigame
 ## the knee angle; SquatCounter turns it into repetitions. AR: a neon skeleton over the body, energy
 ## rings on the knees at the bottom of a squat and a floating "+1" for each repetition (scripts/ar).
 
+signal repetition
+
 const DEFAULT_REPS: int = 10
 const DEFAULT_TIME_LIMIT: float = 120.0
 const LOST_POSE_SECONDS: float = 1.0
@@ -35,7 +37,7 @@ func _ready() -> void:
 		_needed = int(task.params.get("reps", DEFAULT_REPS))
 		_time_limit = float(task.params.get("time_limit", DEFAULT_TIME_LIMIT))
 	_time_left = _time_limit
-	add_hint(tr("MG_SQUATS_HINT") % _needed)
+	add_hint("Помощь отделу · 15 койнов за повторение" if context.get("continuous", false) else tr("MG_SQUATS_HINT") % _needed)
 	_view = add_camera_view()
 	_view.overlay = _draw_skeleton
 	_count_label = add_big_label(232, 26, UiStyle.RED)
@@ -58,7 +60,8 @@ func _on_pose(landmarks: Dictionary) -> void:
 	_counter.update(landmarks)
 	if _counter.reps != before:
 		_since_rep = 0.0
-	if _counter.reps != before and _counter.reps >= _needed:
+		repetition.emit()
+	if not context.get("continuous", false) and _counter.reps != before and _counter.reps >= _needed:
 		set_score(_time_left / _time_limit)
 		proof["reps"] = _counter.reps
 		finish(true)
@@ -69,15 +72,15 @@ func _process(delta: float) -> void:
 	_since_pose += delta
 	_since_rep += delta
 	_ar_time += delta
-	if not is_done():
+	if not is_done() and not context.get("continuous", false):
 		_time_left -= delta
 		if _time_left <= 0.0:
 			finish(false)
-	_count_label.text = "%d / %d" % [mini(_counter.reps, _needed), _needed]
+	_count_label.text = str(_counter.reps) if context.get("continuous", false) else "%d / %d" % [mini(_counter.reps, _needed), _needed]
 	var state: String = tr("MG_SQUATS_NO_BODY")
 	if _since_pose < LOST_POSE_SECONDS and _counter.knee_angle >= 0.0:
 		state = tr("MG_SQUATS_DOWN") if _counter.is_down else tr("MG_SQUATS_UP")
-	_status.text = "%s   %s" % [state, tr("MG_TIME") % ceili(maxf(_time_left, 0.0))]
+	_status.text = state if context.get("continuous", false) else "%s   %s" % [state, tr("MG_TIME") % ceili(maxf(_time_left, 0.0))]
 	_view.queue_redraw()
 
 
