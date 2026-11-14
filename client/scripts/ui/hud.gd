@@ -97,6 +97,19 @@ func add_action(text: String, primary: bool) -> Button:
 	return button
 
 
+## A button of the action row with a pixel icon instead of a caption; `hint` is its tooltip. The
+## icon keeps its own colours (tools/printables/make_hud_icons.py draws them for the button colour).
+func add_icon_action(icon: Texture2D, hint: String, primary: bool) -> Button:
+	var button: Button = add_action("", primary)
+	button.icon = icon
+	button.tooltip_text = hint
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	for state: String in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_focus_color", "icon_hover_pressed_color"]:
+		button.add_theme_color_override(state, Color.WHITE)
+	return button
+
+
 ## Full-width button above the action row, e.g. "Go home"; `pulse` makes it breathe to draw the eye.
 func add_wide_action(text: String, pulse: bool = true) -> Button:
 	var button: Button = UiStyle.make_button(text, true, 14)

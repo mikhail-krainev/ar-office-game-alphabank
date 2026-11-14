@@ -52,12 +52,22 @@ func _init() -> void:
 	_input.custom_minimum_size = Vector2(0, INPUT_HEIGHT)
 	_input.add_theme_font_size_override("font_size", 11)
 	_input.text_submitted.connect(func(_text: String) -> void: _send())
+	_input.focus_entered.connect(_on_input_focus.bind(true))
+	_input.focus_exited.connect(_on_input_focus.bind(false))
 	input_row.add_child(_input)
 	var send: Button = UiStyle.make_button(TranslationServer.translate("CHAT_SEND"), true, 11)
 	send.custom_minimum_size = Vector2(0, INPUT_HEIGHT)
 	send.pressed.connect(_send)
 	input_row.add_child(send)
 	add_footer(_footer)
+	closed.connect(_input.release_focus)
+
+
+## The on-screen keyboard covers the lower half of a phone: the panel moves up while typing.
+func _on_input_focus(focused: bool) -> void:
+	set_keyboard_lift(focused)
+	if focused:
+		scroll_to_end()
 
 
 ## The list of colleagues and chats.

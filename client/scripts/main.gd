@@ -26,7 +26,17 @@ const EVENING_SCENE: String = "res://scenes/intro/evening_outro.tscn"
 const OFFICE_SCENE: String = "res://scenes/main.tscn"
 const FADE_TIME: float = 0.5
 ## How often the chat button asks the server for unread messages.
-const MESSAGES_POLL_SECONDS: float = 15.0
+const MESSAGES_POLL_SECONDS: float = 10.0
+const ICON_TASKS: Texture2D = preload("res://assets/ui/hud_icons/tasks.png")
+const ICON_SCAN: Texture2D = preload("res://assets/ui/hud_icons/qr.png")
+const ICON_SHOP: Texture2D = preload("res://assets/ui/hud_icons/shop.png")
+const ICON_CHAT: Texture2D = preload("res://assets/ui/hud_icons/chat.png")
+## The room of the player's character goes to the server at most this often (colleagues see it).
+const POSITION_REPORT_SECONDS: float = 1.5
+## After a refused report (no entry code yet, no office Wi-Fi) the next try waits this long.
+const POSITION_RETRY_SECONDS: float = 15.0
+## Banner kind of a direct chat message; the colleague id follows the prefix.
+const DIRECT_MESSAGE_KIND: String = "chat_direct:"
 ## The player fades out over this time while stepping through the entrance.
 const EXIT_FADE: float = 0.45
 ## The walk to the exit can cross the whole floor, so the player hurries.
@@ -50,6 +60,13 @@ var _entry_button: Button
 var _colleagues: OfficeColleagues
 var _chat: ChatPanel
 var _chat_button: Button
+var _chat_dot: UnreadDot
+## Room last reported to the server and the wait before the next report.
+var _reported_room: StringName = &""
+var _position_report_left: float = 0.0
+var _reporting_position: bool = false
+## Colleague id -> name, for opening the direct chat from its banner.
+var _direct_names: Dictionary = {}
 var _chat_poll_left: float = 0.0
 
 @onready var _task_panel: TaskPanel = $TaskPanel
@@ -76,14 +93,16 @@ func _ready() -> void:
 		npc.setup(definition, _map)
 	_hud.set_title(tr("HUD_TITLE") if floor_id == OfficeFloors.HQ else OfficeFloors.title(floor_id).to_upper())
 	_hud.set_hint(tr("HUD_HINT") if floor_id == OfficeFloors.HQ else tr("HUD_HINT_ANALYTICS"))
-	_hud.add_action(tr("HUD_TASKS"), true).pressed.connect(_open_tasks)
-	_hud.add_action(tr("HUD_SCAN"), false).pressed.connect(_scan_code)
-	_hud.add_action(tr("HUD_SHOP"), false).pressed.connect(_open_shop)
-	_chat_button = _hud.add_action(tr("HUD_CHAT"), false)
+	_hud.add_icon_action(ICON_TASKS, tr("HUD_TASKS"), true).pressed.connect(_open_tasks)
+	_hud.add_icon_action(ICON_SCAN, tr("HUD_SCAN"), false).pressed.connect(_scan_code)
+	_hud.add_icon_action(ICON_SHOP, tr("HUD_SHOP"), false).pressed.connect(_open_shop)
+	_chat_button = _hud.add_icon_action(ICON_CHAT, tr("HUD_CHAT"), false)
 	_chat_button.pressed.connect(_open_chat)
+	_chat_dot = UnreadDot.attach(_chat_button)
 	_chat = ChatPanel.new()
 	add_child(_chat)
 	Backend.chat.unread_changed.connect(_on_chat_unread_changed)
+	Backend.chat.direct_message_received.connect(_on_direct_message)
 	ColleagueProfiles.message_handler = _chat.open_direct
 	_corner = PlayerCorner.attach(self, _hud)
 	_facts_panel = FactsPanel.new()
@@ -124,6 +143,7 @@ func _exit_tree() -> void:
 func _process(delta: float) -> void:
 	super(delta)
 	_poll_chat(delta)
+	_report_position(delta)
 	if _pending_room != &"" and not _is_modal_open():
 		var room_id: StringName = _pending_room
 		_pending_room = &""
@@ -137,6 +157,30 @@ func _is_modal_open() -> bool:
 		or (_facts_panel != null and _facts_panel.is_open())
 		or ColleagueProfiles.is_open() or _chat.is_open()
 	)
+
+
+# --- Position on the map ----------------------------------------------------------------
+
+
+## Colleagues draw the player's character in the room it is in here (OfficeColleagues.shown_room).
+func _report_position(delta: float) -> void:
+	_position_report_left -= delta
+	if _reporting_position or _position_report_left > 0.0:
+		return
+	if _current_room_id == &"" or _current_room_id == _reported_room:
+		return
+	# Before the entry code the server refuses; the retry waits POSITION_RETRY_SECONDS.
+	if Backend.profile == null:
+		return
+	_reporting_position = true
+	var room_id: StringName = _current_room_id
+	var ok: bool = await Backend.social.report_position(room_id)
+	_reporting_position = false
+	if ok:
+		_reported_room = room_id
+		_position_report_left = POSITION_REPORT_SECONDS
+	else:
+		_position_report_left = POSITION_RETRY_SECONDS
 
 
 # --- Chat ---------------------------------------------------------------------------
@@ -159,7 +203,16 @@ func _poll_chat(delta: float) -> void:
 
 
 func _on_chat_unread_changed(count: int) -> void:
-	_chat_button.text = tr("HUD_CHAT") if count <= 0 else "%s %d" % [tr("HUD_CHAT"), mini(count, 99)]
+	_chat_dot.set_lit(count > 0)
+
+
+## A colleague wrote to the player: a banner with the message; a tap opens the direct chat.
+func _on_direct_message(channel: BackendChat.Channel) -> void:
+	if _chat.is_open():
+		return
+	_direct_names[channel.user_id] = channel.name
+	var title: String = tr("CHAT_DIRECT_BANNER") % channel.name
+	Notifications.show_banner(title, channel.last.text, DIRECT_MESSAGE_KIND + channel.user_id)
 
 
 ## Task markers and colleagues react to taps first; a tap on the floor walks the character there.
@@ -545,6 +598,11 @@ func _on_banner_pressed(kind: String) -> void:
 		return
 	if kind == Notifications.ENTRY_CODE_KIND:
 		_scan_entry_code()
+		return
+	if kind.begins_with(DIRECT_MESSAGE_KIND):
+		var user_id: String = kind.trim_prefix(DIRECT_MESSAGE_KIND)
+		_stop_player()
+		_chat.open_direct(user_id, _direct_names.get(user_id, ""))
 		return
 	_corner.open_inbox()
 

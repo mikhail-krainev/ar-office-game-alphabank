@@ -87,6 +87,20 @@ func raffleSchedule(office string, today int, rules *Rules, offset int64) (strin
 	return fmt.Sprintf("parking-%s-%04d-%02d", office, date.Year(), int(date.Month())), unixAt(drawDay, rules.Raffle.DrawHour, rules.Raffle.DrawMinute, offset)
 }
 
+// officeRaffleSchedule: the draw of the office by the office's own zone, wherever the player is
+// today. A player on a trip to another zone takes part in the draw of the home office: its day,
+// month and hour are the home office's, and the player sees that moment in the local time of the
+// office they are in (draw 22:00 in Yekaterinburg = 20:00 for a colleague in Moscow).
+func officeRaffleSchedule(office string, now int64, rules *Rules) (string, int64) {
+	offset := officeOffsetAt(office, now)
+	id, drawAt := raffleSchedule(office, dayOf(now, offset), rules, offset)
+	// The zone may change its offset (summer time) before the draw: the hour stays the local one.
+	if drawOffset := officeOffsetAt(office, drawAt); drawOffset != offset {
+		drawAt += offset - drawOffset
+	}
+	return id, drawAt
+}
+
 // raffleDevKey of the office: the dev draw that replaces its monthly draw for a day.
 func raffleDevKeyOf(office string) string {
 	return raffleDevKey + "-" + office
@@ -122,7 +136,7 @@ func (tx *gameTx) currentDraw() (*loadedDraw, error) {
 		return tx.draw, nil
 	}
 	office := tx.me.metadata.homeOffice()
-	id, drawAt := raffleSchedule(office, tx.today, &tx.content.Rules, tx.offset)
+	id, drawAt := officeRaffleSchedule(office, tx.now, &tx.content.Rules)
 	if devMode {
 		dev, err := readDraw(tx.ctx, tx.nk, raffleDevKeyOf(office))
 		if err != nil {
@@ -189,24 +203,27 @@ type raffleEntrant struct {
 }
 
 type raffleView struct {
-	DrawID           string          `json:"draw_id"`
-	PrizeName        string          `json:"prize_name"`
-	PrizeDescription string          `json:"prize_description"`
-	TicketPrice      int             `json:"ticket_price"`
-	DrawAt           int64           `json:"draw_at"`
-	SecondsToDraw    int64           `json:"seconds_to_draw"`
-	Drawn            bool            `json:"drawn"`
-	Entrants         []raffleEntrant `json:"entrants"`
-	HasTicket        bool            `json:"has_ticket"`
-	BuyError         string          `json:"buy_error"`
-	OfficeDays       int             `json:"office_days"`
-	MinOfficeDays    int             `json:"min_office_days"`
-	WindowDays       int             `json:"window_days"`
-	Commitment       string          `json:"commitment"`
-	RevealedSeed     string          `json:"revealed_seed"`
-	WinnerID         string          `json:"winner_id"`
-	WinnerName       string          `json:"winner_name"`
-	IsWinner         bool            `json:"is_winner"`
+	DrawID           string `json:"draw_id"`
+	PrizeName        string `json:"prize_name"`
+	PrizeDescription string `json:"prize_description"`
+	TicketPrice      int    `json:"ticket_price"`
+	DrawAt           int64  `json:"draw_at"`
+	// UTC offset in seconds of the office the player is in today at draw_at: the client shows the
+	// draw of the home office in that local time.
+	DrawUTCOffset int64           `json:"draw_utc_offset"`
+	SecondsToDraw int64           `json:"seconds_to_draw"`
+	Drawn         bool            `json:"drawn"`
+	Entrants      []raffleEntrant `json:"entrants"`
+	HasTicket     bool            `json:"has_ticket"`
+	BuyError      string          `json:"buy_error"`
+	OfficeDays    int             `json:"office_days"`
+	MinOfficeDays int             `json:"min_office_days"`
+	WindowDays    int             `json:"window_days"`
+	Commitment    string          `json:"commitment"`
+	RevealedSeed  string          `json:"revealed_seed"`
+	WinnerID      string          `json:"winner_id"`
+	WinnerName    string          `json:"winner_name"`
+	IsWinner      bool            `json:"is_winner"`
 }
 
 func (tx *gameTx) officeDaysInWindow(window int) int {
@@ -224,7 +241,7 @@ func (tx *gameTx) raffleView(draw *raffleDraw) (raffleView, error) {
 	rules := tx.content.Rules.Raffle
 	view := raffleView{
 		DrawID: draw.ID, PrizeName: rules.PrizeName, PrizeDescription: rules.PrizeDescription, TicketPrice: rules.TicketPrice,
-		DrawAt: draw.DrawAt, SecondsToDraw: max(0, draw.DrawAt-tx.now), Drawn: draw.Drawn, Entrants: []raffleEntrant{},
+		DrawAt: draw.DrawAt, DrawUTCOffset: officeOffsetAt(tx.office(), draw.DrawAt), SecondsToDraw: max(0, draw.DrawAt-tx.now), Drawn: draw.Drawn, Entrants: []raffleEntrant{},
 		HasTicket: contains(draw.Tickets, tx.me.userID), MinOfficeDays: rules.MinOfficeDays, WindowDays: rules.WindowDays,
 		OfficeDays: tx.officeDaysInWindow(rules.WindowDays), Commitment: draw.Commitment,
 	}

@@ -10,8 +10,8 @@ enum Place { HOME, OFFICE }
 const AUDIO_DIR: String = "res://assets/audio/"
 const BUS: StringName = &"SFX"
 const STEP_DISTANCE: float = 15.0
-const STEP_DB: float = -15.0
-const SOFT_STEP_DB: float = -22.0
+const STEP_DB: float = -21.0
+const SOFT_STEP_DB: float = -27.0
 const SOFT_FLOORS: Array[OfficeTiles.Style] = [
 	OfficeTiles.Style.CARPET, OfficeTiles.Style.BEDROOM, OfficeTiles.Style.GRASS, OfficeTiles.Style.LOUNGE,
 ]

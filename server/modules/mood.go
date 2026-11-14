@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"image/jpeg"
 	"image/png"
+	"sort"
 
 	"github.com/heroiclabs/nakama-common/runtime"
 )
@@ -29,8 +30,6 @@ const (
 	moodPhotoMaxBytes = 64 * 1024
 	moodPhotoMinSide  = 64
 	moodPhotoMaxSide  = 480
-	// The office map shows at most this many colleagues.
-	maxOfficePlayers = 30
 )
 
 // validMoodPNG: a square PNG of moodSide pixels, at most moodMaxBytes.
@@ -153,6 +152,8 @@ type officePlayerView struct {
 	HasMood bool              `json:"has_mood"`
 	// The avatar is the player's own character: draw it from the outfit instead of `avatar`.
 	CharacterAvatar bool `json:"character_avatar"`
+	// The room of the colleague's character on the office map (positions.go); "" when unknown.
+	MapRoom string `json:"map_room"`
 }
 
 // officePlayerView: the mini profile of a colleague. `storiesOpen` hides stories after the working day.
@@ -169,8 +170,9 @@ func (tx *gameTx) officePlayerView(player publicPlayer, presence map[string]pres
 }
 
 // rpcOfficePlayers: -> {"players": [officePlayerView]}: everyone in the player's office now (entry
-// code scanned, day not ended) except the player, for the office map: name, department, avatar,
-// status, streak, the outfit to draw the character with and whether today's story exists.
+// code scanned, day not ended) except the player, all of them, sorted by name: the colleague list of
+// the chat and the office map. Name, department, avatar, status, streak, the outfit to draw the
+// character with and whether today's story exists.
 func rpcOfficePlayers(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, _ string) (string, error) {
 	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
 		open, err := tx.storiesOpen()
@@ -183,11 +185,15 @@ func rpcOfficePlayers(ctx context.Context, logger runtime.Logger, db *sql.DB, nk
 		}
 		ids := make([]string, 0, len(presence))
 		for id := range presence {
-			if id != tx.me.userID && len(ids) < maxOfficePlayers {
+			if id != tx.me.userID {
 				ids = append(ids, id)
 			}
 		}
 		players, err := readPlayers(tx.ctx, tx.nk, ids, tx.today)
+		if err != nil {
+			return nil, err
+		}
+		rooms, err := mapRooms(tx.ctx, tx.nk, ids, tx.today, tx.office())
 		if err != nil {
 			return nil, err
 		}
@@ -197,8 +203,17 @@ func rpcOfficePlayers(ctx context.Context, logger runtime.Logger, db *sql.DB, nk
 			if player.office != tx.office() {
 				continue
 			}
-			views = append(views, tx.officePlayerView(player, presence, open))
+			view := tx.officePlayerView(player, presence, open)
+			view.MapRoom = rooms[player.userID]
+			views = append(views, view)
 		}
+		// The whole office, in a stable order: by name, then by id.
+		sort.Slice(views, func(i, j int) bool {
+			if views[i].Name != views[j].Name {
+				return views[i].Name < views[j].Name
+			}
+			return views[i].UserID < views[j].UserID
+		})
 		return map[string]any{"players": views}, nil
 	})
 }

@@ -600,6 +600,7 @@ CHAT_ME,Я,Me
 CHAT_LOADING,Загружаю сообщения…,Loading messages…
 CHAT_PLACEHOLDER,Сообщение…,Message…
 CHAT_SEND,ОТПР.,SEND
+CHAT_DIRECT_BANNER,Сообщение от %s,Message from %s
 COLLEAGUE_WRITE,НАПИСАТЬ,WRITE A MESSAGE
 ERROR_CHAT_TOO_FAST,Не так быстро: одно сообщение в секунду,Not so fast: one message per second
 ERROR_CHAT_TEXT_INVALID,"Сообщение пустое или длиннее 500 символов",The message is empty or longer than 500 characters

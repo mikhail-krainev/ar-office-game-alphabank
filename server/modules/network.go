@@ -226,8 +226,16 @@ func (tx *gameTx) presenceError() (string, error) {
 	return tx.networkError()
 }
 
-// rpcOfficeAccess: {} -> ok. An office RPC with nothing to do: the trip from home to the office asks
-// it first, and outside the office network the client shows the waiting screen instead of the office.
-func rpcOfficeAccess(_ context.Context, _ runtime.Logger, _ *sql.DB, _ runtime.NakamaModule, _ string) (string, error) {
-	return encodeResponse(okResult)
+// rpcOfficeAccess: {} -> ok. The trip from home to the office asks it first; outside the office
+// network the client shows the waiting screen instead of the office. In the network it counts as
+// being seen there: a player who went home earlier today is in the office again (comeBackToday).
+func rpcOfficeAccess(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, _ string) (string, error) {
+	return runPlayerTx(ctx, logger, db, nk, func(tx *gameTx) (any, error) {
+		limits, err := tx.limits()
+		if err != nil {
+			return nil, err
+		}
+		tx.noteWifiArrival()
+		return okResult, tx.seenInOfficeNetwork(limits)
+	})
 }

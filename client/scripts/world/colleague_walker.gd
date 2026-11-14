@@ -27,11 +27,11 @@ var _portrait: Texture2D
 var _path: PackedVector2Array = PackedVector2Array()
 var _pause_left: float = 0.0
 var _time: float = 0.0
-## Room the colleague scanned last; walks stay inside it when it is on this floor.
+## Room the colleague is in for everyone (OfficeColleagues.shown_room); walks stay inside it.
 var _home_room: MapLayout.Room
 
 
-func setup(p_player: BackendModels.OfficePlayer, map: WorldMap, start_cell: Vector2i) -> void:
+func setup(p_player: BackendModels.OfficePlayer, map: WorldMap, start_cell: Vector2i, room: MapLayout.Room) -> void:
 	_map = map
 	name = "Colleague_" + p_player.colleague.user_id
 	_body = CharacterSprite.new()
@@ -40,22 +40,21 @@ func setup(p_player: BackendModels.OfficePlayer, map: WorldMap, start_cell: Vect
 	global_position = _map.cell_to_world(start_cell)
 	_pause_left = randf_range(0.5, PAUSE_MAX)
 	Backend.account.custom_avatar_loaded.connect(_on_custom_avatar_loaded)
-	update_player(p_player)
+	update_player(p_player, room)
 
 
-## New data from the server (status, story, outfit) for the same colleague.
-func update_player(p_player: BackendModels.OfficePlayer) -> void:
+## New data from the server (status, story, outfit, room) for the same colleague. In another room
+## the character walks there straight away.
+func update_player(p_player: BackendModels.OfficePlayer, room: MapLayout.Room) -> void:
 	if player != null and Outfit.key(player.outfit) != Outfit.key(p_player.outfit):
 		_body.queue_free()
 		_body = CharacterSprite.new()
 		add_child(_body)
 		_body.setup_outfit(p_player.outfit)
 	player = p_player
-	_home_room = (
-		OfficeFloors.find_room(player.colleague.room)
-		if player.colleague.floor_id == OfficeFloors.current
-		else null
-	)
+	if room != _home_room:
+		_home_room = room
+		_walk_to_room()
 	_portrait = _avatar_texture()
 	queue_redraw()
 
@@ -114,6 +113,25 @@ func _process(delta: float) -> void:
 	else:
 		global_position += to_target.normalized() * step
 		_body.set_walking(true, to_target)
+
+
+## Walks to a free cell of the home room when the character is outside it.
+func _walk_to_room() -> void:
+	if _home_room == null or _map.get_room_at(_map.world_to_cell(global_position)) == _home_room:
+		return
+	var floor_rect: Rect2i = _home_room.floor_rect()
+	var target: Vector2 = _map.cell_to_world(floor_rect.position + floor_rect.size / 2)
+	var cell: Vector2i = _map.find_nearest_walkable(target, WANDER_RADIUS)
+	if cell == WorldMap.INVALID_CELL:
+		return
+	var path: PackedVector2Array = _map.find_path(global_position, cell)
+	if path.is_empty():
+		# No way there (a closed area): the colleague simply shows up in the room.
+		global_position = _map.cell_to_world(cell)
+		_path = PackedVector2Array()
+		return
+	_path = path
+	_pause_left = 0.0
 
 
 func _pick_walk() -> void:

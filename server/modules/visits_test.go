@@ -52,3 +52,40 @@ func TestLeftAtPrefersTheExitCode(t *testing.T) {
 	state.CheckoutAt[key] = 5000
 	expectInt(t, "exit code", leftAt(state, visits, monday), 5000)
 }
+
+func TestComeBackTodayAfterGoingHome(t *testing.T) {
+	state := &PlayerState{}
+	state.normalize()
+	state.PresenceOffice = "hq"
+	key := dayKey(monday)
+	tx := &gameTx{me: &playerDoc{state: state, metadata: accountMetadata{Role: rolePlayer, OfficeID: "hq"}}, today: monday}
+
+	if tx.comeBackToday() {
+		t.Fatal("without an entry code today nobody comes back")
+	}
+	state.CheckinAt[key] = 1000
+	if tx.comeBackToday() {
+		t.Fatal("a player still in the office is not coming back")
+	}
+	state.CheckoutAt[key] = 2000 // "Go home"
+	if inOffice(state, monday) {
+		t.Fatal("after going home the player is out")
+	}
+	if !tx.comeBackToday() || !inOffice(state, monday) {
+		t.Fatal("back in the office network the same day, the player is in again")
+	}
+	if state.CheckinAt[key] != 1000 {
+		t.Error("the first arrival of the day must stay")
+	}
+
+	state.CheckoutAt[key] = 3000
+	tx.today = monday + 1
+	if tx.comeBackToday() {
+		t.Error("the next day needs a new entry code")
+	}
+	tx.today = monday
+	state.PresenceOffice = "office_2"
+	if tx.comeBackToday() {
+		t.Error("the network of another office does not bring the player back here")
+	}
+}

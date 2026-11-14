@@ -227,6 +227,7 @@ static func office_player(entry: Dictionary) -> BackendModels.OfficePlayer:
 	player.outfit = outfit(entry.get("outfit", {}))
 	player.has_mood = bool(entry.get("has_mood", false))
 	player.character_avatar = bool(entry.get("character_avatar", false))
+	player.map_room = StringName(str(entry.get("map_room", "")))
 	return player
 
 
@@ -280,6 +281,7 @@ static func raffle(data: Dictionary) -> BackendModels.RaffleState:
 	state.prize_description = str(data.get("prize_description", ""))
 	state.ticket_price = int(data.get("ticket_price", 0))
 	state.draw_at = int(data.get("draw_at", 0))
+	state.draw_utc_offset = int(data.get("draw_utc_offset", WorkCalendar.local_offset()))
 	state.seconds_to_draw = int(data.get("seconds_to_draw", 0))
 	state.phase = BackendModels.RaffleState.Phase.DRAWN if bool(data.get("drawn", false)) else BackendModels.RaffleState.Phase.OPEN
 	state.has_ticket = bool(data.get("has_ticket", false))

@@ -131,6 +131,7 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"respond_photo_request": rpcRespondPhotoRequest,
 		"get_facts":             rpcGetFacts,
 		"office_players":        rpcOfficePlayers,
+		"report_position":       rpcReportPosition,
 		"get_mood":              rpcGetMood,
 		"get_graffiti_wall":     rpcGetGraffitiWall,
 		"player_card":           rpcPlayerCard,

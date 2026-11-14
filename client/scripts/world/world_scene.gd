@@ -48,16 +48,21 @@ func _setup_world(layout: MapLayout) -> void:
 
 
 ## Any touch anywhere (map, HUD or panels) keeps the player in control for a while.
+## Taps arrive as left mouse events on every platform: the web build gets no InputEventScreenTouch,
+## and on phones Godot emulates the mouse from the finger.
 func _input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+	var button: InputEventMouseButton = event as InputEventMouseButton
+	var motion: InputEventMouseMotion = event as InputEventMouseMotion
+	if (button != null and button.button_index == MOUSE_BUTTON_LEFT) or (motion != null and motion.button_mask & MOUSE_BUTTON_MASK_LEFT):
 		_manual_left = MANUAL_CONTROL_SECONDS
 
 
+## A press the GUI did not take (buttons and panels stop it) is a tap on the map.
 func _unhandled_input(event: InputEvent) -> void:
-	var touch: InputEventScreenTouch = event as InputEventScreenTouch
-	if touch != null and touch.index == 0:
-		if touch.pressed and not _is_ui_blocking():
-			_on_tap(_screen_to_world(touch.position))
+	var button: InputEventMouseButton = event as InputEventMouseButton
+	if button != null and button.button_index == MOUSE_BUTTON_LEFT:
+		if button.pressed and not _is_modal_open():
+			_on_tap(_screen_to_world(button.position))
 		get_viewport().set_input_as_handled()
 		return
 	var key: InputEventKey = event as InputEventKey
@@ -79,10 +84,6 @@ func _life_place() -> LocationLife.Place:
 ## Overridden by scenes with modal UI; input to the map and the autopilot pause while it returns true.
 func _is_modal_open() -> bool:
 	return false
-
-
-func _is_ui_blocking() -> bool:
-	return _is_modal_open() or get_viewport().gui_get_hovered_control() != null
 
 
 ## A tap on the map: scenes override it to react to their objects (task markers) first and call

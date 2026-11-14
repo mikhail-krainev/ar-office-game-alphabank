@@ -166,6 +166,12 @@ func _remind_entry_code() -> void:
 	_show_banner(NotificationTexts.title(), tr("REMIND_ENTRY_CODE"), ENTRY_CODE_KIND)
 
 
+## An in-game banner from another part of the game (a direct chat message); a tap emits banner_pressed
+## with `kind`.
+func show_banner(title: String, text: String, kind: String) -> void:
+	_show_banner(title, text, kind)
+
+
 ## The system notification about the entry code, once a day, while the game is in the background.
 func _notify_entry_code() -> void:
 	var today: String = Time.get_date_string_from_system()

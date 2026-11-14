@@ -20,7 +20,8 @@ import (
 // Presence in the office. The office screen shows two rotating codes signed with a secret that only
 // the server knows: the entry code opens the "in the office" interval, the exit code closes it. The
 // entry code counts once a day: it marks the first arrival, and steps out and back in during the day
-// follow the office Wi-Fi (visits.go). The exit code ends the office day. Tasks, colleague meetings
+// follow the office Wi-Fi (visits.go). The exit code marks the player out until they are back in the
+// office network the same day. Tasks, colleague meetings
 // and room codes count only inside the interval; an interval left open ends with the day. Static room codes at the doors work only after the entry code. Each of these
 // requests must also come from the office network (network.go). Every office has its own screen:
 // the codes carry the office id, and a player counts only the codes of the office they are in today.
@@ -199,7 +200,8 @@ func (tx *gameTx) checkedInToday() bool {
 	return ok && presenceOffice(tx.me.state) == tx.office()
 }
 
-// leaveOffice ends the office day and its open visit. `how` is visitOutCode for the exit code,
+// leaveOffice marks the player out and closes the open visit; back in this office's network the same
+// day, comeBackToday brings them in again. `how` is visitOutCode for the exit code,
 // visitOutHome for the "Go home" button.
 func (tx *gameTx) leaveOffice(how string) error {
 	limits, err := tx.limits()
@@ -213,7 +215,8 @@ func (tx *gameTx) leaveOffice(how string) error {
 	return tx.writePresence(false, "")
 }
 
-// rpcOfficeCheckOut: {"token"}. Ends the office day; the entry code is refused until tomorrow.
+// rpcOfficeCheckOut: {"token"}. Marks the player out; the entry code is refused until tomorrow, the
+// office network brings the player back the same day (comeBackToday).
 func rpcOfficeCheckOut(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
 	var request struct {
 		Token string `json:"token"`

@@ -12,9 +12,11 @@ import (
 // game is open it sends a heartbeat every playBeatSeconds (play.go), and each heartbeat from the
 // office network keeps the visit open. A heartbeat from outside the network, or no heartbeat from it
 // for Limits.AwayMinutes, closes the visit at the last heartbeat from the office network; the next
-// heartbeat from the network opens a new visit without any code. The exit code or "Go home" ends the
-// office day: the visit closes and the entry code is refused until tomorrow. A visit nobody closed
-// ends at the last heartbeat from the office network, which is when the player left.
+// heartbeat from the network opens a new visit without any code. The exit code or "Go home" closes
+// the visit and marks the player out; the entry code is refused until tomorrow, but the office day
+// stands: back in the same office's network the same day, the player is in again without any code
+// (comeBackToday). A visit nobody closed ends at the last heartbeat from the office network, which is
+// when the player left.
 //
 // The server sees the network only while the game is open, so a game closed for longer than
 // AwayMinutes also counts as a step out, and a walk outside with the game closed for less is missed.
@@ -91,10 +93,23 @@ func (tx *gameTx) closeVisitAt(how string, limits Limits) {
 	tx.logActivity(tx.me, activityOfficeOut, map[string]any{"how": how, "at": visit.Out})
 }
 
-// seenInOfficeNetwork: a heartbeat came from the office network. Closes a visit that went silent
-// for too long and opens a new one when the player is back.
+// comeBackToday: the player checked in here today, left by the exit code or "Go home" and is in this
+// office's network again, so they are in the office again for the rest of the day. Returns true when
+// the player was out. The caller has checked the network.
+func (tx *gameTx) comeBackToday() bool {
+	if !tx.checkedInToday() || inOffice(tx.me.state, tx.today) {
+		return false
+	}
+	delete(tx.me.state.CheckoutAt, dayKey(tx.today))
+	return true
+}
+
+// seenInOfficeNetwork: a request came from the office network (a heartbeat, the login, the trip from
+// home). Brings back a player who left today, closes a visit that went silent for too long and opens
+// a new one when the player is back.
 func (tx *gameTx) seenInOfficeNetwork(limits Limits) error {
 	state := tx.me.state
+	tx.comeBackToday()
 	if !tx.inMyOffice() {
 		return nil
 	}

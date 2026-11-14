@@ -6,6 +6,9 @@ extends Node
 
 ## Unread messages in all chats changed (the HUD badge).
 signal unread_changed(count: int)
+## A colleague wrote a direct message the player has not read yet (the HUD shows a banner). Messages
+## that were already there at the first overview after launch are not announced.
+signal direct_message_received(channel: Channel)
 
 const OFFICE: String = "office"
 const DEPARTMENT: String = "department"
@@ -16,6 +19,9 @@ const MAX_TEXT: int = 500
 var unread: int = 0
 
 var _backend: BackendService
+## Direct chats: colleague id -> id of the last message seen in an overview.
+var _seen_direct: Dictionary = {}
+var _has_direct_baseline: bool = false
 
 
 class Message:
@@ -96,6 +102,7 @@ func overview() -> Overview:
 			if channel != null:
 				result.direct.append(channel)
 	_set_unread(result.total_unread())
+	_announce_direct(result.direct)
 	return result
 
 
@@ -129,6 +136,17 @@ func send(kind: String, user_id: String, text: String) -> Sent:
 ## The badge drops once the player opened the chats.
 func mark_seen(count: int) -> void:
 	_set_unread(maxi(0, unread - count))
+
+
+func _announce_direct(channels: Array[Channel]) -> void:
+	for channel: Channel in channels:
+		if channel.last == null:
+			continue
+		var is_new: bool = _seen_direct.get(channel.user_id, "") != channel.last.id
+		_seen_direct[channel.user_id] = channel.last.id
+		if _has_direct_baseline and is_new and channel.unread > 0 and not channel.last.mine:
+			direct_message_received.emit(channel)
+	_has_direct_baseline = true
 
 
 func _set_unread(count: int) -> void:

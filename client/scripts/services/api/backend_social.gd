@@ -49,6 +49,12 @@ func mark_inbox_read() -> void:
 
 
 ## Everyone in the player's office now, except the player, for the office map.
+## The player's character entered a room of the office map: colleagues draw it there too.
+func report_position(room_id: StringName) -> bool:
+	var response: ServerSession.RpcResult = await _backend.call_rpc("report_position", {"room_id": String(room_id)})
+	return response.ok and bool(response.data.get("ok", false))
+
+
 func office_players() -> Array[BackendModels.OfficePlayer]:
 	var response: ServerSession.RpcResult = await _backend.call_rpc("office_players")
 	if not response.ok:

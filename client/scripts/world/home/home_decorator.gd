@@ -81,21 +81,22 @@ func open_catalog() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _mode == Mode.IDLE:
 		return
-	var touch: InputEventScreenTouch = event as InputEventScreenTouch
-	var drag: InputEventScreenDrag = event as InputEventScreenDrag
-	if drag != null and drag.index == 0:
-		if _press_at != Vector2.INF and drag.position.distance_to(_press_at) > TAP_SLOP:
+	# Left mouse events: the web build gets no InputEventScreenTouch, phones emulate the mouse.
+	var button: InputEventMouseButton = event as InputEventMouseButton
+	var drag: InputEventMouseMotion = event as InputEventMouseMotion
+	if drag != null and drag.button_mask & MOUSE_BUTTON_MASK_LEFT and _press_at != Vector2.INF:
+		if drag.position.distance_to(_press_at) > TAP_SLOP:
 			_dragged = true
 		if _dragged:
 			_focus.global_position -= drag.relative / _camera.zoom
 		get_viewport().set_input_as_handled()
-	elif touch != null and touch.index == 0:
-		if touch.pressed:
-			_press_at = touch.position
+	elif button != null and button.button_index == MOUSE_BUTTON_LEFT:
+		if button.pressed:
+			_press_at = button.position
 			_dragged = false
-		else:
+		elif _press_at != Vector2.INF:
 			if not _dragged:
-				_on_tap(_map.get_canvas_transform().affine_inverse() * touch.position)
+				_on_tap(_map.get_canvas_transform().affine_inverse() * button.position)
 			_press_at = Vector2.INF
 		get_viewport().set_input_as_handled()
 

@@ -137,9 +137,17 @@ func rpcLogin(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime
 			tx.credit(tx.me, int64(welcome), "welcome_bonus", "welcome")
 		}
 		state.LastLoginDay = tx.today
-		// Opening the game in the office Wi-Fi is an arrival; at home it is not.
+		// Opening the game in the office Wi-Fi is an arrival (or the return after "Go home"); at home
+		// it is not.
 		if inOffice {
 			tx.noteWifiArrival()
+			limits, err := tx.limits()
+			if err != nil {
+				return nil, err
+			}
+			if err := tx.seenInOfficeNetwork(limits); err != nil {
+				return nil, err
+			}
 		}
 		tx.logActivity(tx.me, activityLogin, nil)
 		if err := tx.tick(); err != nil {

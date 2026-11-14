@@ -67,7 +67,8 @@ func _make_prize(state: BackendModels.RaffleState) -> Control:
 func _make_countdown(state: BackendModels.RaffleState) -> Control:
 	var column: VBoxContainer = VBoxContainer.new()
 	column.add_theme_constant_override("separation", 0)
-	var local: Dictionary = Time.get_datetime_dict_from_unix_time(state.draw_at + WorkCalendar.local_offset())
+	# The local time of the office the player is in today, not the phone's zone.
+	var local: Dictionary = Time.get_datetime_dict_from_unix_time(state.draw_at + state.draw_utc_offset)
 	var when: String = tr("RAFFLE_DRAW_AT") % ["%02d.%02d" % [int(local["day"]), int(local["month"])], "%02d:%02d" % [int(local["hour"]), int(local["minute"])]]
 	column.add_child(_centered(when, 10, UiStyle.MUTED))
 	countdown = _centered(countdown_text(state.seconds_to_draw), 24, UiStyle.RED)

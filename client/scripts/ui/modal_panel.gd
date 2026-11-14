@@ -7,6 +7,13 @@ signal closed
 
 const SIDE_MARGIN: float = 10.0
 const MAX_SCROLL_HEIGHT: float = 470.0
+## Share of the screen height left above the on-screen keyboard while an input has focus on a phone.
+## The browser does not tell the game the keyboard height (iPhone: the keyboard and its bar take
+## about 40% of the page), so the panel moves into the upper half.
+const KEYBOARD_FREE_SHARE: float = 0.5
+## Header, paddings and the footer around the scroll in the lifted panel.
+const LIFTED_CHROME_HEIGHT: float = 110.0
+const LIFTED_MIN_SCROLL: float = 60.0
 
 var content: VBoxContainer
 ## Inner width available to the content.
@@ -18,6 +25,10 @@ var _subtitle: Label
 var _scroll: TouchScroll
 var _header: HBoxContainer
 var _column: VBoxContainer
+var _center: CenterContainer
+## Scroll height of the panel without the keyboard.
+var _scroll_height: float = 0.0
+var _reserved_height: float = 0.0
 
 
 func _init(title_key: String = "") -> void:
@@ -37,6 +48,7 @@ func _init(title_key: String = "") -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(center)
+	_center = center
 	_panel = PanelContainer.new()
 	_panel.add_theme_stylebox_override("panel", UiStyle.panel(UiStyle.PAPER, 8, 10))
 	center.add_child(_panel)
@@ -80,9 +92,25 @@ func show_panel(reserved_height: float = 0.0) -> void:
 	var width: float = safe.size.x - SIDE_MARGIN * 2.0
 	_panel.custom_minimum_size = Vector2(width, 0)
 	content_width = width - 24.0
-	_scroll.custom_minimum_size = Vector2(0, minf(MAX_SCROLL_HEIGHT, safe.size.y - 130.0) - reserved_height)
+	_scroll_height = minf(MAX_SCROLL_HEIGHT, safe.size.y - 130.0) - reserved_height
+	_reserved_height = reserved_height
+	_scroll.custom_minimum_size = Vector2(0, _scroll_height)
+	set_keyboard_lift(false)
 	clear()
 	visible = true
+
+
+## Moves the panel into the upper half of the screen while an input has focus on a touch screen, so
+## the on-screen keyboard does not cover what the player types.
+func set_keyboard_lift(lifted: bool) -> void:
+	var lift: bool = lifted and DisplayServer.is_touchscreen_available()
+	_center.anchor_bottom = KEYBOARD_FREE_SHARE if lift else 1.0
+	_center.offset_bottom = 0.0
+	var height: float = _scroll_height
+	if lift:
+		var free: float = PlatformServices.get_safe_rect().size.y * KEYBOARD_FREE_SHARE
+		height = clampf(free - LIFTED_CHROME_HEIGHT - _reserved_height, LIFTED_MIN_SCROLL, _scroll_height)
+	_scroll.custom_minimum_size = Vector2(0, height)
 
 
 func clear() -> void:

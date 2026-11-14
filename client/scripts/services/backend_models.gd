@@ -268,6 +268,8 @@ class OfficePlayer:
 	var has_mood: bool = false
 	## The avatar is the colleague's own character (draw it from the outfit).
 	var character_avatar: bool = false
+	## Room of the colleague's character on the office map (report_position); empty when unknown.
+	var map_room: StringName = &""
 
 
 class ColleagueResult:
@@ -390,6 +392,9 @@ class RaffleState:
 	var ticket_price: int = 0
 	## Unix time of the draw; the result is shown on that day.
 	var draw_at: int = 0
+	## UTC offset of the office the player is in today, in seconds: the draw of the home office is
+	## shown in that local time (22:00 in Yekaterinburg is 20:00 for a colleague in Moscow).
+	var draw_utc_offset: int = 0
 	## Countdown at the moment of the request, so the phone clock does not matter.
 	var seconds_to_draw: int = 0
 	var phase: Phase = Phase.OPEN
