@@ -2,6 +2,8 @@ package main
 
 import "strconv"
 
+const blackjackDecisionSeconds = 60
+
 func cardTotal(cards []int) int {
 	total, aces := 0, 0
 	for _, c := range cards {
@@ -27,29 +29,33 @@ func (r *loungeRoom) drawCard() int {
 	r.Deck = r.Deck[1:]
 	return c
 }
-func (r *loungeRoom) deal(eligible []int, now int64) {
+
+// deal: a freshly shuffled deck every hand, two cards each. A hand of 21 needs no decision.
+func (r *loungeRoom) deal(now int64) {
 	r.Deck = r.shuffle(52)
 	r.Dealer = nil
-	r.Deadline = now + 60
 	r.Phase = "playing"
+	// The room is saved with the next revision: decisions made against an older deal are refused.
+	r.DealRevision = r.Revision + 1
 	for i := range r.Players {
 		p := &r.Players[i]
-		p.Cards = nil
-		p.Done = false
-		p.DecisionAt = now + 60
-		if eligible != nil && !containsInt(eligible, i) {
-			p.Eliminated = true
-			p.Done = true
-			continue
-		}
 		p.Eliminated = false
-		p.Passed = false
+		p.DecisionAt = now + blackjackDecisionSeconds
 		p.Cards = []int{r.drawCard(), r.drawCard()}
+		p.Done = cardTotal(p.Cards) == 21
 	}
 	if len(r.Players) == 1 {
 		r.Dealer = []int{r.drawCard(), r.drawCard()}
 	}
+	r.blackjackContinue()
 }
+
+// acceptsStale: at 21 everyone decides at once, so another player's decision (a newer revision)
+// must not cancel this one. Only a decision made before the current deal is refused.
+func (r *loungeRoom) acceptsStale(a loungeAction) bool {
+	return r.Game == "blackjack" && r.Phase == "playing" && (a.Action == "hit" || a.Action == "stand") && a.Revision >= r.DealRevision
+}
+
 func (r *loungeRoom) blackjackAction(p int, action string, now int64) string {
 	if r.Phase != "playing" || r.Players[p].Done || r.Players[p].Eliminated {
 		return "turn_finished"
@@ -57,108 +63,130 @@ func (r *loungeRoom) blackjackAction(p int, action string, now int64) string {
 	switch action {
 	case "hit":
 		r.Players[p].Cards = append(r.Players[p].Cards, r.drawCard())
-		r.Players[p].DecisionAt = now + 60
-		r.blackjackDeadline()
+		r.Players[p].DecisionAt = now + blackjackDecisionSeconds
 		if cardTotal(r.Players[p].Cards) >= 21 {
 			r.Players[p].Done = true
 		}
 	case "stand":
 		r.Players[p].Done = true
-	case "pass":
-		r.Players[p].Done = true
-		r.Players[p].Passed = true
 	default:
 		return "invalid_action"
 	}
-	for _, player := range r.Players {
-		if !player.Done {
-			r.blackjackDeadline()
-			return ""
-		}
-	}
-	r.resolveBlackjack(now)
+	r.blackjackContinue()
 	return ""
 }
-func (r *loungeRoom) resolveBlackjack(now int64) {
+
+// blackjackContinue: settles the hand once nobody is left to decide, otherwise waits for the
+// earliest personal deadline.
+func (r *loungeRoom) blackjackContinue() {
+	for _, p := range r.Players {
+		if !p.Done {
+			r.blackjackDeadline()
+			return
+		}
+	}
+	r.resolveBlackjack()
+}
+
+// blackjackRank orders hands: a bust is 0, a natural (21 on two cards) beats any other 21.
+func blackjackRank(cards []int) int {
+	total := cardTotal(cards)
+	if total > 21 {
+		return 0
+	}
+	if total == 21 && len(cards) == 2 {
+		return 22
+	}
+	return total
+}
+
+func (r *loungeRoom) resolveBlackjack() {
 	if len(r.Players) == 1 {
-		r.Players[0].Ready = false
-		p := r.Players[0]
+		r.resolveSoloBlackjack()
+		return
+	}
+	best := 0
+	winners := []int{}
+	for i, p := range r.Players {
+		rank := blackjackRank(p.Cards)
+		if rank == 0 || rank < best {
+			continue
+		}
+		if rank > best {
+			best = rank
+			winners = winners[:0]
+		}
+		winners = append(winners, i)
+	}
+	r.Outcomes = map[string]string{}
+	// Nobody beat anybody: every stake goes back. The hand is settled once, without re-deals.
+	if len(winners) == 0 || len(winners) == len(r.Players) {
+		for _, p := range r.Players {
+			r.Outcomes[p.ID] = "push"
+		}
+		r.Message = "Ничья. Ставки возвращены"
+		if len(winners) == 0 {
+			r.Message = "У всех перебор. Ставки возвращены"
+		}
+		r.finish(nil)
+		return
+	}
+	for i, p := range r.Players {
+		r.Outcomes[p.ID] = "lose"
+		if containsInt(winners, i) {
+			r.Outcomes[p.ID] = "win"
+		}
+	}
+	if len(winners) > 1 {
+		r.Message = "Равный результат. Фонд поделён"
+	}
+	r.finish(winners)
+}
+
+// resolveSoloBlackjack: the player against the dealer, who draws to 17 and stands on any 17.
+func (r *loungeRoom) resolveSoloBlackjack() {
+	r.Players[0].Ready = false
+	p := r.Players[0]
+	mine := cardTotal(p.Cards)
+	natural := blackjackRank(p.Cards) == 22
+	// As at a real table, the dealer does not draw against a bust or a natural.
+	if mine <= 21 && !natural {
 		for cardTotal(r.Dealer) < 17 {
 			r.Dealer = append(r.Dealer, r.drawCard())
 		}
-		mine, dealer := cardTotal(p.Cards), cardTotal(r.Dealer)
-		natural := len(p.Cards) == 2 && mine == 21
-		dealerNatural := len(r.Dealer) == 2 && dealer == 21
-		paid := int64(0)
-		switch {
-		case p.Passed || mine > 21:
-			r.Message = "В этот раз удача у дилера"
-		case natural && !dealerNatural:
-			paid = r.Stake * 5 / 2
-			r.Message = "Блэкджек! Отличная раздача"
-		case dealerNatural && !natural:
-			r.Message = "Блэкджек у дилера"
-		case mine == dealer:
-			paid = r.Stake
-			r.Message = "Ровно. Ставка возвращается"
-		case dealer > 21 || mine > dealer:
-			paid = r.Stake * 2
-			r.Message = "Твоя победа! Ещё партию?"
-		default:
-			r.Message = "Сегодня карты на моей стороне"
-		}
-		r.Phase = "finished"
-		r.Pot = 0
-		r.Gains = map[string]int64{p.ID: paid - r.Stake}
-		r.pay(p.ID, paid)
-		if paid > r.Stake {
-			r.Winners = []string{p.ID}
-		}
-		return
 	}
-	best := -1
-	w := []int{}
-	active := []int{}
-	for i, p := range r.Players {
-		if p.Eliminated || p.Passed {
-			continue
-		}
-		active = append(active, i)
-		total := cardTotal(p.Cards)
-		if total > 21 {
-			continue
-		}
-		if total > best {
-			best = total
-			w = []int{i}
-		} else if total == best {
-			w = append(w, i)
-		}
+	dealer := cardTotal(r.Dealer)
+	dealerNatural := blackjackRank(r.Dealer) == 22
+	paid := int64(0)
+	outcome := "lose"
+	switch {
+	case mine > 21:
+		r.Message = "В этот раз удача у дилера"
+	case natural && !dealerNatural:
+		paid = r.Stake * 5 / 2
+		outcome = "win"
+		r.Message = "Блэкджек! Отличная раздача"
+	case dealerNatural && !natural:
+		r.Message = "Блэкджек у дилера"
+	case mine == dealer:
+		paid = r.Stake
+		outcome = "push"
+		r.Message = "Ровно. Ставка возвращается"
+	case dealer > 21 || mine > dealer:
+		paid = r.Stake * 2
+		outcome = "win"
+		r.Message = "Твоя победа! Ещё партию?"
+	default:
+		r.Message = "Сегодня карты на моей стороне"
 	}
-	if len(active) == 0 {
-		for _, p := range r.Players {
-			r.pay(p.ID, r.Stake)
-		}
-		r.Pot = 0
-		r.Phase = "finished"
-		for i := range r.Players {
-			r.Players[i].Ready = false
-		}
-		r.Message = "Все выбрали пас. Ставки возвращены"
-		return
+	r.Phase = "finished"
+	r.Pot = 0
+	r.Gains = map[string]int64{p.ID: paid - r.Stake}
+	r.Outcomes = map[string]string{p.ID: outcome}
+	r.pay(p.ID, paid)
+	if outcome == "win" {
+		r.Winners = []string{p.ID}
 	}
-	if len(w) == 1 {
-		r.finish(w)
-		return
-	}
-	r.Round++
-	if len(w) == 0 {
-		w = active
-		r.Message = "У всех перебор. Новая раздача"
-	} else {
-		r.Message = "Равный результат. Дополнительная раздача"
-	}
-	r.deal(w, now)
 }
 func rouletteMultiplier(field string, sector int) int64 {
 	if field == "green" {

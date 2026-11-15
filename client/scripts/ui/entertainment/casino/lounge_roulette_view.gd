@@ -1,15 +1,16 @@
 class_name LoungeRouletteView
 extends LoungeCasinoView
 ## Shared roulette table: wheel, betting layout and chip rack. Each tap on the layout is one bet of
-## the chosen chip; repeated bets on a field add up and the chip shows the field's total. Results
-## and colleagues' wins appear only once the wheel and the ball have stopped.
+## the chosen chip; repeated bets on a field add up and the chip shows the field's total. Everyone
+## at the table is listed with avatar and name, and their chips lie on the fields they bet on.
+## Results and colleagues' wins appear only once the wheel and the ball have stopped.
 
 signal loan_requested
 
 var _wheel: RouletteWheel
 var _board: RouletteBoard
 var _chips: RouletteChips
-var _players_label: Label
+var _roster: RouletteRoster
 var _rules_label: Label
 var _lobby: HBoxContainer
 var _ready_button: Button
@@ -27,12 +28,13 @@ func _ready() -> void:
 	add_child(_wheel)
 	_wheel.ball_dropped.connect(func() -> void: play_sound("clink"))
 	_wheel.settled.connect(_on_settled)
+	_roster = RouletteRoster.new()
+	add_child(_roster)
 	_board = RouletteBoard.new()
 	add_child(_board)
 	_board.bet_requested.connect(_on_bet)
 	_chips = RouletteChips.new()
 	add_child(_chips)
-	_players_label = _make_label(10, UiStyle.INK)
 	_rules_label = _make_label(9, UiStyle.MUTED)
 	_lobby = make_row()
 	add_child(_lobby)
@@ -98,7 +100,7 @@ func _rules_text(phase: String) -> String:
 		return "Баланс 0: ты зритель. Можно попросить койны в долг у коллеги."
 	if phase in ["waiting", "finished"]:
 		return "Стол открывает создатель комнаты. Дальше раунды идут сами: 20 секунд на ставки, затем вращение."
-	return "Тап по полю — фишка, ставки на поле суммируются. Число и зеро ×36, цвет ×2."
+	return "Тап по полю — фишка, ставки на поле суммируются. Число и зеро ×36, цвет ×2. Маленькие фишки — ставки коллег, цвет как у полоски под аватаром."
 
 
 func _update_bets() -> void:
@@ -111,8 +113,12 @@ func _update_bets() -> void:
 		var field: String = str(bet.get("field", ""))
 		var player: int = int(bet.get("player", -1))
 		var amount: int = int(bet.get("amount", 0))
-		var target: Dictionary = mine if player == me else others
-		target[field] = int(target.get(field, 0)) + amount
+		if player == me:
+			mine[field] = int(mine.get(field, 0)) + amount
+		else:
+			var seats: Array = others.get_or_add(field, [])
+			if not seats.has(player):
+				seats.append(player)
 		totals[player] = int(totals.get(player, 0)) + amount
 	for bet: Dictionary in _pending:
 		mine[bet["field"]] = int(mine.get(bet["field"], 0)) + int(bet["amount"])
@@ -120,31 +126,7 @@ func _update_bets() -> void:
 	var stopped: bool = _wheel.is_stopped() and _wheel.result() >= 0
 	_board.set_state(mine, others, _phase == "betting" and Backend.get_balance() > 0, _wheel.result() if stopped else -1)
 	_chips.set_state(Backend.get_balance(), int(totals.get(me, 0)))
-	_players_label.text = _players_text(totals, stopped)
-
-
-func _players_text(totals: Dictionary, stopped: bool) -> String:
-	var gains: Dictionary = room.get("gains", {})
-	var parts: PackedStringArray = PackedStringArray()
-	var list: Array = players()
-	for i: int in list.size():
-		var p: Dictionary = list[i]
-		if p.get("departed", false):
-			continue
-		var id: String = str(p.get("id", ""))
-		var player_name: String = "Ты" if id == Backend.get_user_id() else str(p.get("name", ""))
-		if stopped and gains.has(id):
-			var gain: int = int(gains[id])
-			parts.append("%s %s%d" % [player_name, "+" if gain > 0 else "−", absi(gain)] if gain != 0 else "%s ±0" % player_name)
-		elif _phase in ["waiting", "finished"]:
-			parts.append(player_name + (" (готов)" if p.get("ready", false) else ""))
-		elif int(totals.get(i, 0)) > 0:
-			parts.append("%s %d" % [player_name, int(totals[i])])
-		else:
-			parts.append(player_name)
-	if parts.is_empty():
-		return ""
-	return ("Итоги: " if stopped else "За столом: ") + " · ".join(parts)
+	_roster.set_state(players(), totals, room.get("gains", {}), stopped, _phase in ["waiting", "finished"])
 
 
 func _on_bet(field: String) -> void:

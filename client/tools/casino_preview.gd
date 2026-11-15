@@ -29,7 +29,7 @@ func _me() -> String:
 
 
 func _player(id: String, player_name: String, extra: Dictionary = {}) -> Dictionary:
-	var p: Dictionary = {"id": id, "name": player_name, "avatar": "me", "outfit": {}, "ready": false, "done": false, "passed": false, "eliminated": false, "departed": false}
+	var p: Dictionary = {"id": id, "name": player_name, "avatar": "me", "outfit": {}, "ready": false, "done": false, "eliminated": false, "departed": false}
 	p.merge(extra, true)
 	return p
 
@@ -82,6 +82,7 @@ func _blackjack_solo() -> void:
 	room["phase"] = "finished"
 	room["dealer"] = [31, 22, 46]
 	room["awards"] = {_me(): 40}
+	room["outcomes"] = {_me(): "win"}
 	room["message"] = "Твоя победа! Ещё партию?"
 	_view.update_room(room)
 	await _shot("bj_4_reveal", 0.45)
@@ -89,7 +90,7 @@ func _blackjack_solo() -> void:
 
 
 func _blackjack_multi() -> void:
-	var others: Array = [_player("a", "Аня", {"card_count": 2}), _player("b", "Пётр Иванов", {"card_count": 3, "done": true}), _player("c", "Оля", {"card_count": 2, "passed": true, "done": true})]
+	var others: Array = [_player("a", "Аня", {"card_count": 2}), _player("b", "Пётр Иванов", {"card_count": 3, "done": true}), _player("c", "Оля", {"card_count": 2, "done": true})]
 	var room: Dictionary = {"id": "BJ2", "game": "blackjack", "host": "a", "phase": "playing", "stake": 50, "round": 1, "left": 8, "players": [_player(_me(), "Миша", {"cards": [0, 10]})] + others}
 	_mount(LoungeBlackjackView.new(room))
 	await _shot("bj_6_multi", 1.8)
@@ -101,6 +102,8 @@ func _roulette() -> void:
 		{"player": 0, "field": "red", "amount": 20}, {"player": 0, "field": "red", "amount": 40},
 		{"player": 0, "field": "n17", "amount": 10}, {"player": 1, "field": "black", "amount": 50},
 		{"player": 2, "field": "n17", "amount": 5}, {"player": 0, "field": "green", "amount": 5},
+		{"player": 1, "field": "n17", "amount": 5}, {"player": 2, "field": "black", "amount": 20},
+		{"player": 2, "field": "n8", "amount": 20}, {"player": 1, "field": "green", "amount": 10},
 	]
 	var room: Dictionary = {"id": "RL1", "game": "roulette", "host": _me(), "phase": "betting", "round": 3, "left": 14, "players": players, "bets": bets, "history": [8, 32, 0, 15, 21, 4, 11, 30]}
 	_mount(LoungeRouletteView.new(room))

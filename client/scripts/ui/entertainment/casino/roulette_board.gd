@@ -1,8 +1,9 @@
 class_name RouletteBoard
 extends Control
 ## Betting layout: zero, numbers 1–36 in three rows and red / black below. A tap places the chosen
-## chip on the field (`bet_requested`); chips show this player's total per field, colleagues' stakes
-## are a small grey marker. The winning field glows after the wheel has stopped.
+## chip on the field (`bet_requested`); chips show this player's total per field, every colleague
+## who bet on a field has a small chip of their seat colour there. The winning field glows after
+## the wheel has stopped.
 
 signal bet_requested(field: String)
 
@@ -12,8 +13,13 @@ const GAP: float = 2.0
 const OUTSIDE_HEIGHT: float = 30.0
 const TAP_SLOP: float = 10.0
 
-## Field -> total coins of this player / of everyone else.
+const SEAT_CHIP_RADIUS: float = 4.5
+const SEAT_CHIP_STEP: float = 7.0
+const SEAT_CHIPS_MAX: int = 8
+
+## Field -> total coins of this player.
 var my_bets: Dictionary = {}
+## Field -> seat indexes of the colleagues who bet on it, in betting order.
 var other_bets: Dictionary = {}
 var enabled: bool = false
 var winner: int = -1
@@ -113,18 +119,30 @@ func _draw() -> void:
 			draw_rect(rect, Color(0, 0, 0, 0.35))
 		if field == _flash_field and _clock - _flash_at < 0.4:
 			draw_style_box(CasinoArt.box(Color(1, 1, 1, 0.5 * (1.0 - (_clock - _flash_at) / 0.4)), Color.TRANSPARENT, 0, 3), rect)
-		if int(other_bets.get(field, 0)) > 0:
-			var marker: Vector2 = rect.position + Vector2(rect.size.x - 4, 4)
-			draw_circle(marker, 3, Color("#b8b2a6"))
-			draw_circle(marker, 1.5, Color("#6e6a64"))
 	for entry: Array in _fields():
 		var amount: int = int(my_bets.get(entry[0], 0))
 		if amount > 0:
 			var rect: Rect2 = entry[1]
 			var chip_center: Vector2 = rect.get_center() if entry[0] not in ["red", "black"] else rect.get_center() + Vector2(rect.size.x / 2.0 - 48, 0)
 			CasinoArt.draw_chip(self, chip_center, minf(11.0, minf(rect.size.x, rect.size.y) / 2.0 + 1.0), amount, CasinoArt.GOLD_TEXT)
+	# Colleagues' chips lie on top, along the upper edge, so a player's own chip never hides them.
+	for entry: Array in _fields():
+		_draw_seat_chips(entry[1], other_bets.get(entry[0], []))
 	if not enabled and winner < 0:
 		draw_style_box(CasinoArt.box(Color(0.04, 0.12, 0.1, 0.45), Color.TRANSPARENT, 0, 10), Rect2(Vector2.ZERO, size))
+
+
+func _draw_seat_chips(rect: Rect2, seats: Array) -> void:
+	if seats.is_empty():
+		return
+	var capacity: int = clampi(int((rect.size.x - 2.0) / SEAT_CHIP_STEP), 1, SEAT_CHIPS_MAX)
+	# A crowded field keeps its last place for a "more" mark.
+	var shown: int = seats.size() if seats.size() <= capacity else capacity - 1
+	var at: Vector2 = rect.position + Vector2(SEAT_CHIP_RADIUS + 1.0, SEAT_CHIP_RADIUS + 1.0)
+	for i: int in shown:
+		CasinoArt.draw_seat_chip(self, at + Vector2(i * SEAT_CHIP_STEP, 0), SEAT_CHIP_RADIUS, CasinoArt.seat_color(int(seats[i])))
+	if shown < seats.size():
+		CasinoArt.draw_text_centered(self, at + Vector2(shown * SEAT_CHIP_STEP, 0), "+", 8, Color.WHITE)
 
 
 func _gui_input(event: InputEvent) -> void:

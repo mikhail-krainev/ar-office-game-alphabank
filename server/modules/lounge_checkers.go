@@ -270,7 +270,7 @@ func (r *loungeRoom) endCheckersTurn(now int64) {
 			}
 		}
 		if len(candidates) > 0 {
-			idx := seededRand(randomKey()).IntN(len(candidates))
+			idx := secureIntN(len(candidates))
 			power := "portal"
 			if r.Moves%8 == 0 {
 				power = "barrier"

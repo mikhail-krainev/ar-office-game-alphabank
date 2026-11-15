@@ -104,7 +104,7 @@ func TestRouletteViewNeverLeaksFutureResult(t *testing.T) {
 
 func TestBlackjackWinnerGetsWholePotOnce(t *testing.T) {
 	r := &loungeRoom{Game: "blackjack", Phase: "playing", Pot: 60, Stake: 20, Players: []loungePlayer{{ID: "a", Cards: []int{0, 9}, Done: true}, {ID: "b", Cards: []int{8, 9}, Done: true}, {ID: "c", Cards: []int{9, 10, 3}, Done: true}}}
-	r.resolveBlackjack(100)
+	r.resolveBlackjack()
 	if r.Phase != "finished" || r.Payouts["a"] != 60 || r.Pot != 0 {
 		t.Fatalf("wrong settlement: %+v", r)
 	}
@@ -193,7 +193,7 @@ func TestPublicEmptyCollectionsAreArraysAndObjects(t *testing.T) {
 
 func TestSoloBlackjackRequiresFreshRematchConsent(t *testing.T) {
 	r := &loungeRoom{Game: "blackjack", Host: "a", Phase: "playing", Stake: 20, Pot: 20, Dealer: []int{9, 6}, Players: []loungePlayer{{ID: "a", Ready: true, Cards: []int{9, 7}, Done: true}}}
-	r.resolveBlackjack(100)
+	r.resolveBlackjack()
 	if r.Phase != "finished" {
 		t.Fatal("not finished")
 	}
@@ -291,5 +291,151 @@ func TestBlackjackStakeChangesAtTable(t *testing.T) {
 	r.Phase = "finished"
 	if got := r.act("a", loungeAction{Action: "stake", Stake: 30}, 101); got != "" || r.Stake != 30 {
 		t.Fatal("next round stake must be adjustable")
+	}
+}
+
+func TestBlackjackDecisionsDoNotCancelEachOther(t *testing.T) {
+	r := &loungeRoom{Game: "blackjack", Phase: "playing", Revision: 7, DealRevision: 5, Players: []loungePlayer{{ID: "a", Cards: []int{1, 2}}, {ID: "b", Cards: []int{3, 4}}}}
+	// Both players decided on revision 5; the first decision has already moved the room on.
+	for _, action := range []string{"hit", "stand"} {
+		if !r.acceptsStale(loungeAction{Action: action, Revision: 5}) {
+			t.Fatalf("simultaneous %s refused", action)
+		}
+	}
+	if r.acceptsStale(loungeAction{Action: "hit", Revision: 4}) {
+		t.Fatal("a decision made before this deal must be refused")
+	}
+	if r.acceptsStale(loungeAction{Action: "start", Revision: 5}) {
+		t.Fatal("only table decisions may skip the revision check")
+	}
+	if problem := r.act("a", loungeAction{Action: "pass"}, 100); problem != "invalid_action" {
+		t.Fatalf("pass is not a decision any more: %q", problem)
+	}
+}
+
+func TestBlackjackTieSplitsPotWithoutRedeal(t *testing.T) {
+	r := &loungeRoom{Game: "blackjack", Phase: "playing", Round: 1, Pot: 60, Stake: 20, Players: []loungePlayer{{ID: "a", Cards: []int{9, 8}, Done: true}, {ID: "b", Cards: []int{22, 21}, Done: true}, {ID: "c", Cards: []int{9, 10, 3}, Done: true}}}
+	r.resolveBlackjack()
+	if r.Phase != "finished" || r.Round != 1 || r.Payouts["a"] != 30 || r.Payouts["b"] != 30 || r.Payouts["c"] != 0 {
+		t.Fatalf("tie must split the pot at once: %+v", r)
+	}
+	if r.Outcomes["a"] != "win" || r.Outcomes["b"] != "win" || r.Outcomes["c"] != "lose" {
+		t.Fatalf("wrong outcomes: %v", r.Outcomes)
+	}
+	if outcomes := r.view("c", 0)["outcomes"].(map[string]string); outcomes["a"] != "win" || outcomes["c"] != "lose" {
+		t.Fatalf("every client must get the same outcomes: %v", outcomes)
+	}
+}
+
+func TestBlackjackAllBustOrAllEqualReturnsStakes(t *testing.T) {
+	for _, hands := range [][][]int{{{9, 10, 3}, {22, 23, 5}}, {{9, 8}, {22, 21}}} {
+		r := &loungeRoom{Game: "blackjack", Phase: "playing", Pot: 40, Stake: 20, Players: []loungePlayer{{ID: "a", Cards: hands[0], Done: true}, {ID: "b", Cards: hands[1], Done: true}}}
+		r.resolveBlackjack()
+		if r.Phase != "finished" || r.Payouts["a"] != 20 || r.Payouts["b"] != 20 || r.Outcomes["a"] != "push" || r.Outcomes["b"] != "push" || len(r.Winners) != 0 {
+			t.Fatalf("stakes must return: %+v", r)
+		}
+	}
+}
+
+func TestBlackjackNaturalBeatsLongTwentyOne(t *testing.T) {
+	r := &loungeRoom{Game: "blackjack", Phase: "playing", Pot: 40, Stake: 20, Players: []loungePlayer{{ID: "a", Cards: []int{0, 9}, Done: true}, {ID: "b", Cards: []int{9, 4, 5}, Done: true}}}
+	r.resolveBlackjack()
+	if r.Payouts["a"] != 40 || r.Outcomes["b"] != "lose" {
+		t.Fatalf("natural must win: %+v", r)
+	}
+}
+
+func TestBlackjackDealNeverRepeatsACardAndSettlesFromThePot(t *testing.T) {
+	for range 200 {
+		r := &loungeRoom{Game: "blackjack", Host: "a", Phase: "waiting", Stake: 20, Players: []loungePlayer{{ID: "a", Ready: true}, {ID: "b", Ready: true}, {ID: "c", Ready: true}}}
+		if problem := r.begin(100); problem != "" {
+			t.Fatal(problem)
+		}
+		seen := map[int]bool{}
+		for _, p := range r.Players {
+			for _, c := range p.Cards {
+				if c < 0 || c > 51 || seen[c] {
+					t.Fatalf("bad card %d", c)
+				}
+				seen[c] = true
+			}
+			if p.Done != (cardTotal(p.Cards) == 21) {
+				t.Fatal("only a dealt 21 needs no decision")
+			}
+		}
+		for _, c := range r.Deck {
+			if seen[c] {
+				t.Fatalf("card %d is both dealt and in the deck", c)
+			}
+		}
+		paid := int64(0)
+		for _, amount := range r.Payouts {
+			paid += amount
+		}
+		if r.Phase == "finished" && paid != 60 || r.Phase == "playing" && r.Pot != 60 {
+			t.Fatalf("pot must exist from the deal: %+v", r)
+		}
+	}
+}
+
+// Chi-square goodness of fit: with 36 degrees of freedom a fair wheel exceeds 90 about once in
+// several hundred million runs, while a biased or patterned one fails every time.
+func TestRoulettePocketsAreUniform(t *testing.T) {
+	const spins = 370000
+	counts := make([]float64, 37)
+	pairs := make([]float64, 37*37)
+	previous := secureIntN(37)
+	for range spins {
+		pocket := secureIntN(37)
+		counts[pocket]++
+		pairs[previous*37+pocket]++
+		previous = pocket
+	}
+	chi := 0.0
+	for _, n := range counts {
+		chi += (n - spins/37.0) * (n - spins/37.0) / (spins / 37.0)
+	}
+	if chi > 90 {
+		t.Fatalf("pockets are not uniform: chi2=%.1f", chi)
+	}
+	// Consecutive spins must be independent: no pocket may predict the next one (1368 degrees of freedom).
+	expected := float64(spins) / (37 * 37)
+	chi = 0
+	for _, n := range pairs {
+		chi += (n - expected) * (n - expected) / expected
+	}
+	if chi > 1700 {
+		t.Fatalf("consecutive spins are related: chi2=%.1f", chi)
+	}
+}
+
+func TestRouletteDrawsResultOnlyAfterBetsClose(t *testing.T) {
+	r := &loungeRoom{Game: "roulette", Phase: "betting", Deadline: 120, Result: -1, Players: []loungePlayer{{ID: "a"}}, Bets: []rouletteBet{{Player: 0, Field: "n5", Amount: 10}}}
+	if r.advance(119) || r.Result != -1 {
+		t.Fatal("no pocket may exist while bets are open")
+	}
+	if !r.advance(120) || r.Phase != "spinning" || r.Result < 0 || r.Result > 36 {
+		t.Fatalf("bad spin: %+v", r)
+	}
+}
+
+func TestShuffleReachesEveryPosition(t *testing.T) {
+	r := &loungeRoom{}
+	first := make([]int, 52)
+	for range 5200 {
+		deck := r.shuffle(52)
+		seen := map[int]bool{}
+		for _, c := range deck {
+			seen[c] = true
+		}
+		if len(seen) != 52 {
+			t.Fatal("deck is not a permutation")
+		}
+		first[deck[0]]++
+	}
+	for card, n := range first {
+		if n < 40 || n > 180 {
+			t.Fatalf("card %d on top %d times of 5200 (expected about 100)", card, n)
+		}
 	}
 }

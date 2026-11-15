@@ -193,7 +193,7 @@ func _draw() -> void:
 	CasinoArt.draw_felt(self, Rect2(Vector2.ZERO, size))
 	var center_y: float = roundf(size.y * 0.47)
 	CasinoArt.draw_text_centered(self, Vector2(size.x / 2.0, center_y - 6), "АЛЬФА · 21", 14, CasinoArt.FELT_LINE.lightened(0.15))
-	CasinoArt.draw_text_centered(self, Vector2(size.x / 2.0, center_y + 10), "блэкджек 3:2 · дилер берёт до 17" if _is_solo() else "ближе всех к 21 забирает фонд", 7, CasinoArt.FELT_TEXT)
+	CasinoArt.draw_text_centered(self, Vector2(size.x / 2.0, center_y + 10), "блэкджек 3:2 · дилер берёт до 17" if _is_solo() else "ближе всех к 21 забирает фонд · ничья делит", 7, CasinoArt.FELT_TEXT)
 	_draw_shoe()
 	if _is_solo():
 		_draw_dealer()
@@ -293,8 +293,6 @@ static func _seat_tag(p: Dictionary, finished: bool) -> Array:
 		return ["ВЫШЕЛ", CasinoArt.WOOD_DARK]
 	if p.get("eliminated", false):
 		return ["ВЫБЫЛ", CasinoArt.WOOD_DARK]
-	if p.get("passed", false):
-		return ["ПАС", CasinoArt.WOOD_DARK]
 	var cards: Array = p.get("cards", [])
 	if finished and not cards.is_empty():
 		var total: int = int(CasinoArt.hand_value(cards)["total"])
@@ -343,26 +341,11 @@ func _draw_timer() -> void:
 	draw_rect(Rect2(bar.position, Vector2(roundf(bar.size.x * share), bar.size.y)), CasinoArt.LOSE if _left < 10.0 else CasinoArt.BRASS)
 
 
-## Display-only reading of the finished hand, the server has already paid it out.
+## The server settles the hand and names every player's result; the table only shows it, so all
+## players see the same outcome even after someone has left the room.
 func _outcome() -> String:
-	var me: Dictionary = _me()
-	var stake: int = round_stake
-	var award: int = int((room.get("awards", {}) as Dictionary).get(str(me.get("id", "")), 0))
-	if not _is_solo():
-		if (room.get("winners", []) as Array).has(me.get("id", "")):
-			return "win"
-		return "push" if stake > 0 and award == stake else "lose"
-	if stake > 0:
-		return "win" if award > stake else ("push" if award == stake else "lose")
-	var mine: Dictionary = CasinoArt.hand_value(me.get("cards", []))
-	var dealer: Dictionary = CasinoArt.hand_value(room.get("dealer", []))
-	var my_total: int = int(mine["total"])
-	var dealer_total: int = int(dealer["total"])
-	if me.get("passed", false) or my_total > 21:
-		return "lose"
-	if my_total == dealer_total:
-		return "push"
-	return "win" if dealer_total > 21 or my_total > dealer_total else "lose"
+	var outcome: String = str((room.get("outcomes", {}) as Dictionary).get(str(_me().get("id", "")), "lose"))
+	return outcome if outcome in ["win", "push", "lose"] else "lose"
 
 
 func _draw_banner(center_y: float) -> void:

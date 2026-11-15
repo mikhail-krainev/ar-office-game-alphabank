@@ -10,7 +10,6 @@ var _table: BlackjackTable
 var _play_row: HBoxContainer
 var _hit: Button
 var _stand: Button
-var _pass: Button
 var _lobby: VBoxContainer
 var _stake_row: HBoxContainer
 var _stake_label: Label
@@ -35,10 +34,7 @@ func _ready() -> void:
 	add_child(_play_row)
 	_hit = make_button("Ещё", true, func() -> void: _decide("hit"), 14)
 	_stand = make_button("Хватит", false, func() -> void: _decide("stand"), 14)
-	_pass = make_button("Пас", false, func() -> void: _decide("pass"), 12)
-	_pass.tooltip_text = "Пас: выйти из раздачи, ставка остаётся в фонде"
-	_pass.size_flags_stretch_ratio = 0.6
-	for button: Button in [_hit, _stand, _pass]:
+	for button: Button in [_hit, _stand]:
 		button.custom_minimum_size.y = 44
 		_play_row.add_child(button)
 	_build_lobby()
@@ -149,8 +145,6 @@ func _refresh() -> void:
 	_play_row.visible = playing
 	_hit.disabled = my_turn_over
 	_stand.disabled = my_turn_over
-	_pass.disabled = my_turn_over
-	_pass.visible = not solo
 	_lobby.visible = not playing
 	_leave_button.disabled = playing
 	if _stake_edited and _stake == int(room.get("stake", 0)):

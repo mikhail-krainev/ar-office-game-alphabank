@@ -24,6 +24,11 @@ const GOLD_TEXT: Color = Color("#ffd86b")
 const LOSE: Color = Color("#e2463a")
 const RANKS: Array[String] = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 const REDS: Array[int] = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]
+## Chip colours of colleagues at a shared table, by seat index.
+const SEAT_COLORS: Array[Color] = [
+	Color("#3d8bff"), Color("#ff5a4d"), Color("#b06cff"), Color("#ff9a2e"), Color("#35d0c0"),
+	Color("#ff6fb1"), Color("#9bd43a"), Color("#f2f0ea"), Color("#c98a4b"), Color("#7f8cff"),
+]
 const MARK: Texture2D = preload("res://assets/brand/alfa_mark_small.png")
 
 static var _boxes: Dictionary[String, StyleBoxFlat] = {}
@@ -211,6 +216,19 @@ static func draw_chip(ci: CanvasItem, center: Vector2, radius: float, value: int
 	var text: String = short_amount(value)
 	var size: int = 8 if radius >= 12 else (7 if text.length() <= 2 else 6)
 	draw_text_centered(ci, c, text, size, CARD_INK if value <= 1 else Color.WHITE)
+
+
+static func seat_color(index: int) -> Color:
+	return SEAT_COLORS[posmod(index, SEAT_COLORS.size())]
+
+
+## Small plain chip of a colleague: only its colour tells whose it is.
+static func draw_seat_chip(ci: CanvasItem, center: Vector2, radius: float, color: Color) -> void:
+	var c: Vector2 = center.round()
+	ci.draw_circle(c + Vector2(0, 1), radius, Color(0, 0, 0, 0.4))
+	ci.draw_circle(c, radius, color.darkened(0.55))
+	ci.draw_circle(c, radius - 1.0, color)
+	ci.draw_circle(c, radius - 2.5, color.lightened(0.35))
 
 
 ## Rounded tag with text, e.g. a hand total.

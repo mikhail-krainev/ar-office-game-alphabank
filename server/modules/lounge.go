@@ -31,7 +31,6 @@ type loungePlayer struct {
 	Score      int               `json:"score"`
 	Cards      []int             `json:"cards,omitempty"`
 	Done       bool              `json:"done"`
-	Passed     bool              `json:"passed"`
 	Eliminated bool              `json:"eliminated"`
 	Seen       int64             `json:"seen"`
 }
@@ -44,6 +43,11 @@ type rouletteBet struct {
 
 type loungeRoom struct {
 	Awards map[string]int64 `json:"awards,omitempty"`
+
+	// Blackjack: each player's result of the finished hand ("win", "push", "lose"), announced to
+	// every client from one place, and the revision of the current deal (see acceptsStale).
+	Outcomes     map[string]string `json:"outcomes,omitempty"`
+	DealRevision int               `json:"deal_revision,omitempty"`
 
 	Positions        map[string]int `json:"positions,omitempty"`
 	QuietKings       int            `json:"quiet_kings"`
@@ -174,8 +178,7 @@ func (r *loungeRoom) shuffle(n int) []int {
 	for i := range cards {
 		cards[i] = i
 	}
-	rng := seededRand(randomKey())
-	rng.Shuffle(n, func(i, j int) { cards[i], cards[j] = cards[j], cards[i] })
+	secureShuffle(n, func(i, j int) { cards[i], cards[j] = cards[j], cards[i] })
 	return cards
 }
 func (r *loungeRoom) pay(id string, amount int64) {
@@ -204,8 +207,7 @@ func (r *loungeRoom) finish(winners []int) {
 		return
 	}
 	// Split once; shuffle determines recipients of the indivisible remainder.
-	rng := seededRand(fmt.Sprintf("split|%s|%d", r.ID, r.Round))
-	rng.Shuffle(len(winners), func(i, j int) { winners[i], winners[j] = winners[j], winners[i] })
+	secureShuffle(len(winners), func(i, j int) { winners[i], winners[j] = winners[j], winners[i] })
 	for i, p := range winners {
 		r.Winners = append(r.Winners, r.Players[p].ID)
 		amount := r.Pot / int64(len(winners))
@@ -278,9 +280,12 @@ func (r *loungeRoom) begin(now int64) string {
 	r.Message = ""
 	r.Payouts = nil
 	r.Awards = nil
+	r.Outcomes = nil
+	// The pot exists before the first card: a hand settled on the deal (everyone at 21) pays from it.
+	r.Pot = r.Stake * int64(n)
 	switch r.Game {
 	case "blackjack":
-		r.deal(nil, now)
+		r.deal(now)
 	case "roulette":
 		r.Phase = "betting"
 		r.Deadline = now + 20
@@ -412,7 +417,7 @@ func (r *loungeRoom) advance(now int64) bool {
 			}
 		}
 		if allDone {
-			r.resolveBlackjack(now)
+			r.resolveBlackjack()
 		} else {
 			r.blackjackDeadline()
 		}
@@ -443,7 +448,7 @@ func (r *loungeRoom) advance(now int64) bool {
 func (r *loungeRoom) view(id string, now int64) map[string]any {
 	players := make([]map[string]any, len(r.Players))
 	for i, p := range r.Players {
-		v := map[string]any{"id": p.ID, "name": p.Name, "avatar": p.Avatar, "character_avatar": p.CharacterAvatar, "outfit": p.Outfit, "ready": p.Ready, "team": p.Team, "score": p.Score, "done": p.Done, "passed": p.Passed, "eliminated": p.Eliminated, "departed": p.Departed}
+		v := map[string]any{"id": p.ID, "name": p.Name, "avatar": p.Avatar, "character_avatar": p.CharacterAvatar, "outfit": p.Outfit, "ready": p.Ready, "team": p.Team, "score": p.Score, "done": p.Done, "eliminated": p.Eliminated, "departed": p.Departed}
 		if r.Game == "blackjack" && (p.ID == id || r.Phase == "finished" || p.Eliminated) {
 			v["cards"] = publicInts(p.Cards)
 			v["total"] = cardTotal(p.Cards)
@@ -463,10 +468,15 @@ func (r *loungeRoom) view(id string, now int64) map[string]any {
 		if p := r.player(id); p >= 0 && !r.Players[p].Done && r.Phase == "playing" {
 			v["left"] = max(int64(0), r.Players[p].DecisionAt-now)
 		}
-		if len(r.Players) == 1 {
+		outcomes := map[string]string{}
+		if r.Phase == "finished" && r.Outcomes != nil {
+			outcomes = r.Outcomes
+		}
+		v["outcomes"] = outcomes
+		if len(r.Dealer) > 0 {
 			if r.Phase == "finished" {
 				v["dealer"] = r.Dealer
-			} else if len(r.Dealer) > 0 {
+			} else {
 				v["dealer"] = r.Dealer[:1]
 			}
 		}
@@ -692,7 +702,7 @@ func rpcLoungeAction(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 							r.Bets = append(r.Bets, rouletteBet{Player: r.player(tx.me.userID), Field: a.Field, Amount: a.Amount})
 						}
 					default:
-						if a.Action != "ready" && a.Revision != r.Revision {
+						if a.Action != "ready" && a.Revision != r.Revision && !r.acceptsStale(a) {
 							errorKey = "stale_room"
 						} else {
 							if a.Action == "start" {
@@ -718,7 +728,6 @@ func rpcLoungeAction(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 							if errorKey == "" {
 								errorKey = r.act(tx.me.userID, a, now)
 								if errorKey == "" && a.Action == "start" {
-									r.Pot = r.Stake * int64(len(r.Players))
 									for _, p := range r.Players {
 										doc, _ := tx.other(p.ID)
 										tx.credit(doc, -r.Stake, "lounge_stake", r.ID)

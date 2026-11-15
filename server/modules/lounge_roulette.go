@@ -21,7 +21,7 @@ func (r *loungeRoom) advanceRoulette(now int64) {
 				r.finish(nil)
 				return
 			}
-			r.Result = seededRand(randomKey()).IntN(37)
+			r.Result = secureIntN(37)
 			r.Phase = "spinning"
 			r.Deadline += 8
 		case "spinning":

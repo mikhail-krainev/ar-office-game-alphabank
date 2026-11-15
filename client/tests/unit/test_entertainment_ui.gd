@@ -77,3 +77,27 @@ func test_choice_prompt_tells_dismiss_from_second_answer() -> void:
 		assert_int(answer).is_equal(expected)
 	prompt._answered.emit.call_deferred(ChoicePrompt.Choice.DISMISSED)
 	assert_bool(await prompt.ask("?", "Да", "Нет")).is_false()
+
+
+func test_roulette_roster_lists_everyone_at_the_table() -> void:
+	var roster: RouletteRoster = auto_free(RouletteRoster.new())
+	var players: Array = [
+		{"id": "a", "name": "Аня", "avatar": "me", "outfit": {}}, {"id": "b", "name": "Пётр", "avatar": "me", "outfit": {}},
+		{"id": "c", "name": "Оля", "avatar": "me", "outfit": {}, "departed": true},
+	]
+	roster.set_state(players, {0: 60}, {}, false, false)
+	assert_int(roster._row.get_child_count()).is_equal(2)
+	assert_str(roster._amounts["a"].text).is_equal("60")
+	assert_str(roster._amounts["b"].text).is_equal("—")
+	roster.set_state(players, {0: 60}, {"a": 300, "b": -50}, true, false)
+	assert_str(roster._amounts["a"].text).is_equal("+300")
+	assert_str(roster._amounts["b"].text).is_equal("−50")
+
+
+func test_blackjack_result_comes_from_the_server() -> void:
+	var table: BlackjackTable = auto_free(BlackjackTable.new())
+	var me: String = Backend.get_user_id()
+	table.update_room({"phase": "finished", "players": [{"id": me, "cards": [9, 8]}], "outcomes": {me: "push"}, "winners": [me]})
+	assert_str(table._outcome()).is_equal("push")
+	table.update_room({"phase": "finished", "players": [{"id": me, "cards": [9, 8]}], "outcomes": {}})
+	assert_str(table._outcome()).is_equal("lose")
