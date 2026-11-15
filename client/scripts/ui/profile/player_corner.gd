@@ -3,6 +3,9 @@ extends Node
 ## Inbox bell with an unread badge and the player's avatar in the HUD corner. The avatar opens the
 ## profile page, the bell opens the inbox. Adds both panels to the scene it is attached to.
 
+## A finished joint task room: the scene counts the task by it (LoungePanel.task_claimed).
+signal task_claimed(task_id: String, room_id: String)
+
 const BUTTON_SIDE: float = 30.0
 
 var _inbox: InboxPanel
@@ -41,12 +44,20 @@ func open_lounge() -> void:
 		_lounge.open()
 
 
+## A joint task room: right after the invitations, or from an inbox invitation.
+func open_task_room(room: Dictionary) -> void:
+	_inbox.close_panel()
+	_lounge.open_room(room)
+
+
 func _build(scene: Node, hud: Hud) -> void:
 	_lounge = LoungePanel.new()
 	scene.add_child(_lounge)
+	_lounge.task_claimed.connect(_on_task_claimed)
 	_inbox = InboxPanel.new()
 	_inbox.name = "InboxPanel"
 	scene.add_child(_inbox)
+	_inbox.room_requested.connect(func(room_id: String) -> void: open_task_room({"id": room_id}))
 	_profile = ProfilePanel.new()
 	_profile.name = "ProfilePanel"
 	scene.add_child(_profile)
@@ -85,6 +96,12 @@ func _build(scene: Node, hud: Hud) -> void:
 	Backend.profile_changed.connect(_on_profile_changed)
 	if Backend.profile != null:
 		_on_profile_changed(Backend.profile)
+
+
+## The reward shows on the office screen, under the panel.
+func _on_task_claimed(task_id: String, room_id: String) -> void:
+	_lounge.close_panel()
+	task_claimed.emit(task_id, room_id)
 
 
 func _on_unread_changed(count: int) -> void:

@@ -22,6 +22,16 @@ func request(rpc: String, payload: Dictionary = {}, mutate: bool = false) -> Dic
 	return result
 
 
+## Colleagues in the office now whom the player can invite to a joint task: {"ok", "people", "room"}.
+func coop_people(task_id: String) -> Dictionary:
+	return await request("task_coop_people", {"task_id": task_id})
+
+
+## Invites a colleague to the player's room for a joint task: {"ok", "error", "room"}.
+func invite(task_id: String, colleague_id: String) -> Dictionary:
+	return await request("task_invite", {"task_id": task_id, "colleague_id": colleague_id}, true)
+
+
 func action(action_name: String, room: Dictionary, extra: Dictionary = {}) -> Dictionary:
 	var payload: Dictionary = extra.duplicate(true)
 	payload["action"] = action_name

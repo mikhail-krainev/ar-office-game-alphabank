@@ -68,6 +68,8 @@ class TaskInfo:
 	var pending: bool = false
 	## Taken in its room after the room code; the check-in is always taken.
 	var taken: bool = false
+	## Can be played together with invited colleagues (a shared room on the server).
+	var coop: bool = false
 
 	## Completed, skipped or waiting for a colleague: nothing left to do today.
 	func is_closed() -> bool:
@@ -356,7 +358,7 @@ class InboxItem:
 	extends RefCounted
 
 	## penalty | streak_reset | photo_request | photo_confirmed | photo_declined | facts_quiz |
-	## facts_answered | raffle_win | raffle_lost
+	## facts_answered | raffle_win | raffle_lost | task_invite
 	var id: int = 0
 	var kind: String = ""
 	var created_at: int = 0

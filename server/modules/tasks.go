@@ -27,7 +27,7 @@ var benignTaskErrors = map[string]bool{
 	"presence_required": true, "task_failed": true, "already_completed": true, "task_skipped": true,
 	"pending_confirmation": true, "no_colleague_available": true, "task_not_today": true,
 	"task_cooldown": true, "outside_task_window": true, "play_resting": true, "play_blocked": true,
-	"wrong_room": true, "facts_not_answered": true,
+	"wrong_room": true, "facts_not_answered": true, "coop_not_finished": true,
 }
 
 type taskView struct {
@@ -46,10 +46,12 @@ type taskView struct {
 	Difficulty           string         `json:"difficulty"`
 	DifficultyMultiplier float64        `json:"difficulty_multiplier"`
 	Skippable            bool           `json:"skippable"`
-	Completed            bool           `json:"completed"`
-	Skipped              bool           `json:"skipped"`
-	Pending              bool           `json:"pending"`
-	Taken                bool           `json:"taken"`
+	// Coop: the task can be played together with invited colleagues (task_coop.go).
+	Coop      bool `json:"coop"`
+	Completed bool `json:"completed"`
+	Skipped   bool `json:"skipped"`
+	Pending   bool `json:"pending"`
+	Taken     bool `json:"taken"`
 }
 
 type taskResult struct {
@@ -109,7 +111,7 @@ func rpcListTasks(ctx context.Context, logger runtime.Logger, db *sql.DB, nk run
 				Spot: task.Spot, Minigame: task.Minigame, Fallback: task.Fallback, Params: task.Params,
 				Assignment: task.Assignment, BaseReward: task.Reward, Reward: taskReward(task, multiplier),
 				Difficulty: task.Difficulty, DifficultyMultiplier: difficultyMultipliers[task.Difficulty],
-				Skippable: task.Skippable,
+				Skippable: task.Skippable, Coop: coopGames[task.Minigame],
 				Completed: contains(dayList(state.Completed, tx.today), task.ID),
 				Skipped:   contains(dayList(state.Skipped, tx.today), task.ID),
 				Pending:   contains(dayList(state.Pending, tx.today), task.ID),
@@ -214,6 +216,8 @@ type taskProof struct {
 	MoodPhoto string `json:"mood_photo"`
 	// "Graffiti wall": the player's spray layer, a base64 PNG of the wall size (graffiti.go).
 	GraffitiPNG string `json:"graffiti_png"`
+	// Joint task: the finished lounge room the player played the task in (task_coop.go).
+	CoopRoom string `json:"coop_room"`
 }
 
 // rpcCompleteTask: {"task_id", "success", "operation_key", "proof"} -> taskResult.
@@ -280,6 +284,18 @@ func rpcCompleteTask(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 				return result, nil
 			}
 		}
+		if proof.CoopRoom != "" {
+			// The room, not the client, decides the score of a joint task.
+			if proof.Score, result.Error, err = tx.coopScore(task, proof.CoopRoom); err != nil {
+				return nil, err
+			}
+			if result.Error != "" {
+				if !benignTaskErrors[result.Error] {
+					tx.logSuspicious(task.ID, result.Error)
+				}
+				return result, nil
+			}
+		}
 		if task.Minigame == factsMinigame {
 			// The colleague's guess, not the client, decides the score.
 			proof.Score = tx.factsQuizScore(task)
@@ -336,6 +352,7 @@ func parseProof(raw map[string]any) taskProof {
 	proof.MoodPNG, _ = raw["mood_png"].(string)
 	proof.MoodPhoto, _ = raw["mood_photo"].(string)
 	proof.GraffitiPNG, _ = raw["graffiti_png"].(string)
+	proof.CoopRoom, _ = raw["coop_room"].(string)
 	if ids, ok := raw["colleague_ids"].([]any); ok {
 		for _, id := range ids {
 			if text, ok := id.(string); ok {

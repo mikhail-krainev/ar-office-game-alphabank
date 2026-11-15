@@ -11,8 +11,12 @@ func TestLoungeModes(t *testing.T) {
 			t.Errorf("teams allowed in %s", game)
 		}
 	}
-	if !loungeTeamsAllowed("memory") || !loungeTeamsAllowed("bug_hunt") {
+	if !loungeTeamsAllowed("memory") {
 		t.Fatal("missing team games")
+	}
+	// The bug hunt is a joint daily task now, not an entertainment room (task_coop.go).
+	if loungeGame("bug_hunt") || loungeTeamsAllowed("bug_hunt") || !coopGames["bug_hunt"] {
+		t.Fatal("bug hunt must be a task game only")
 	}
 	if loungeCapacity("defuse", 6) != 3 || loungeCapacity("checkers", 4) != 4 {
 		t.Fatal("wrong capacity")

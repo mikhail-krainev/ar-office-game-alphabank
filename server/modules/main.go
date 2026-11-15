@@ -134,6 +134,8 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		"office_access":         rpcOfficeAccess,
 		"get_notification_plan": rpcGetNotificationPlan,
 		"assign_colleague":      rpcAssignColleague,
+		"task_coop_people":      rpcTaskCoopPeople,
+		"task_invite":           rpcTaskInvite,
 		"lookup_colleague":      rpcLookupColleague,
 		"my_colleague_code":     rpcMyColleagueCode,
 		"get_inbox":             rpcGetInbox,

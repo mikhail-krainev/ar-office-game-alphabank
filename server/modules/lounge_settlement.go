@@ -64,6 +64,18 @@ func (tx *gameTx) loungeSweep() error {
 }
 
 func (tx *gameTx) loungeRead(id string) (*loadedLounge, error) {
+	loaded, err := tx.loungeFind(id)
+	if err != nil {
+		return nil, err
+	}
+	if loaded == nil {
+		return nil, runtime.NewError("room_not_found", codeInvalidArgument)
+	}
+	return loaded, nil
+}
+
+// loungeFind: the room, or nil when it does not exist yet.
+func (tx *gameTx) loungeFind(id string) (*loadedLounge, error) {
 	if tx.lounges == nil {
 		tx.lounges = map[string]*loadedLounge{}
 	}
@@ -75,7 +87,7 @@ func (tx *gameTx) loungeRead(id string) (*loadedLounge, error) {
 		return nil, errInternal
 	}
 	if len(objects) == 0 {
-		return nil, runtime.NewError("room_not_found", codeInvalidArgument)
+		return nil, nil
 	}
 	var room loungeRoom
 	if json.Unmarshal([]byte(objects[0].GetValue()), &room) != nil {

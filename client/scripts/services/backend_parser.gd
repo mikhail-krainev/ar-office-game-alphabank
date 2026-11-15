@@ -58,6 +58,7 @@ static func task(data: Dictionary) -> BackendModels.TaskInfo:
 	info.skipped = bool(data.get("skipped", false))
 	info.pending = bool(data.get("pending", false))
 	info.taken = bool(data.get("taken", false))
+	info.coop = bool(data.get("coop", false))
 	return info
 
 

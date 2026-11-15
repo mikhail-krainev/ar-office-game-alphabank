@@ -42,6 +42,17 @@ TASK_BONUS,награда ×%s,reward ×%s
 TASK_SKIP,Пропустить,Skip
 TASK_SKIPPED,Пропущено,Skipped
 TASK_SKIP_QUESTION,Пропустить задание? Награды за него сегодня не будет.,Skip the task? There will be no reward for it today.
+TASK_COOP_QUESTION,Как будешь выполнять задание?,How will you do the task?
+TASK_COOP_TOGETHER,С коллегами,With colleagues
+TASK_COOP_SOLO,В одиночку,Solo
+COOP_TITLE,Пригласить коллег,Invite colleagues
+COOP_HINT,"Коллеги в офисе прямо сейчас. Приглашение придёт им в уведомления, игра начнётся в общей комнате, когда все будут готовы","Colleagues at the office right now. The invitation goes to their notifications; the game starts in a shared room when everyone is ready"
+COOP_NOBODY,Сейчас в офисе нет коллег. Попробуй позже или выполни задание в одиночку,No colleagues at the office right now. Try later or do the task solo
+COOP_INVITE,Пригласить,Invite
+COOP_INVITED,Приглашён,Invited
+COOP_JOINED,В комнате,In the room
+COOP_OPEN_ROOM,Перейти в комнату,Go to the room
+COOP_CLAIM,Засчитать задание,Count the task
 TASK_SKIP_CONFIRM,Пропустить,Skip
 TASK_SKIP_CANCEL,Попробую ещё,Keep trying
 TASK_SKIP_DONE,Задание пропущено,Task skipped
@@ -263,6 +274,8 @@ INBOX_PHOTO_CONFIRMED,%s подтвердил(а) совместное фото:
 INBOX_PHOTO_DECLINED,%s не подтвердил(а) фото. Задание снова доступно,%s didn't confirm the photo. The task is open again
 INBOX_RAFFLE_WIN,Вы выиграли розыгрыш: %s! Администратор свяжется с вами,You won the draw: %s! An administrator will contact you
 INBOX_RAFFLE_LOST,"Розыгрыш парковки завершён, победил(а) %s. Повезёт в следующий раз","The parking draw is over, %s won. Better luck next time"
+INBOX_TASK_INVITE,%s зовёт тебя на совместное задание «%s»,%s invites you to the joint task "%s"
+INBOX_TASK_INVITE_JOIN,Присоединиться,Join
 INBOX_PHOTO_CONFIRM,"Да, это правда","Yes, it's true"
 INBOX_PHOTO_DECLINE,Нет,No
 INBOX_STATE_CONFIRMED,Подтверждено,Confirmed
@@ -404,6 +417,12 @@ TASK_ROOM_WRONG_CODE,Это другой код. Нужен QR-код комна
 QR_ROOM_TASKS,"Заданий в этой комнате: %d. Выбери, какое начать",Tasks in this room: %d. Pick one to start
 ERROR_WRONG_ROOM,Сначала отсканируй QR-код комнаты задания,Scan the QR code of the task's room first
 ERROR_TASK_NOT_TAKEN,Сначала возьми задание в его комнате,Take the task in its room first
+ERROR_PLAYER_UNAVAILABLE,Коллега сейчас недоступен,The colleague is unavailable right now
+ERROR_NOT_INVITED,Тебя не приглашали в эту комнату,You were not invited to this room
+ERROR_INVALID_COOP_ROOM,Эта игра не засчитывает задание,This game does not count for the task
+ERROR_COOP_NOT_FINISHED,Дождись конца игры,Wait for the game to end
+ERROR_ROUND_STARTED,Дождись завершения партии,Wait for the round to end
+ERROR_ROOM_FULL,Комната заполнена,The room is full
 FACTS_TITLE,"Три правды, две лжи","Three truths, two lies"
 FACTS_HINT,"Сегодня в заданиях есть «Три правды, две лжи». Напиши пять фактов о себе: три правдивых и два ложных. Коллега попробует угадать, где правда","Today's tasks include ""Three truths, two lies"". Write five facts about yourself: three true and two false. A colleague will try to guess which are true"
 FACTS_PLACEHOLDER,Факт №%d,Fact #%d

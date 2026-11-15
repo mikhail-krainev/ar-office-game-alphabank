@@ -54,6 +54,7 @@ var _home_button: Button
 ## Room reached physically while a modal was open; the character walks there once it closes.
 var _pending_room: StringName = &""
 var _corner: PlayerCorner
+var _coop_panel: CoopInvitePanel
 var _task_list: TaskList
 var _facts_panel: FactsPanel
 ## "Scan the entry code" while the game is open in the office Wi-Fi without it.
@@ -118,6 +119,10 @@ func _ready() -> void:
 	Backend.chat.direct_message_received.connect(_on_direct_message)
 	ColleagueProfiles.message_handler = _chat.open_direct
 	_corner = PlayerCorner.attach(self, _hud)
+	_corner.task_claimed.connect(_claim_coop_task)
+	_coop_panel = CoopInvitePanel.new()
+	add_child(_coop_panel)
+	_coop_panel.room_requested.connect(_corner.open_task_room)
 	_facts_panel = FactsPanel.new()
 	add_child(_facts_panel)
 	_colleagues = OfficeColleagues.new()
@@ -168,7 +173,7 @@ func _is_modal_open() -> bool:
 	return (
 		_busy or _leaving or _task_panel.is_open() or _shop_panel.is_open()
 		or _minigame_panel.is_open() or _choice.is_open() or (_corner != null and _corner.is_open())
-		or (_facts_panel != null and _facts_panel.is_open())
+		or (_facts_panel != null and _facts_panel.is_open()) or (_coop_panel != null and _coop_panel.is_open())
 		or ColleagueProfiles.is_open() or _chat.is_open()
 		or (is_instance_valid(_squats_panel) and _squats_panel.is_open())
 	)
@@ -397,7 +402,21 @@ func _go_to_task(task: BackendModels.TaskInfo) -> void:
 		return
 	# The minigame happens in the real office, so the character does not have to walk to the marker.
 	_stop_player()
-	_start_task(task)
+	if task.coop:
+		_ask_coop(task)
+	else:
+		_start_task(task)
+
+
+## A task that can be played together: solo runs its minigame, "with colleagues" opens the invites.
+func _ask_coop(task: BackendModels.TaskInfo) -> void:
+	var mode: ChoicePrompt.Choice = await _choice.choose(
+		tr("TASK_COOP_QUESTION"), tr("TASK_COOP_TOGETHER"), tr("TASK_COOP_SOLO")
+	)
+	if mode == ChoicePrompt.Choice.FIRST:
+		_coop_panel.open(task)
+	elif mode == ChoicePrompt.Choice.SECOND:
+		_start_task(task)
 
 
 ## Takes the task on the server. Away from the task's room the player scans its door code first.
@@ -463,8 +482,17 @@ func _run_task(task: BackendModels.TaskInfo) -> void:
 		return
 	if outcome != MinigamePanel.Outcome.SUCCESS:
 		return
+	var result: BackendModels.TaskResult = await _complete_task(task, _minigame_panel.last_proof)
+	if result.ok and task.is_check_in():
+		Notifications.set_entry_code_needed(false)
+		_colleagues.refresh_now()
+		await _ask_facts()
+
+
+## Sends the finished task to the server, shows the reward or the error and reloads the list.
+func _complete_task(task: BackendModels.TaskInfo, proof: Dictionary) -> BackendModels.TaskResult:
 	_busy = true
-	var result: BackendModels.TaskResult = await Backend.complete_task(task.id, true, _minigame_panel.last_proof)
+	var result: BackendModels.TaskResult = await Backend.complete_task(task.id, true, proof)
 	_busy = false
 	if result.ok and result.pending:
 		_hud.flash_message(tr("PHOTO_SENT") % result.partner_name)
@@ -475,10 +503,25 @@ func _run_task(task: BackendModels.TaskInfo) -> void:
 	else:
 		_hud.flash_message(tr("ERROR_" + result.error.to_upper()))
 	await _refresh_tasks()
-	if result.ok and task.is_check_in():
-		Notifications.set_entry_code_needed(false)
-		_colleagues.refresh_now()
-		await _ask_facts()
+	return result
+
+
+## A joint task room finished: the server counts the task by the room for each player who has the
+## task taken today (the host and invited colleagues alike).
+func _claim_coop_task(task_id: String, room_id: String) -> void:
+	if _busy:
+		return
+	for task: BackendModels.TaskInfo in _tasks:
+		if task.id != task_id:
+			continue
+		if task.is_closed():
+			_hud.flash_message(tr("ERROR_ALREADY_COMPLETED") if task.completed else tr("ERROR_TASK_SKIPPED"))
+		elif not task.taken:
+			_hud.flash_message(tr("ERROR_TASK_NOT_TAKEN"))
+		else:
+			await _complete_task(task, {"coop_room": room_id})
+		return
+	_hud.flash_message(tr("ERROR_TASK_NOT_TODAY"))
 
 
 ## After the check-in: the facts for "Three truths, two lies" when today's pack has the task and

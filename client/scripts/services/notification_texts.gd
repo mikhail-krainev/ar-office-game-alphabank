@@ -30,6 +30,8 @@ static func inbox_text(item: BackendModels.InboxItem) -> String:
 			return _tr("INBOX_RAFFLE_WIN") % str(p.get("prize", ""))
 		"raffle_lost":
 			return _tr("INBOX_RAFFLE_LOST") % str(p.get("name", ""))
+		"task_invite":
+			return _tr("INBOX_TASK_INVITE") % [str(p.get("name", "")), str(p.get("title", ""))]
 	return item.kind
 
 

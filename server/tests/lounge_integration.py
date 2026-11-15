@@ -78,7 +78,7 @@ for side in range(1,5):assert r['board'].count(side)==8
 print('PASS: four-player checkers cross, eight pieces per side')
 # Six independent readiness updates must all survive concurrent room CAS conflicts.
 for trial in range(3):
- r=action(a,{},'create',game='bug_hunt',capacity=6,stake=0)
+ r=action(a,{},'create',game='memory',capacity=6,stake=0)
  for token,_ in people[1:]:r=action(token,r,'join')
  def confirm_ready(token):
   return rpc(token,'lounge_action',{'action':'ready','ready':True,'room_id':r['id'],'revision':r['revision'],'operation_key':str(uuid.uuid4())})

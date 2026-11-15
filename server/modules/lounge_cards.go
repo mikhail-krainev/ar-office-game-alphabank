@@ -218,7 +218,8 @@ func (r *loungeRoom) resolveScore(now int64) {
 		}
 		sides = len(teams)
 	}
-	if sides <= 1 || r.TieBreaks >= 2 || len(r.Players) == 1 {
+	// A joint task has no extra rounds: every player's own catch counts for their task.
+	if sides <= 1 || r.TieBreaks >= 2 || len(r.Players) == 1 || r.Task != "" {
 		r.finish(winners)
 		return
 	}

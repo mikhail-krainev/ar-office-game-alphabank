@@ -1,9 +1,15 @@
 class_name LoungePanel
 extends ModalPanel
 ## Daily-independent entertainment rooms. Polling resumes server timers and never derives money locally.
+## Joint task rooms (bug hunt) open here too, but only from the task list or an inbox invitation.
+
+## A finished joint task room: the player asks the server to count their task by this room.
+signal task_claimed(task_id: String, room_id: String)
 
 const CASINO_GAMES: Array[String] = ["blackjack", "roulette"]
 const TITLES: Dictionary = {"blackjack": "21", "roulette": "Рулетка", "checkers": "Шашки", "memory": "Альфа-пары", "defuse": "Обезвредить баг", "bug_hunt": "Охота на баги"}
+## Played only as joint daily tasks, never created from the entertainment menu.
+const TASK_GAMES: Array[String] = ["bug_hunt"]
 ## Open rooms listed on the menu itself; the rest are on the full list screen.
 const HOME_ROOMS_SHOWN: int = 6
 const GAME_ICON_DIR: String = "res://assets/ui/game_icons/%s.png"
@@ -52,6 +58,17 @@ func open() -> void:
 	_home()
 
 
+## Opens a room directly: a joint task room from the task list or an inbox invitation.
+func open_room(room: Dictionary) -> void:
+	if Backend.profile == null or not Backend.profile.in_office:
+		return
+	_ui_epoch += 1
+	show_panel()
+	clear()
+	_room = room
+	await _send("join" if room.get("players") == null else "get")
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		_focused = false
@@ -86,6 +103,8 @@ func _home() -> void:
 	var clicker: Button = _game_button("Кот удачи · кликер", "clicker", _open_clicker, true)
 	clicker.tooltip_text = "Гладь кота, покупай улучшения и золоти его перерождениями"
 	for key: String in TITLES:
+		if key in TASK_GAMES:
+			continue
 		var game_key: String = key
 		_game_button(str(TITLES[key]), key, func() -> void: _configure(game_key))
 	content.add_child(make_text("Сейчас играют", 11, UiStyle.MUTED))
@@ -156,7 +175,6 @@ func _configure(game_key: String) -> void:
 		"checkers": "Двое: русские шашки 8×8. Четверо: Альфа-хаос, порталы и баррикады. Взятие обязательно. Ход: 60 секунд.",
 		"memory": "Открой пару одинаковых карточек. Правильная пара продолжает твой ход. 15 секунд на ход. В браузере блокировка системных скриншотов недоступна.",
 		"defuse": "Строго трое, рядом в помещении. Оператор нажимает кнопки. Инструктор молчит и показывает инструкцию жестами связному. Связной объясняет оператору словами. Три ошибки — поражение.",
-		"bug_hunt": "90 секунд, три одинаковые волны багов. Поворачивай телефон, лови багов касанием. Побеждает большее число пойманных багов.",
 	}
 	_text(str(rules[game_key]))
 	_capacity = OptionButton.new()
@@ -165,8 +183,6 @@ func _configure(game_key: String) -> void:
 		counts = [2, 4]
 	elif game_key == "defuse":
 		counts = [3]
-	elif game_key == "bug_hunt":
-		counts = [2, 3, 4, 5, 6]
 	elif game_key == "roulette":
 		counts = [30]
 	for count: int in counts:
@@ -175,7 +191,7 @@ func _configure(game_key: String) -> void:
 	_teams = CheckBox.new()
 	_style_check(_teams)
 	_teams.text = "Команды 2 на 2 / 3 на 3"
-	_teams.visible = game_key in ["memory", "bug_hunt"]
+	_teams.visible = game_key == "memory"
 	content.add_child(_teams)
 	_stake = SpinBox.new()
 	_stake.min_value = 0
@@ -304,9 +320,13 @@ func _render_room() -> void:
 		return
 	clear()
 	set_title(str(TITLES.get(_room.get("game", ""), "Развлечения")))
-	set_subtitle("Код: %s · взнос: %d · фонд: %d" % [_room.get("id", ""), int(_room.get("stake", 0)), int(_room.get("pot", 0))])
 	var phase: String = str(_room.get("phase", "waiting"))
 	var game_key: String = str(_room.get("game", ""))
+	var task_id: String = str(_room.get("task", ""))
+	if task_id.is_empty():
+		set_subtitle("Код: %s · взнос: %d · фонд: %d" % [_room.get("id", ""), int(_room.get("stake", 0)), int(_room.get("pot", 0))])
+	else:
+		set_subtitle("Совместное задание · 90 секунд, три волны багов")
 	_timer = _text("Ожидание готовности" if phase == "waiting" else ("Без таймера" if _room.get("training", false) else "Осталось: %d сек." % int(_room.get("left", 0))))
 	var players: Array = _room.get("players", [])
 	_score_labels.clear()
@@ -329,7 +349,11 @@ func _render_room() -> void:
 				var id: String = str(p.get("id", ""))
 				if awards.has(id):
 					_text("%s получил %d койнов" % [p.get("name", ""), int(awards[id])], 11)
-		_button("Скопировать код комнаты", func() -> void: PlatformServices.copy_text(str(_room.get("id", ""))))
+		if task_id.is_empty():
+			_button("Скопировать код комнаты", func() -> void: PlatformServices.copy_text(str(_room.get("id", ""))))
+		elif phase == "finished":
+			var room_id: String = str(_room.get("id", ""))
+			_button(tr("COOP_CLAIM"), func() -> void: task_claimed.emit(task_id, room_id), true)
 		_button("Готов / не готов", func() -> void: await _send("ready", {"ready": not bool(_my_player().get("ready", false))}))
 		if _room.get("host", "") == Backend.get_user_id():
 			_button("Начать · ставка %d" % int(_room.get("stake", 0)), func() -> void: await _send("start"), true)
@@ -520,7 +544,7 @@ static func _error(key: String) -> String:
 		"no_power": "У тебя пока нет способности.", "wrong_role": "Нажимать кнопки может только оператор.", "wrong_channel": "Сначала подключи текущий канал.",
 		"invalid_bet": "Ставка недоступна. Проверь сумму и дождись приёма ставок.", "invalid_card": "Эта карточка сейчас недоступна.",
 		"player_unavailable": "Коллега сейчас недоступен.", "loan_not_found": "Запрос не найден.", "duplicate_operation": "Действие уже обработано. Обнови экран.",
-		"room_not_found": "Комната не найдена.", "network": "Нет связи с сервером.", "server": "Ошибка сервера.",
+		"room_not_found": "Комната не найдена.", "not_invited": "Тебя не приглашали в эту комнату.", "network": "Нет связи с сервером.", "server": "Ошибка сервера.",
 	}.get(key, "Действие недоступно. Обнови экран.")
 
 

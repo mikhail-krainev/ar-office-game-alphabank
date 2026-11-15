@@ -60,3 +60,20 @@ func test_every_lounge_game_has_an_icon() -> void:
 	games.append("clicker")
 	for game: String in games:
 		assert_bool(ResourceLoader.exists(LoungePanel.GAME_ICON_DIR % game)).override_failure_message(game).is_true()
+
+
+func test_bug_hunt_is_a_task_game_only() -> void:
+	# The bug hunt left the entertainment menu: it is a joint daily task now.
+	assert_bool(LoungePanel.TASK_GAMES.has("bug_hunt")).is_true()
+	assert_bool(LoungePanel.TITLES.has("bug_hunt")).is_true()
+
+
+func test_choice_prompt_tells_dismiss_from_second_answer() -> void:
+	var prompt: ChoicePrompt = auto_free(ChoicePrompt.new())
+	add_child(prompt)
+	for expected: ChoicePrompt.Choice in [ChoicePrompt.Choice.DISMISSED, ChoicePrompt.Choice.SECOND, ChoicePrompt.Choice.FIRST]:
+		prompt._answered.emit.call_deferred(expected)
+		var answer: ChoicePrompt.Choice = await prompt.choose("?", "Вместе", "Одному")
+		assert_int(answer).is_equal(expected)
+	prompt._answered.emit.call_deferred(ChoicePrompt.Choice.DISMISSED)
+	assert_bool(await prompt.ask("?", "Да", "Нет")).is_false()

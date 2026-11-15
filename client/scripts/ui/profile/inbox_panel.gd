@@ -3,6 +3,9 @@ extends ModalPanel
 ## In-game notifications from the server: fines, a lost streak, photo confirmations and draw results.
 ## A colleague's joint photo is confirmed or declined right here, and a colleague's facts from "Three
 ## truths, two lies" are guessed here; after the guess the player's own QR is shown for the colleague.
+## An invitation to a joint task opens the colleague's room.
+
+signal room_requested(room_id: String)
 
 const KIND_COLORS: Dictionary[String, Color] = {
 	"penalty": UiStyle.RED,
@@ -14,9 +17,12 @@ const KIND_COLORS: Dictionary[String, Color] = {
 	"facts_answered": Color("#3f9e4a"),
 	"raffle_win": UiStyle.GOLD,
 	"raffle_lost": UiStyle.MUTED,
+	"task_invite": Color("#3a7bd5"),
 }
 
 const QUIZ_QR_SCALE: int = 4
+## A joint task invitation can be accepted for an hour, as long as an idle room lives (lounge.go).
+const INVITE_TTL_SECONDS: int = 3600
 const GUESS_RIGHT: Color = Color("#3f9e4a")
 
 var _busy: bool = false
@@ -82,6 +88,11 @@ func _make_item(item: BackendModels.InboxItem) -> Control:
 		confirm.custom_minimum_size = Vector2(0, 26)
 		confirm.pressed.connect(_answer.bind(item, true))
 		footer.add_child(confirm)
+	elif item.kind == "task_invite" and Time.get_unix_time_from_system() - item.created_at < INVITE_TTL_SECONDS:
+		var join: Button = UiStyle.make_button(tr("INBOX_TASK_INVITE_JOIN"), true, 10)
+		join.custom_minimum_size = Vector2(0, 26)
+		join.pressed.connect(func() -> void: room_requested.emit(str(item.params.get("room_id", ""))))
+		footer.add_child(join)
 	elif item.kind == "photo_request" or (item.is_facts_quiz() and item.state != "pending"):
 		footer.add_child(UiStyle.make_label(tr("INBOX_STATE_" + item.state.to_upper()), 9, UiStyle.MUTED))
 	return card

@@ -1,8 +1,11 @@
 class_name ChoicePrompt
 extends CanvasLayer
-## Bottom card with a question and two answers. ask() resolves with true for the first answer.
+## Bottom card with a question and two answers. ask() resolves with true for the first answer;
+## choose() also tells a tap outside the card (DISMISSED) from the second answer.
 
-signal _answered(yes: bool)
+signal _answered(choice: int)
+
+enum Choice { DISMISSED, FIRST, SECOND }
 
 const MARGIN: float = 10.0
 
@@ -22,7 +25,7 @@ func _ready() -> void:
 	var dimmer: ColorRect = UiStyle.make_dimmer()
 	dimmer.gui_input.connect(func(event: InputEvent) -> void:
 		if Minigame.press_position(event) != null:
-			_answered.emit(false)
+			_answered.emit(Choice.DISMISSED)
 	)
 	root.add_child(dimmer)
 	_card = PanelContainer.new()
@@ -46,8 +49,8 @@ func _ready() -> void:
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.custom_minimum_size = Vector2(0, 38)
 		buttons.add_child(button)
-	_yes.pressed.connect(func() -> void: _answered.emit(true))
-	_no.pressed.connect(func() -> void: _answered.emit(false))
+	_yes.pressed.connect(func() -> void: _answered.emit(Choice.FIRST))
+	_no.pressed.connect(func() -> void: _answered.emit(Choice.SECOND))
 
 
 func is_open() -> bool:
@@ -55,6 +58,11 @@ func is_open() -> bool:
 
 
 func ask(question: String, yes_text: String, no_text: String) -> bool:
+	return await choose(question, yes_text, no_text) == Choice.FIRST
+
+
+## The first answer is the primary button.
+func choose(question: String, yes_text: String, no_text: String) -> Choice:
 	var safe: Rect2 = PlatformServices.get_safe_rect()
 	_question.text = question
 	_question.custom_minimum_size = Vector2(safe.size.x - MARGIN * 2.0 - 24.0, 0)
@@ -66,6 +74,6 @@ func ask(question: String, yes_text: String, no_text: String) -> bool:
 	_card.offset_bottom = safe.end.y - viewport.y - MARGIN
 	_card.offset_top = _card.offset_bottom
 	visible = true
-	var answer: bool = await _answered
+	var answer: Choice = await _answered
 	visible = false
 	return answer

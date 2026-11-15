@@ -58,6 +58,11 @@ type loungeRoom struct {
 	Heat       int   `json:"heat"`
 	HeatAt     int64 `json:"heat_at"`
 
+	// Task: a joint daily task played in this room (task_coop.go); only invited players join.
+	Task    string   `json:"task,omitempty"`
+	TaskDay int      `json:"task_day,omitempty"`
+	Invited []string `json:"invited,omitempty"`
+
 	ID       string           `json:"id"`
 	Game     string           `json:"game"`
 	Host     string           `json:"host"`
@@ -122,7 +127,7 @@ type loungeAction struct {
 	Level     int    `json:"level"`
 }
 
-func loungeTeamsAllowed(game string) bool { return game == "memory" || game == "bug_hunt" }
+func loungeTeamsAllowed(game string) bool { return game == "memory" }
 func loungeCapacity(game string, n int) int {
 	switch game {
 	case "defuse":
@@ -143,7 +148,7 @@ func loungeCapacity(game string, n int) int {
 }
 func loungeGame(game string) bool {
 	switch game {
-	case "blackjack", "roulette", "checkers", "defuse", "memory", "bug_hunt":
+	case "blackjack", "roulette", "checkers", "defuse", "memory":
 		return true
 	}
 	return false
@@ -447,7 +452,7 @@ func (r *loungeRoom) view(id string, now int64) map[string]any {
 		}
 		players[i] = v
 	}
-	v := map[string]any{"id": r.ID, "game": r.Game, "host": r.Host, "capacity": r.Capacity, "teams": r.Teams, "stake": r.Stake, "phase": r.Phase, "revision": r.Revision, "players": players, "turn": r.Turn, "round": r.Round, "level": r.Level, "training": r.Training, "pot": r.Pot, "left": max(int64(0), r.Deadline-now), "started": r.Started, "server_time": now, "message": r.Message, "winners": publicStrings(r.Winners)}
+	v := map[string]any{"task": r.Task, "id": r.ID, "game": r.Game, "host": r.Host, "capacity": r.Capacity, "teams": r.Teams, "stake": r.Stake, "phase": r.Phase, "revision": r.Revision, "players": players, "turn": r.Turn, "round": r.Round, "level": r.Level, "training": r.Training, "pot": r.Pot, "left": max(int64(0), r.Deadline-now), "started": r.Started, "server_time": now, "message": r.Message, "winners": publicStrings(r.Winners)}
 	awards := r.Awards
 	if awards == nil {
 		awards = map[string]int64{}
@@ -576,6 +581,9 @@ func rpcLoungeList(ctx context.Context, logger runtime.Logger, db *sql.DB, nk ru
 			if json.Unmarshal([]byte(o.GetValue()), &r) != nil || time.Now().Unix()-r.Updated > 3600 {
 				continue
 			}
+			if r.Task != "" && r.player(tx.me.userID) < 0 {
+				continue
+			}
 			if r.Phase == "waiting" || r.Game == "roulette" && r.activeCount() > 0 || r.player(tx.me.userID) >= 0 {
 				rooms = append(rooms, map[string]any{"id": r.ID, "game": r.Game, "phase": r.Phase, "count": r.activeCount(), "capacity": r.Capacity, "teams": r.Teams, "stake": r.Stake})
 			}
@@ -645,12 +653,14 @@ func rpcLoungeAction(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 							}
 						}
 						if r.player(tx.me.userID) < 0 {
-							if len(r.Players) >= r.Capacity {
+							if r.Task != "" && !contains(r.Invited, tx.me.userID) && r.ID != coopRoomID(tx.me.userID, r.Task, r.TaskDay) {
+								errorKey = "not_invited"
+							} else if len(r.Players) >= r.Capacity {
 								errorKey = "room_full"
 							} else if r.Phase != "waiting" && !(r.Game == "roulette" && r.Phase == "betting") {
 								errorKey = "round_started"
 							} else {
-								r.Players = append(r.Players, loungePlayer{ID: tx.me.userID, Name: tx.me.displayName(), CharacterAvatar: tx.me.state.Avatar == defaultAvatar, Avatar: publicAvatar(tx.me.userID, tx.me.state.Avatar, tx.content.Rules.AvatarTemplates), Outfit: tx.me.state.Outfit, Team: len(r.Players) % 2, Seen: now})
+								r.Players = append(r.Players, tx.loungeSeat(len(r.Players), now))
 							}
 						}
 					case "leave":
@@ -731,6 +741,11 @@ func rpcLoungeAction(ctx context.Context, logger runtime.Logger, db *sql.DB, nk 
 		}
 		return map[string]any{"ok": errorKey == "", "error": errorKey, "room": r.view(tx.me.userID, now), "balance": tx.me.balance}, nil
 	})
+}
+
+// loungeSeat: the calling player as a new room member at `index`.
+func (tx *gameTx) loungeSeat(index int, now int64) loungePlayer {
+	return loungePlayer{ID: tx.me.userID, Name: tx.me.displayName(), CharacterAvatar: tx.me.state.Avatar == defaultAvatar, Avatar: publicAvatar(tx.me.userID, tx.me.state.Avatar, tx.content.Rules.AvatarTemplates), Outfit: tx.me.state.Outfit, Team: index % 2, Seen: now}
 }
 
 func publicInts(values []int) []int {
